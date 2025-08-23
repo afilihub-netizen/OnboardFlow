@@ -28,8 +28,8 @@ export default function Reports() {
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        title: "Não Autorizado",
+        description: "Você foi desconectado. Fazendo login novamente...",
         variant: "destructive",
       });
       setTimeout(() => {
