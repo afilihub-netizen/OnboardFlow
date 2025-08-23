@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/ui/theme-provider";
-import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload } from "lucide-react";
+import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload, Crown } from "lucide-react";
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
@@ -12,6 +12,7 @@ const navigation = [
   { name: 'Importação', href: '/import', icon: Upload },
   { name: 'Relatórios', href: '/reports', icon: FileText },
   { name: 'Categorias', href: '/categories', icon: Tags },
+  { name: 'Premium', href: '/subscription', icon: Crown },
 ];
 
 export function Sidebar() {

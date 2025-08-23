@@ -136,7 +136,7 @@ export default function Import() {
         credentials: 'include',
         body: JSON.stringify({ 
           extractText,
-          availableCategories: categories.map(cat => cat.name)
+          availableCategories: categories.map((cat: any) => cat.name)
         }),
         headers: { "Content-Type": "application/json" },
       });
@@ -172,7 +172,7 @@ export default function Import() {
       type: transaction.type,
       description: transaction.description,
       date: transaction.date,
-      categoryId: categories.find(cat => cat.name.toLowerCase().includes(transaction.category.toLowerCase()))?.id || null,
+      categoryId: categories.find((cat: any) => cat.name.toLowerCase().includes(transaction.category.toLowerCase()))?.id || null,
       paymentMethod: "bank_transfer"
     }));
 

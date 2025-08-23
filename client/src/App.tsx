@@ -15,6 +15,7 @@ import Categories from "@/pages/categories";
 import Profile from "@/pages/profile";
 import Goals from "@/pages/goals";
 import Import from "@/pages/import";
+import Subscription from "@/pages/subscription";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -32,6 +33,7 @@ function Router() {
           <Route path="/import" component={Import} />
           <Route path="/reports" component={Reports} />
           <Route path="/categories" component={Categories} />
+          <Route path="/subscription" component={Subscription} />
           <Route path="/profile" component={Profile} />
         </>
       )}

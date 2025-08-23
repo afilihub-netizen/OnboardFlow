@@ -34,6 +34,9 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   accountType: varchar("account_type").default("individual"), // individual, family
+  stripeCustomerId: varchar("stripe_customer_id"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  subscriptionStatus: varchar("subscription_status").default("free"), // free, premium
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -130,9 +133,13 @@ export const familyMembers = pgTable("family_members", {
   name: varchar("name", { length: 100 }).notNull(),
   email: varchar("email"),
   role: varchar("role").default("member"), // admin, member, child
+  inviteStatus: varchar("invite_status").default("pending"), // pending, accepted, declined
+  inviteToken: varchar("invite_token"),
   canManageTransactions: boolean("can_manage_transactions").default(false),
   canViewReports: boolean("can_view_reports").default(true),
   monthlyAllowance: decimal("monthly_allowance", { precision: 10, scale: 2 }),
+  invitedAt: timestamp("invited_at").defaultNow(),
+  joinedAt: timestamp("joined_at"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

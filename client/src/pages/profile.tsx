@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { User, LogOut, Settings, Shield, Users, Plus, Camera } from "lucide-react";
+import { FamilyManagement } from "@/components/profile/family-management";
 
 export default function Profile() {
   const { toast } = useToast();
@@ -303,8 +304,11 @@ export default function Profile() {
             </CardContent>
           </Card>
 
-          {/* Family Members Section - Only show for family accounts */}
-          {user?.accountType === 'family' && (
+          {/* Family Management Section */}
+          <FamilyManagement />
+          
+          {/* Old Family Members Section - Only show for family accounts */}
+          {false && user?.accountType === 'family' && (
             <Card className="financial-card">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center">

@@ -406,6 +406,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Stripe subscription route
+  app.post('/api/get-or-create-subscription', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // For now, create a mock subscription for demo purposes
+      // In a real implementation, you would integrate with Stripe
+      const mockClientSecret = "pi_mock_client_secret_for_demo";
+      
+      res.json({
+        subscriptionId: "sub_mock_subscription",
+        clientSecret: mockClientSecret,
+      });
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
