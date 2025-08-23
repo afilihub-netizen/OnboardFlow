@@ -71,6 +71,8 @@ export const transactions = pgTable("transactions", {
   attachmentUrl: text("attachment_url"),
   isRecurring: boolean("is_recurring").default(false), // Indica se é um lançamento mensal
   dueDay: integer("due_day"), // Dia do mês para vencimento (1-31) - apenas para recorrentes
+  totalInstallments: integer("total_installments"), // Total number of installments
+  paidInstallments: integer("paid_installments").default(0), // Number of installments paid
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

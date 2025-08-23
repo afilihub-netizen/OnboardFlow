@@ -106,6 +106,8 @@ export function FixedExpenses() {
           date: new Date().toISOString().split('T')[0],
           isRecurring: true,
           dueDay: parseInt(data.dueDay),
+          totalInstallments: data.totalInstallments ? parseInt(data.totalInstallments) : undefined,
+          paidInstallments: data.paidInstallments ? parseInt(data.paidInstallments) : undefined,
         });
       } else {
         // Se não estiver pago, criar como conta fixa
@@ -447,7 +449,7 @@ export function FixedExpenses() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {expenses.map((transaction) => {
+            {expenses.map((transaction: any) => {
               const Icon = getCategoryIcon(transaction.category?.name || '', transaction.description);
               
               return (
@@ -474,6 +476,11 @@ export function FixedExpenses() {
                   <p className="text-lg font-bold text-gray-900 dark:text-white" data-testid={`expense-amount-${transaction.id}`}>
                     {formatCurrency(transaction.amount)}
                   </p>
+                  {transaction.totalInstallments && transaction.paidInstallments !== undefined && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">
+                      📊 {transaction.paidInstallments}/{transaction.totalInstallments} parcelas
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500 dark:text-gray-400" data-testid={`expense-due-date-${transaction.id}`}>
                     {transaction.dueDay ? formatDueDate(transaction.dueDay) : 'Data não definida'}
                   </p>

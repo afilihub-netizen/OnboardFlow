@@ -88,7 +88,7 @@ export function RecentTransactions() {
               <p className="text-sm">Adicione sua primeira transação para começar.</p>
             </div>
           ) : (
-            transactions?.map((transaction, index) => {
+            transactions?.map((transaction: any, index: number) => {
               const Icon = getCategoryIcon(transaction.description);
               
               return (
@@ -114,6 +114,11 @@ export function RecentTransactions() {
                     <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`} data-testid={`transaction-amount-${index}`}>
                       {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                     </p>
+                    {transaction.totalInstallments && transaction.paidInstallments !== undefined && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                        {transaction.paidInstallments}/{transaction.totalInstallments} parcelas
+                      </p>
+                    )}
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {transaction.paymentMethod}
                     </p>
