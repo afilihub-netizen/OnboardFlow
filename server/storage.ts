@@ -250,7 +250,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(transactions.createdAt));
   }
 
-  // Get future commitments - transactions with pending installments
+  // Get future commitments - transactions with pending installments + fixed expenses
   async getFutureCommitments(userId: string): Promise<any[]> {
     
     // Get transactions with installments where paidInstallments < totalInstallments
@@ -265,6 +265,7 @@ export class DatabaseStorage implements IStorage {
         paymentMethod: transactions.paymentMethod,
         categoryId: transactions.categoryId,
         categoryName: categories.name,
+        dueDay: transactions.dueDay,
       })
       .from(transactions)
       .leftJoin(categories, eq(transactions.categoryId, categories.id))
@@ -278,18 +279,58 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(transactions.date));
 
-    // Calculate installment value for each commitment
-    return commitmentTransactions.map(commitment => {
+    // Get active fixed expenses (recurring monthly commitments)
+    const fixedExpenseCommitments = await db
+      .select({
+        id: fixedExpenses.id,
+        description: fixedExpenses.name,
+        amount: fixedExpenses.amount,
+        dueDay: fixedExpenses.dueDay,
+        categoryId: fixedExpenses.categoryId,
+        categoryName: categories.name,
+      })
+      .from(fixedExpenses)
+      .leftJoin(categories, eq(fixedExpenses.categoryId, categories.id))
+      .where(
+        and(
+          eq(fixedExpenses.userId, userId),
+          eq(fixedExpenses.isActive, true)
+        )
+      )
+      .orderBy(fixedExpenses.dueDay);
+
+    // Process installment transactions
+    const installmentCommitments = commitmentTransactions.map(commitment => {
       const installmentValue = commitment.totalValue && commitment.totalInstallments
         ? (parseFloat(commitment.totalValue) / commitment.totalInstallments).toFixed(2)
         : commitment.amount;
 
       return {
         ...commitment,
+        type: 'installment',
         installmentValue: installmentValue,
         categoryName: commitment.categoryName || 'Sem categoria'
       };
     });
+
+    // Process fixed expenses as monthly commitments
+    const monthlyCommitments = fixedExpenseCommitments.map(expense => ({
+      id: expense.id,
+      description: expense.description,
+      amount: expense.amount,
+      installmentValue: expense.amount,
+      type: 'monthly',
+      paymentMethod: 'recurring',
+      categoryId: expense.categoryId,
+      categoryName: expense.categoryName || 'Sem categoria',
+      dueDay: expense.dueDay,
+      totalInstallments: null,
+      paidInstallments: null,
+      totalValue: null,
+    }));
+
+    // Combine both types of commitments
+    return [...installmentCommitments, ...monthlyCommitments];
   }
 
   // Fixed expense operations
