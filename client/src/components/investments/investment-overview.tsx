@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, Target } from "lucide-react";
+import { InvestmentGoals } from "./investment-goals";
 
 export function InvestmentOverview() {
   const [period, setPeriod] = useState("12months");
@@ -169,31 +170,7 @@ export function InvestmentOverview() {
         </Card>
 
         {/* Monthly Investment Goal */}
-        <Card className="financial-card">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="font-semibold text-gray-900 dark:text-white flex items-center">
-                <Target className="w-4 h-4 mr-2" />
-                Meta Mensal
-              </h4>
-              <button className="text-blue-600 hover:text-blue-700 text-sm" data-testid="button-edit-goal">
-                Editar
-              </button>
-            </div>
-            <div className="mb-4">
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-600 dark:text-gray-400">R$ 800 / R$ 1.200</span>
-                <span className="text-gray-600 dark:text-gray-400">66%</span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                <div className="bg-purple-500 h-2 rounded-full" style={{ width: '66%' }}></div>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Faltam R$ 400 para atingir sua meta
-            </p>
-          </CardContent>
-        </Card>
+        <InvestmentGoals />
       </div>
     </div>
   );

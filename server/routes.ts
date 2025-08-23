@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { analyzeExtractWithAI } from "./openai";
 import {
   insertCategorySchema,
   insertTransactionSchema,
@@ -385,6 +386,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting family member:", error);
       res.status(500).json({ message: "Failed to delete family member" });
+    }
+  });
+
+  // Extract analysis route
+  app.post("/api/analyze-extract", isAuthenticated, async (req: any, res) => {
+    try {
+      const { extractText, availableCategories } = req.body;
+      
+      if (!extractText || typeof extractText !== 'string') {
+        return res.status(400).json({ message: "Extract text is required" });
+      }
+
+      const result = await analyzeExtractWithAI(extractText, availableCategories || []);
+      res.json(result);
+    } catch (error) {
+      console.error("Error analyzing extract:", error);
+      res.status(500).json({ message: "Failed to analyze extract" });
     }
   });
 

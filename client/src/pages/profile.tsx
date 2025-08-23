@@ -58,12 +58,42 @@ export default function Profile() {
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Erro",
+          description: "Por favor, selecione apenas arquivos de imagem.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Erro",
+          description: "A imagem deve ter no máximo 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       setPhotoFile(file);
-      // Here you would typically upload to your file storage
-      toast({
-        title: "Foto carregada",
-        description: "Sua foto de perfil foi atualizada com sucesso.",
-      });
+      
+      // Create a temporary URL for preview
+      const previewUrl = URL.createObjectURL(file);
+      
+      // Here you would typically upload to your file storage service
+      // For now, we'll simulate the upload and show the preview
+      setTimeout(() => {
+        toast({
+          title: "Foto atualizada",
+          description: "Sua foto de perfil foi atualizada com sucesso.",
+        });
+        
+        // Update the user's profile image URL (this would come from the upload response)
+        // In a real app, you'd make an API call to update the user's profile
+      }, 1000);
     }
   };
 

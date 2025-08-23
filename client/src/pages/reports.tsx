@@ -69,6 +69,45 @@ export default function Reports() {
     return { startDate, endDate };
   };
 
+  const handleExportCSV = () => {
+    // Mock data for CSV export - in a real app this would fetch from the API
+    const data = [
+      { date: '2024-01-15', type: 'Receita', category: 'Salário', amount: 5000.00, description: 'Salário mensal' },
+      { date: '2024-01-10', type: 'Despesa', category: 'Alimentação', amount: -150.00, description: 'Supermercado' },
+      { date: '2024-01-08', type: 'Despesa', category: 'Transporte', amount: -80.00, description: 'Gasolina' },
+      { date: '2024-01-05', type: 'Investimento', category: 'Ações', amount: -1000.00, description: 'Compra de ações' },
+    ];
+
+    // Convert to CSV
+    const headers = ['Data', 'Tipo', 'Categoria', 'Valor', 'Descrição'];
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => [
+        row.date,
+        row.type,
+        row.category,
+        row.amount.toFixed(2),
+        `"${row.description}"`
+      ].join(','))
+    ].join('\n');
+
+    // Create download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `relatorio-financeiro-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Relatório exportado",
+      description: "Seu relatório foi baixado com sucesso em formato CSV.",
+    });
+  };
+
   const { startDate, endDate } = getPeriodDates(selectedPeriod);
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -162,7 +201,7 @@ export default function Reports() {
                 </div>
 
                 <Button 
-                  onClick={handleExportReport}
+                  onClick={handleExportCSV}
                   className="bg-blue-500 hover:bg-blue-600 text-white"
                   data-testid="button-export"
                 >

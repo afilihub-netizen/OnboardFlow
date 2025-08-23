@@ -2,13 +2,14 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/ui/theme-provider";
-import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target } from "lucide-react";
+import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload } from "lucide-react";
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Lançamentos', href: '/transactions', icon: ArrowLeftRight },
   { name: 'Investimentos', href: '/investments', icon: PieChart },
   { name: 'Metas', href: '/goals', icon: Target },
+  { name: 'Importação', href: '/import', icon: Upload },
   { name: 'Relatórios', href: '/reports', icon: FileText },
   { name: 'Categorias', href: '/categories', icon: Tags },
 ];
