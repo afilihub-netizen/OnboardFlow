@@ -89,6 +89,7 @@ export function TransactionHistory() {
         description: "Transação excluída com sucesso!",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions/recurring'] });
       queryClient.invalidateQueries({ queryKey: ['/api/financial-summary'] });
     },
     onError: (error) => {
