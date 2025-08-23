@@ -45,3 +45,94 @@ export const CHART_COLORS = [
   '#84cc16', // lime-500
   '#f97316', // orange-500
 ] as const;
+
+// Sistema inteligente de ícones para categorias
+export const CATEGORY_ICON_MAPPINGS = [
+  // Alimentação
+  { keywords: ['mercado', 'supermercado', 'compras', 'feira', 'grocery'], icon: 'fas fa-shopping-cart' },
+  { keywords: ['restaurante', 'lanche', 'comida', 'alimentação', 'food', 'jantar', 'almoço'], icon: 'fas fa-utensils' },
+  { keywords: ['café', 'padaria', 'cafeteria'], icon: 'fas fa-coffee' },
+  { keywords: ['pizza', 'delivery'], icon: 'fas fa-pizza-slice' },
+  
+  // Transporte
+  { keywords: ['transporte', 'uber', 'táxi', 'taxi', 'ônibus', 'onibus', 'metro'], icon: 'fas fa-car' },
+  { keywords: ['gasolina', 'combustível', 'combustivel', 'posto', 'álcool', 'diesel'], icon: 'fas fa-gas-pump' },
+  { keywords: ['estacionamento', 'valet', 'parking'], icon: 'fas fa-parking' },
+  { keywords: ['avião', 'aviao', 'viagem', 'passagem', 'voo'], icon: 'fas fa-plane' },
+  { keywords: ['bicicleta', 'bike'], icon: 'fas fa-bicycle' },
+  
+  // Casa e moradia
+  { keywords: ['casa', 'moradia', 'lar', 'residência', 'residencia', 'home'], icon: 'fas fa-home' },
+  { keywords: ['aluguel', 'rent', 'condomínio', 'condominio'], icon: 'fas fa-building' },
+  { keywords: ['água', 'agua', 'water', 'saneamento'], icon: 'fas fa-tint' },
+  { keywords: ['luz', 'energia', 'elétrica', 'eletrica', 'electric'], icon: 'fas fa-bolt' },
+  { keywords: ['internet', 'wifi', 'telecom', 'telefone'], icon: 'fas fa-wifi' },
+  { keywords: ['gás', 'gas'], icon: 'fas fa-fire' },
+  
+  // Saúde
+  { keywords: ['saúde', 'saude', 'médico', 'medico', 'hospital', 'clínica', 'clinica'], icon: 'fas fa-heartbeat' },
+  { keywords: ['farmácia', 'farmacia', 'remédio', 'remedio', 'medicamento'], icon: 'fas fa-pills' },
+  { keywords: ['dentista', 'odontologia'], icon: 'fas fa-tooth' },
+  { keywords: ['academia', 'gym', 'fitness'], icon: 'fas fa-dumbbell' },
+  
+  // Educação
+  { keywords: ['educação', 'educacao', 'escola', 'faculdade', 'universidade', 'curso'], icon: 'fas fa-graduation-cap' },
+  { keywords: ['livro', 'livraria', 'material'], icon: 'fas fa-book' },
+  
+  // Trabalho
+  { keywords: ['trabalho', 'escritório', 'escritorio', 'office', 'empresa'], icon: 'fas fa-briefcase' },
+  { keywords: ['salário', 'salario', 'salary', 'pagamento', 'renda'], icon: 'fas fa-money-bill-wave' },
+  
+  // Lazer e entretenimento
+  { keywords: ['lazer', 'entretenimento', 'diversão', 'diversao', 'cinema'], icon: 'fas fa-gamepad' },
+  { keywords: ['música', 'musica', 'spotify', 'streaming'], icon: 'fas fa-music' },
+  { keywords: ['festa', 'bar', 'balada', 'drinks'], icon: 'fas fa-cocktail' },
+  { keywords: ['esporte', 'futebol', 'jogo'], icon: 'fas fa-football-ball' },
+  
+  // Tecnologia
+  { keywords: ['tecnologia', 'tech', 'computador', 'software', 'app'], icon: 'fas fa-laptop' },
+  { keywords: ['celular', 'telefone', 'phone', 'mobile'], icon: 'fas fa-mobile-alt' },
+  
+  // Roupas e beleza
+  { keywords: ['roupa', 'vestuário', 'vestuario', 'shopping', 'moda'], icon: 'fas fa-tshirt' },
+  { keywords: ['beleza', 'cabelo', 'salão', 'salao', 'estética', 'estetica'], icon: 'fas fa-cut' },
+  
+  // Financeiro
+  { keywords: ['investimento', 'investment', 'banco', 'poupança', 'poupanca'], icon: 'fas fa-chart-pie' },
+  { keywords: ['empréstimo', 'emprestimo', 'financiamento', 'loan'], icon: 'fas fa-hand-holding-usd' },
+  { keywords: ['cartão', 'cartao', 'credit', 'débito', 'debito'], icon: 'fas fa-credit-card' },
+  
+  // Pets
+  { keywords: ['pet', 'animal', 'cachorro', 'gato', 'veterinário', 'veterinario'], icon: 'fas fa-paw' },
+  
+  // Impostos e taxas
+  { keywords: ['imposto', 'taxa', 'governo', 'receita', 'iptu', 'ipva'], icon: 'fas fa-file-invoice-dollar' },
+  
+  // Seguros
+  { keywords: ['seguro', 'insurance', 'proteção', 'protecao'], icon: 'fas fa-shield-alt' },
+  
+  // Doações e presentes
+  { keywords: ['presente', 'gift', 'doação', 'doacao', 'caridade'], icon: 'fas fa-gift' },
+] as const;
+
+// Função para obter ícone baseado no nome da categoria
+export function getIconForCategory(categoryName: string): string {
+  const name = categoryName.toLowerCase().trim();
+  
+  // Procura por correspondência exata primeiro
+  for (const mapping of CATEGORY_ICON_MAPPINGS) {
+    if (mapping.keywords.some(keyword => name === keyword)) {
+      return mapping.icon;
+    }
+  }
+  
+  // Depois procura por correspondência parcial
+  for (const mapping of CATEGORY_ICON_MAPPINGS) {
+    if (mapping.keywords.some(keyword => name.includes(keyword))) {
+      return mapping.icon;
+    }
+  }
+  
+  // Ícone padrão se não encontrar correspondência
+  return 'fas fa-tag';
+}

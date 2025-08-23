@@ -16,12 +16,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Plus, Edit, Trash2, Tag } from "lucide-react";
-import { DEFAULT_CATEGORIES } from "@/lib/constants";
+import { DEFAULT_CATEGORIES, getIconForCategory } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const categorySchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
-  icon: z.string().min(1, "Ícone é obrigatório"),
   color: z.string().min(1, "Cor é obrigatória"),
 });
 
@@ -38,7 +37,6 @@ export default function Categories() {
     resolver: zodResolver(categorySchema),
     defaultValues: {
       name: "",
-      icon: "fas fa-tag",
       color: "#2563eb",
     },
   });
@@ -71,7 +69,11 @@ export default function Categories() {
 
   const createCategoryMutation = useMutation({
     mutationFn: async (data: CategoryFormData) => {
-      await apiRequest('POST', '/api/categories', data);
+      const categoryData = {
+        ...data,
+        icon: getIconForCategory(data.name)
+      };
+      await apiRequest('POST', '/api/categories', categoryData);
     },
     onSuccess: () => {
       toast({
@@ -104,7 +106,11 @@ export default function Categories() {
 
   const updateCategoryMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: CategoryFormData }) => {
-      await apiRequest('PUT', `/api/categories/${id}`, data);
+      const categoryData = {
+        ...data,
+        icon: getIconForCategory(data.name)
+      };
+      await apiRequest('PUT', `/api/categories/${id}`, categoryData);
     },
     onSuccess: () => {
       toast({
@@ -179,7 +185,6 @@ export default function Categories() {
     setEditingCategory(category);
     form.reset({
       name: category.name,
-      icon: category.icon,
       color: category.color,
     });
     setIsDialogOpen(true);
@@ -258,19 +263,24 @@ export default function Categories() {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="icon"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Ícone (Font Awesome)</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="fas fa-shopping-cart" data-testid="input-category-icon" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {/* Preview do ícone que será atribuído automaticamente */}
+                    <div className="space-y-2">
+                      <FormLabel>Ícone (Automático)</FormLabel>
+                      <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div 
+                          className="w-8 h-8 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: form.watch('color') + '20', color: form.watch('color') }}
+                        >
+                          <i className={`${form.watch('name') ? getIconForCategory(form.watch('name')) : 'fas fa-tag'} text-sm`}></i>
+                        </div>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          {form.watch('name') ? 
+                            `Ícone será: ${getIconForCategory(form.watch('name'))}` : 
+                            'Digite o nome para ver o ícone'
+                          }
+                        </span>
+                      </div>
+                    </div>
 
                     <FormField
                       control={form.control}
