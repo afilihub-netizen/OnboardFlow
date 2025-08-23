@@ -8,19 +8,56 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function CashFlowChart() {
   const [period, setPeriod] = useState("6months");
 
-  // Generate sample data - in a real app this would come from the API
+  // Fetch real cash flow data
   const { data: chartData, isLoading } = useQuery({
-    queryKey: ['/api/cash-flow-chart', period],
+    queryKey: ['/api/cash-flow-data', period],
     queryFn: async () => {
-      // This would be a real API call in production
-      return [
-        { month: 'Jul', receitas: 7800, despesas: 6200 },
-        { month: 'Ago', receitas: 8200, despesas: 5800 },
-        { month: 'Set', receitas: 7900, despesas: 6400 },
-        { month: 'Out', receitas: 8500, despesas: 5900 },
-        { month: 'Nov', receitas: 8100, despesas: 6100 },
-        { month: 'Dez', receitas: 8500, despesas: 6240 },
-      ];
+      // Calculate date ranges based on period
+      const now = new Date();
+      let months = 6;
+      if (period === '12months') months = 12;
+      if (period === 'year') months = 12;
+
+      const cashFlowData = [];
+      
+      for (let i = months - 1; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const nextDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+        
+        const startDate = date.toISOString();
+        const endDate = nextDate.toISOString();
+        
+        try {
+          const response = await fetch(`/api/financial-summary?startDate=${startDate}&endDate=${endDate}`, {
+            credentials: 'include',
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            cashFlowData.push({
+              month: date.toLocaleDateString('pt-BR', { month: 'short' }),
+              receitas: parseFloat(data.totalIncome || '0'),
+              despesas: Math.abs(parseFloat(data.totalExpenses || '0')),
+            });
+          } else {
+            // Fallback to zero if no data
+            cashFlowData.push({
+              month: date.toLocaleDateString('pt-BR', { month: 'short' }),
+              receitas: 0,
+              despesas: 0,
+            });
+          }
+        } catch (error) {
+          // Fallback to zero on error
+          cashFlowData.push({
+            month: date.toLocaleDateString('pt-BR', { month: 'short' }),
+            receitas: 0,
+            despesas: 0,
+          });
+        }
+      }
+      
+      return cashFlowData;
     },
   });
 

@@ -21,21 +21,55 @@ export function InvestmentOverview() {
     },
   });
 
-  // Generate sample chart data - in a real app this would come from investment history API
-  const chartData = [
-    { month: 'Jan', value: 12000 },
-    { month: 'Fev', value: 12500 },
-    { month: 'Mar', value: 13200 },
-    { month: 'Abr', value: 13800 },
-    { month: 'Mai', value: 14100 },
-    { month: 'Jun', value: 14600 },
-    { month: 'Jul', value: 15000 },
-    { month: 'Ago', value: 15200 },
-    { month: 'Set', value: 14800 },
-    { month: 'Out', value: 15100 },
-    { month: 'Nov', value: 15300 },
-    { month: 'Dez', value: 15320 },
-  ];
+  // Generate chart data based on actual investments and period
+  const generateChartData = () => {
+    if (!investments || investments.length === 0) {
+      return [];
+    }
+
+    const now = new Date();
+    let months = 12;
+    if (period === '2years') months = 24;
+    if (period === 'year') months = 12;
+
+    const chartData = [];
+    let cumulativeValue = 0;
+
+    for (let i = months - 1; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = date.toLocaleDateString('pt-BR', { month: 'short' });
+
+      // Calculate investments up to this month
+      const investmentsUpToDate = investments.filter((investment: any) => {
+        const purchaseDate = new Date(investment.purchaseDate);
+        return purchaseDate <= date;
+      });
+
+      // Calculate total value for this month
+      const monthValue = investmentsUpToDate.reduce((total: number, investment: any) => {
+        // For a more realistic chart, we could apply some growth/decline
+        // For now, we'll use the current values proportionally
+        const baseValue = parseFloat(investment.initialAmount || '0');
+        const currentValue = parseFloat(investment.currentAmount || '0');
+        const growth = currentValue / (baseValue || 1);
+        
+        // Apply time-based growth simulation
+        const monthsFromPurchase = Math.max(1, (now.getTime() - new Date(investment.purchaseDate).getTime()) / (1000 * 60 * 60 * 24 * 30));
+        const timeGrowth = Math.pow(growth, Math.min(1, monthsFromPurchase / 12));
+        
+        return total + baseValue * timeGrowth;
+      }, 0);
+
+      chartData.push({
+        month: monthName,
+        value: Math.round(monthValue)
+      });
+    }
+
+    return chartData;
+  };
+
+  const chartData = generateChartData();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {

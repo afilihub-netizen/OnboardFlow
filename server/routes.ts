@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { analyzeExtractWithAI } from "./openai";
+import { analyzeExtractWithAI, generateFinancialInsights } from "./openai";
 import {
   insertCategorySchema,
   insertTransactionSchema,
@@ -311,6 +311,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/budget-goals/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const goalId = req.params.id;
+      const success = await storage.deleteBudgetGoal(goalId);
+      if (success) {
+        res.json({ message: "Budget goal deleted successfully" });
+      } else {
+        res.status(404).json({ message: "Budget goal not found" });
+      }
+    } catch (error) {
+      console.error("Error deleting budget goal:", error);
+      res.status(500).json({ message: "Failed to delete budget goal" });
+    }
+  });
+
   // Financial summary route
   app.get("/api/financial-summary", isAuthenticated, async (req: any, res) => {
     try {
@@ -449,6 +464,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error analyzing extract:", error);
       res.status(500).json({ message: "Failed to analyze extract" });
+    }
+  });
+
+  // Generate AI insights endpoint
+  app.get("/api/ai-insights", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get user's financial data
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth() - 2, 1); // Last 3 months
+      const endDate = now;
+
+      const [transactions, categories, summary] = await Promise.all([
+        storage.getTransactions(userId, startDate, endDate),
+        storage.getCategories(userId),
+        storage.getFinancialSummary(userId, startDate, endDate)
+      ]);
+
+      // Generate insights using AI
+      const result = await generateFinancialInsights({
+        transactions,
+        categories,
+        summary
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error generating AI insights:", error);
+      res.status(500).json({ message: "Failed to generate AI insights" });
     }
   });
 

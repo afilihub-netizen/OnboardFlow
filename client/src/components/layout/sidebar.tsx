@@ -68,13 +68,18 @@ export function Sidebar() {
                   href={item.href}
                   className={cn(
                     "sidebar-item",
-                    isActive && "active"
+                    isActive && "active",
+                    item.name === "Premium" && "premium-nav-item"
                   )}
                   data-testid={`nav-${item.name.toLowerCase()}`}
                   onClick={() => setIsOpen(false)}
                 >
-                  <Icon className={cn("w-5 h-5", isActive ? "text-white" : "text-gray-600 dark:text-gray-300")} />
-                  <span>{item.name}</span>
+                  <Icon className={cn(
+                    "w-5 h-5 sidebar-icon", 
+                    isActive ? "sidebar-icon-active" : "",
+                    item.name === "Premium" ? "text-yellow-500" : "text-gray-600 dark:text-gray-300"
+                  )} />
+                  <span className={item.name === "Premium" ? "font-semibold text-yellow-600 dark:text-yellow-500" : ""}>{item.name}</span>
                 </Link>
               );
             })}
@@ -92,7 +97,7 @@ export function Sidebar() {
                 data-testid="nav-profile"
                 onClick={() => setIsOpen(false)}
               >
-                <User className={cn("w-5 h-5", location === "/profile" ? "text-white" : "text-gray-600 dark:text-gray-300")} />
+                <User className={cn("w-5 h-5 sidebar-icon", location === "/profile" ? "sidebar-icon-active" : "text-gray-600 dark:text-gray-300")} />
                 <span>Perfil</span>
               </Link>
               
@@ -101,7 +106,7 @@ export function Sidebar() {
                 className="sidebar-item w-full text-left"
                 data-testid="button-theme-toggle"
               >
-                {theme === "dark" ? <Sun className="w-5 h-5 text-gray-600 dark:text-gray-300" /> : <Moon className="w-5 h-5 text-gray-600 dark:text-gray-300" />}
+                {theme === "dark" ? <Sun className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300" /> : <Moon className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300" />}
                 <span>{theme === "dark" ? "Modo Claro" : "Modo Escuro"}</span>
               </button>
             </div>

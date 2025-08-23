@@ -280,14 +280,36 @@ canvas {
 }
 
 /* Sidebar improvements */
-.dark .sidebar-item svg {
+.dark .sidebar-icon {
   @apply text-gray-400;
 }
 
-.dark .sidebar-item:hover svg {
+.dark .sidebar-item:hover .sidebar-icon {
   @apply text-gray-200;
 }
 
-.dark .sidebar-item.active svg {
-  @apply text-blue-400;
+.dark .sidebar-icon-active {
+  @apply text-white !important;
+}
+
+.sidebar-icon-active {
+  @apply text-blue-600 !important;
+}
+
+/* Premium button highlight */
+.premium-nav-item {
+  @apply bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border border-yellow-200 dark:border-yellow-800;
+}
+
+.premium-nav-item:hover {
+  @apply bg-gradient-to-r from-yellow-100 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/30;
+}
+
+/* AI Insights styling */
+.ai-insights-card {
+  @apply shadow-lg;
+}
+
+.ai-insights-card:hover {
+  @apply shadow-xl scale-[1.01] transition-all duration-200;
 }

@@ -216,12 +216,17 @@ export function DetailedAnalysis({ data }: DetailedAnalysisProps) {
         </CardContent>
       </Card>
 
-      {/* AI Insights */}
-      <Card className="financial-card">
-        <CardHeader>
+      {/* AI Insights - Destacado */}
+      <Card className="financial-card ai-insights-card border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
+        <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-t-xl -m-6 mb-4 p-6">
           <CardTitle className="flex items-center">
-            <AlertCircle className="w-5 h-5 mr-2" />
-            Insights e Recomendações
+            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center mr-3">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-lg font-bold">🧠 Insights e Recomendações da IA</div>
+              <div className="text-sm text-purple-100">Análises inteligentes personalizadas</div>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -230,18 +235,24 @@ export function DetailedAnalysis({ data }: DetailedAnalysisProps) {
               data.insights.map((insight, index) => (
                 <div
                   key={index}
-                  className="flex items-start p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
+                  className="flex items-start p-4 bg-white dark:bg-gray-800 rounded-lg border border-purple-200 dark:border-purple-700 shadow-sm"
                   data-testid={`insight-${index}`}
                 >
-                  <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3 flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-blue-800 dark:text-blue-200">{insight}</span>
+                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                    <AlertCircle className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{insight}</span>
+                  </div>
                 </div>
               ))
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>Nenhum insight disponível para o período selecionado.</p>
-                <p className="text-sm">Adicione mais transações para obter análises detalhadas.</p>
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertCircle className="w-8 h-8 text-white" />
+                </div>
+                <p className="text-gray-600 dark:text-gray-400 font-medium">🧠 IA aguardando dados</p>
+                <p className="text-sm text-gray-500 dark:text-gray-500">Adicione mais transações para obter análises inteligentes e recomendações personalizadas.</p>
               </div>
             )}
           </div>

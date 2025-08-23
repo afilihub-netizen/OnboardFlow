@@ -205,8 +205,13 @@ export default function Reports() {
               variant={showAdvancedFilters ? "default" : "outline"}
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
               data-testid="toggle-advanced-filters"
+              className={showAdvancedFilters 
+                ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg" 
+                : "border-2 border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-semibold"
+              }
             >
-              {showAdvancedFilters ? "Filtros Básicos" : "Filtros Avançados"}
+              <Filter className="w-4 h-4 mr-2" />
+              {showAdvancedFilters ? "🧠 IA Ativa - Filtros Básicos" : "🧠 Filtros Avançados + IA"}
             </Button>
           </div>
 
