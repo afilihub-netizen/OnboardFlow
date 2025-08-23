@@ -90,6 +90,7 @@ export function TransactionHistory() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
       queryClient.invalidateQueries({ queryKey: ['/api/transactions/recurring'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions/future-commitments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/financial-summary'] });
     },
     onError: (error) => {

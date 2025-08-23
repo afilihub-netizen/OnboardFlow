@@ -102,6 +102,7 @@ export function TransactionForm() {
       form.reset();
       setSelectedFile(null);
       queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions/future-commitments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/financial-summary'] });
     },
     onError: (error) => {
