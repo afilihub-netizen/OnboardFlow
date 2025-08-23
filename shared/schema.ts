@@ -36,7 +36,7 @@ export const users = pgTable("users", {
   accountType: varchar("account_type").default("individual"), // individual, family
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
-  subscriptionStatus: varchar("subscription_status").default("free"), // free, premium
+  subscriptionStatus: varchar("subscription_status").default("free"), // free, individual, family
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

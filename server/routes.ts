@@ -333,10 +333,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Family member routes
+  // Family member routes - only for family plan users
   app.get("/api/family-members", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Only allow family plan users to access family management
+      if (user.subscriptionStatus !== 'family') {
+        return res.status(403).json({ message: 'Family management is only available for family plan subscribers' });
+      }
+
       const familyMembers = await storage.getFamilyMembers(userId);
       res.json(familyMembers);
     } catch (error) {
@@ -348,6 +359,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/family-members", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Only allow family plan users to create family members
+      if (user.subscriptionStatus !== 'family') {
+        return res.status(403).json({ message: 'Family management is only available for family plan subscribers' });
+      }
+
       const memberData = insertFamilyMemberSchema.parse({
         ...req.body,
         familyAccountId: userId,
@@ -362,7 +384,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/family-members/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Only allow family plan users to update family members
+      if (user.subscriptionStatus !== 'family') {
+        return res.status(403).json({ message: 'Family management is only available for family plan subscribers' });
+      }
+
       const memberData = insertFamilyMemberSchema.partial().parse(req.body);
       const member = await storage.updateFamilyMember(id, memberData);
       if (!member) {
@@ -377,7 +411,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/family-members/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Only allow family plan users to delete family members
+      if (user.subscriptionStatus !== 'family') {
+        return res.status(403).json({ message: 'Family management is only available for family plan subscribers' });
+      }
+
       const success = await storage.deleteFamilyMember(id);
       if (!success) {
         return res.status(404).json({ message: "Family member not found" });
@@ -642,6 +688,8 @@ O que você gostaria de saber sobre suas finanças hoje?`,
   app.post('/api/get-or-create-subscription', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub;
+      const { planType = 'individual' } = req.body;
+      
       if (!userId) {
         return res.status(401).json({ message: "User ID not found" });
       }
@@ -651,9 +699,21 @@ O que você gostaria de saber sobre suas finanças hoje?`,
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Validate plan type
+      const validPlans = ['individual', 'family'];
+      if (!validPlans.includes(planType)) {
+        return res.status(400).json({ message: 'Invalid plan type' });
+      }
+
+      // Plan pricing in cents (Brazilian Real)
+      const planPrices = {
+        individual: 490, // R$ 4,90 
+        family: 990      // R$ 9,90
+      };
+
       // For now, create a mock subscription for demo purposes
       // In a real implementation, you would integrate with Stripe
-      const mockClientSecret = "pi_mock_client_secret_for_demo";
+      const mockClientSecret = `pi_mock_${planType}_client_secret_for_demo`;
       
       res.json({
         subscriptionId: "sub_mock_subscription",

@@ -75,7 +75,7 @@ export default function Subscription() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [clientSecret, setClientSecret] = useState("");
-  const [currentPlan, setCurrentPlan] = useState("free");
+  const [currentPlan, setCurrentPlan] = useState(user?.subscriptionStatus || "free");
   const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
 
   // Check for success parameter in URL
@@ -106,7 +106,7 @@ export default function Subscription() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = async (planType = 'individual') => {
     setIsSubscriptionLoading(true);
     
     try {
@@ -114,6 +114,7 @@ export default function Subscription() {
         method: "POST",
         credentials: 'include',
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planType }),
       });
 
       if (!response.ok) {
@@ -142,39 +143,67 @@ export default function Subscription() {
       name: "Gratuito",
       price: "R$ 0",
       period: "mensal",
-      description: "Para uso pessoal básico",
+      description: "Para começar suas finanças",
+      icon: Shield,
+      color: "gray",
       features: [
         "Até 50 transações por mês",
-        "3 categorias personalizadas",
-        "Relatórios básicos",
+        "5 categorias básicas",
+        "Relatórios simples",
+        "Dashboard básico",
         "Suporte por email"
       ],
       current: currentPlan === "free",
       popular: false,
       buttonText: "Plano Atual",
       buttonDisabled: true,
+      planType: "free"
     },
     {
-      name: "Premium",
-      price: "R$ 29,90",
-      period: "mensal", 
-      description: "Para controle financeiro completo",
+      name: "Individual", 
+      price: "R$ 4,90",
+      period: "mensal",
+      description: "Ideal para pessoa física",
+      icon: Crown,
+      color: "blue",
       features: [
         "Transações ilimitadas",
-        "Categorias ilimitadas",
-        "Relatórios avançados com filtros",
-        "Importação IA de extratos",
-        "Contas familiares (até 5 membros)",
-        "Assistente IA personalizado",
-        "Dashboard com insights avançados",
-        "Suporte prioritário",
+        "Categorias ilimitadas", 
+        "Assistente IA completo",
+        "Relatórios avançados",
+        "Importação de extratos",
+        "Metas personalizadas",
         "Backup automático",
-        "Modo offline"
+        "Suporte prioritário"
       ],
-      current: currentPlan === "premium",
+      current: currentPlan === "individual",
       popular: true,
-      buttonText: currentPlan === "premium" ? "Gerenciar Plano" : "Assinar Premium",
-      buttonDisabled: false,
+      buttonText: currentPlan === "individual" ? "Plano Atual" : "Assinar Individual",
+      buttonDisabled: currentPlan === "individual",
+      planType: "individual"
+    },
+    {
+      name: "Familiar",
+      price: "R$ 9,90", 
+      period: "mensal",
+      description: "Perfeito para famílias",
+      icon: Users,
+      color: "purple",
+      features: [
+        "Tudo do Individual",
+        "Até 6 membros da família",
+        "Convites por email", 
+        "Permissões personalizadas",
+        "Controle parental",
+        "Relatórios unificados",
+        "Mesadas automáticas",
+        "Gestão familiar completa"
+      ],
+      current: currentPlan === "family",
+      popular: false,
+      buttonText: currentPlan === "family" ? "Plano Atual" : "Assinar Familiar", 
+      buttonDisabled: currentPlan === "family",
+      planType: "family"
     }
   ];
 
@@ -197,8 +226,9 @@ export default function Subscription() {
                   <Star className="w-5 h-5 mr-2 text-yellow-500" />
                   Seu Plano Atual
                 </div>
-                <Badge variant={currentPlan === "premium" ? "default" : "secondary"}>
-                  {currentPlan === "premium" ? "Premium" : "Gratuito"}
+                <Badge variant={currentPlan !== "free" ? "default" : "secondary"}>
+                  {currentPlan === "individual" ? "Individual" : 
+                   currentPlan === "family" ? "Familiar" : "Gratuito"}
                 </Badge>
               </CardTitle>
             </CardHeader>
@@ -206,16 +236,17 @@ export default function Subscription() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-medium">
-                    {currentPlan === "premium" ? "FinanceFlow Premium" : "FinanceFlow Gratuito"}
+                    {currentPlan === "individual" ? "FinanceFlow Individual" : 
+                     currentPlan === "family" ? "FinanceFlow Familiar" : "FinanceFlow Gratuito"}
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {currentPlan === "premium" 
-                      ? "Você tem acesso completo a todos os recursos premium"
-                      : "Upgrade para Premium e libere todo o potencial do FinanceFlow"
+                    {currentPlan !== "free"
+                      ? "Você tem acesso completo a todos os recursos do seu plano"
+                      : "Faça upgrade para Individual ou Familiar e libere todo o potencial do FinanceFlow"
                     }
                   </p>
                 </div>
-                {currentPlan === "premium" && (
+                {currentPlan !== "free" && (
                   <Crown className="w-8 h-8 text-yellow-500" />
                 )}
               </div>
@@ -223,57 +254,75 @@ export default function Subscription() {
           </Card>
 
           {/* Plans Comparison */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {plans.map((plan) => (
               <Card 
                 key={plan.name}
                 className={`financial-card relative ${
                   plan.popular ? 'ring-2 ring-blue-500 dark:ring-blue-400' : ''
-                }`}
+                } ${plan.color === 'purple' ? 'border-purple-200 dark:border-purple-800' : ''}`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                     <Badge className="bg-blue-500 text-white px-3 py-1">
-                      Mais Popular
+                      <Star className="w-3 h-3 mr-1" />
+                      Popular
                     </Badge>
                   </div>
                 )}
                 
                 <CardHeader className="text-center">
-                  <CardTitle className="flex items-center justify-center mb-2">
-                    {plan.name === "Premium" ? (
-                      <Crown className="w-6 h-6 mr-2 text-yellow-500" />
-                    ) : (
-                      <Shield className="w-6 h-6 mr-2 text-gray-500" />
-                    )}
-                    {plan.name}
-                  </CardTitle>
+                  <div className={`w-12 h-12 ${
+                    plan.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                    plan.color === 'purple' ? 'bg-purple-100 dark:bg-purple-900/30' :
+                    'bg-gray-100 dark:bg-gray-800'
+                  } rounded-full flex items-center justify-center mx-auto mb-4`}>
+                    <plan.icon className={`w-6 h-6 ${
+                      plan.color === 'blue' ? 'text-blue-600' :
+                      plan.color === 'purple' ? 'text-purple-600' :
+                      'text-gray-600'
+                    }`} />
+                  </div>
+                  <CardTitle className="text-xl mb-2">{plan.name}</CardTitle>
                   <div className="mb-4">
-                    <span className="text-4xl font-bold">{plan.price}</span>
+                    <span className={`text-4xl font-bold ${
+                      plan.color === 'blue' ? 'text-blue-600' :
+                      plan.color === 'purple' ? 'text-purple-600' :
+                      'text-gray-600'
+                    }`}>
+                      {plan.price}
+                    </span>
                     <span className="text-gray-600 dark:text-gray-400">/{plan.period}</span>
                   </div>
                   <p className="text-gray-600 dark:text-gray-400">{plan.description}</p>
+                  {plan.name === "Familiar" && (
+                    <p className="text-xs text-gray-500 mt-1">até 6 membros</p>
+                  )}
                 </CardHeader>
                 
                 <CardContent className="space-y-4">
                   <ul className="space-y-3">
                     {plan.features.map((feature, index) => (
                       <li key={index} className="flex items-start">
-                        <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                        <Check className="w-4 h-4 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
                         <span className="text-sm">{feature}</span>
                       </li>
                     ))}
                   </ul>
                   
                   <Button
-                    className={`w-full ${plan.popular ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                    className={`w-full ${
+                      plan.color === 'blue' ? 'bg-blue-600 hover:bg-blue-700' :
+                      plan.color === 'purple' ? 'bg-purple-600 hover:bg-purple-700' :
+                      ''
+                    }`}
                     variant={plan.current ? "secondary" : "default"}
                     disabled={plan.buttonDisabled || isSubscriptionLoading}
-                    onClick={plan.name === "Premium" && !plan.current ? handleSubscribe : undefined}
+                    onClick={!plan.current && plan.planType !== 'free' ? () => handleSubscribe(plan.planType) : undefined}
                     data-testid={`plan-button-${plan.name.toLowerCase()}`}
                   >
-                    {plan.name === "Premium" && <Crown className="w-4 h-4 mr-2" />}
-                    {isSubscriptionLoading && plan.name === "Premium" ? "Carregando..." : plan.buttonText}
+                    <plan.icon className="w-4 h-4 mr-2" />
+                    {isSubscriptionLoading ? "Carregando..." : plan.buttonText}
                   </Button>
                 </CardContent>
               </Card>
@@ -286,7 +335,7 @@ export default function Subscription() {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Crown className="w-5 h-5 mr-2 text-yellow-500" />
-                  Finalizar Assinatura Premium
+                  Finalizar Assinatura
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -297,57 +346,37 @@ export default function Subscription() {
             </Card>
           )}
 
-          {/* Premium Features Highlight */}
+          {/* Features Highlight */}
           <Card className="financial-card">
             <CardHeader>
-              <CardTitle className="flex items-center">
+              <CardTitle className="flex items-center justify-center">
                 <Zap className="w-5 h-5 mr-2 text-yellow-500" />
-                Por que escolher o Premium?
+                Preços pensados para escala - acessível para todos!
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="flex items-start">
-                  <Users className="w-6 h-6 text-blue-500 mr-3 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-medium">Contas Familiares</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Adicione até 5 membros da família e gerencie as finanças de todos em um só lugar
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start">
-                  <Crown className="w-6 h-6 text-yellow-500 mr-3 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-medium">IA Avançada</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Assistente IA personalizado e importação automática de extratos bancários
-                    </p>
-                  </div>
-                </div>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center space-y-2">
+                <Crown className="w-8 h-8 text-blue-500 mx-auto" />
+                <h4 className="font-medium">Individual Premium</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Apenas R$ 4,90/mês para recursos completos
+                </p>
               </div>
               
-              <div className="space-y-4">
-                <div className="flex items-start">
-                  <Shield className="w-6 h-6 text-green-500 mr-3 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-medium">Recursos Ilimitados</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Transações, categorias e relatórios sem limites
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start">
-                  <Star className="w-6 h-6 text-purple-500 mr-3 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-medium">Suporte Prioritário</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Atendimento preferencial e suporte técnico especializado
-                    </p>
-                  </div>
-                </div>
+              <div className="text-center space-y-2">
+                <Users className="w-8 h-8 text-purple-500 mx-auto" />
+                <h4 className="font-medium">Família Completa</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  R$ 9,90/mês para até 6 membros (R$ 1,65/pessoa)
+                </p>
+              </div>
+              
+              <div className="text-center space-y-2">
+                <Star className="w-8 h-8 text-yellow-500 mx-auto" />
+                <h4 className="font-medium">Sem Pegadinhas</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Cancele quando quiser, sem taxa de cancelamento
+                </p>
               </div>
             </CardContent>
           </Card>

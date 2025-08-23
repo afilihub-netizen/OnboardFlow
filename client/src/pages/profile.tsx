@@ -304,8 +304,10 @@ export default function Profile() {
             </CardContent>
           </Card>
 
-          {/* Family Management Section */}
-          <FamilyManagement />
+          {/* Family Management Section - Only for family plan users */}
+          {user?.subscriptionStatus === 'family' && (
+            <FamilyManagement />
+          )}
           
           {/* Old Family Members Section - Only show for family accounts */}
           {false && user?.accountType === 'family' && (
