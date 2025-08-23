@@ -151,6 +151,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get future commitments (installment transactions with pending payments)
+  app.get("/api/transactions/future-commitments", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const futureCommitments = await storage.getFutureCommitments(userId);
+      res.json(futureCommitments);
+    } catch (error) {
+      console.error("Error fetching future commitments:", error);
+      res.status(500).json({ message: "Failed to fetch future commitments" });
+    }
+  });
+
   app.put("/api/transactions/:id", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;

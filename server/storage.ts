@@ -34,7 +34,7 @@ import {
   type InsertEmailPreferences,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gte, lte, sum, count } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sum, count, gt, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -248,6 +248,48 @@ export class DatabaseStorage implements IStorage {
         eq(transactions.isRecurring, true)
       ))
       .orderBy(desc(transactions.createdAt));
+  }
+
+  // Get future commitments - transactions with pending installments
+  async getFutureCommitments(userId: string): Promise<any[]> {
+    
+    // Get transactions with installments where paidInstallments < totalInstallments
+    const commitmentTransactions = await db
+      .select({
+        id: transactions.id,
+        description: transactions.description,
+        amount: transactions.amount,
+        totalValue: transactions.totalValue,
+        totalInstallments: transactions.totalInstallments,
+        paidInstallments: transactions.paidInstallments,
+        paymentMethod: transactions.paymentMethod,
+        categoryId: transactions.categoryId,
+        categoryName: categories.name,
+      })
+      .from(transactions)
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          isNotNull(transactions.totalInstallments),
+          isNotNull(transactions.paidInstallments),
+          gt(transactions.totalInstallments, transactions.paidInstallments || 0)
+        )
+      )
+      .orderBy(desc(transactions.date));
+
+    // Calculate installment value for each commitment
+    return commitmentTransactions.map(commitment => {
+      const installmentValue = commitment.totalValue && commitment.totalInstallments
+        ? (parseFloat(commitment.totalValue) / commitment.totalInstallments).toFixed(2)
+        : commitment.amount;
+
+      return {
+        ...commitment,
+        installmentValue: installmentValue,
+        categoryName: commitment.categoryName || 'Sem categoria'
+      };
+    });
   }
 
   // Fixed expense operations

@@ -10,6 +10,7 @@ import { ExpensesChart } from "@/components/dashboard/expenses-chart";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { AIInsights } from "@/components/dashboard/ai-insights";
 import { FixedExpenses } from "@/components/dashboard/fixed-expenses";
+import { FutureCommitments } from "@/components/dashboard/future-commitments";
 import { MonthlyGoalsNotifications } from "@/components/dashboard/monthly-goals-notifications";
 import { AIAssistant } from "@/components/ai/ai-assistant";
 
@@ -66,8 +67,11 @@ export default function Dashboard() {
             <AIInsights />
           </div>
           
-          {/* Fixed Expenses */}
-          <FixedExpenses />
+          {/* Fixed Expenses & Future Commitments */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <FixedExpenses />
+            <FutureCommitments />
+          </div>
         </div>
 
         {/* AI Assistant */}

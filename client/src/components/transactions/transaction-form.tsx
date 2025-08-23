@@ -26,6 +26,11 @@ const transactionSchema = z.object({
   date: z.string().min(1, "Data é obrigatória"),
   isRecurring: z.boolean().default(false),
   dueDay: z.string().optional(),
+  // Campos para parcelamento
+  isInstallment: z.boolean().default(false),
+  totalValue: z.string().optional(),
+  installmentCount: z.string().optional(),
+  installmentValue: z.string().optional(),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -42,8 +47,27 @@ export function TransactionForm() {
       date: new Date().toISOString().split('T')[0],
       paymentMethod: "pix",
       isRecurring: false,
+      isInstallment: false,
     },
   });
+  
+  const watchPaymentMethod = form.watch("paymentMethod");
+  const watchIsInstallment = form.watch("isInstallment");
+  const watchInstallmentCount = form.watch("installmentCount");
+  const watchTotalValue = form.watch("totalValue");
+  
+  // Auto-calculate installment value when total value or installment count changes
+  const calculateInstallmentValue = () => {
+    if (watchTotalValue && watchInstallmentCount) {
+      const total = parseFloat(watchTotalValue);
+      const count = parseInt(watchInstallmentCount);
+      if (!isNaN(total) && !isNaN(count) && count > 0) {
+        const installmentValue = (total / count).toFixed(2);
+        form.setValue("installmentValue", installmentValue);
+        form.setValue("amount", installmentValue); // Amount becomes the installment value
+      }
+    }
+  };
 
   const { data: categories } = useQuery({
     queryKey: ['/api/categories'],
@@ -64,6 +88,10 @@ export function TransactionForm() {
         date: data.date,
         isRecurring: data.isRecurring,
         dueDay: data.isRecurring && data.dueDay ? parseInt(data.dueDay) : undefined,
+        // Installment data
+        totalValue: data.isInstallment && data.totalValue ? parseFloat(data.totalValue) : undefined,
+        totalInstallments: data.isInstallment && data.installmentCount ? parseInt(data.installmentCount) : undefined,
+        paidInstallments: data.isInstallment ? 1 : undefined, // First installment is being paid
       });
     },
     onSuccess: () => {
@@ -284,7 +312,129 @@ export function TransactionForm() {
                   )}
                 />
               )}
+            </div>
 
+            {/* Installment Checkbox - show for credit card or other (financing) */}
+            {(watchPaymentMethod === 'credit_card' || watchPaymentMethod === 'other') && (
+              <FormField
+                control={form.control}
+                name="isInstallment"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-installment"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-sm font-medium">
+                        🏪 É um produto parcelado?
+                      </FormLabel>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        Marque se este produto foi comprado a prazo ou financiado.
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Installment Fields - show when installment is checked */}
+            {watchIsInstallment && (watchPaymentMethod === 'credit_card' || watchPaymentMethod === 'other') && (
+              <div className="border rounded-lg p-4 space-y-4">
+                <h4 className="text-sm font-medium">🛒 Dados do Parcelamento</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Total Value */}
+                  <FormField
+                    control={form.control}
+                    name="totalValue"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valor Total do Bem</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="absolute left-3 top-3 text-gray-500 dark:text-gray-400">R$</span>
+                            <Input
+                              {...field}
+                              type="number"
+                              step="0.01"
+                              placeholder="1200,00"
+                              className="pl-8"
+                              onChange={(e) => {
+                                field.onChange(e);
+                                setTimeout(calculateInstallmentValue, 100);
+                              }}
+                              data-testid="input-total-value"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Installment Count */}
+                  <FormField
+                    control={form.control}
+                    name="installmentCount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número de Parcelas</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="number"
+                            min="2"
+                            max="60"
+                            placeholder="12"
+                            onChange={(e) => {
+                              field.onChange(e);
+                              setTimeout(calculateInstallmentValue, 100);
+                            }}
+                            data-testid="input-installment-count"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Installment Value (auto-calculated) */}
+                  <FormField
+                    control={form.control}
+                    name="installmentValue"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valor da Parcela</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="absolute left-3 top-3 text-gray-500 dark:text-gray-400">R$</span>
+                            <Input
+                              {...field}
+                              type="number"
+                              step="0.01"
+                              placeholder="100,00"
+                              className="pl-8 bg-gray-50 dark:bg-gray-800"
+                              readOnly
+                              data-testid="input-installment-value"
+                            />
+                          </div>
+                        </FormControl>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                          Calculado automaticamente
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Attachment */}
               <div>
                 <Label>Comprovante</Label>
@@ -309,6 +459,9 @@ export function TransactionForm() {
                   </div>
                 </div>
               </div>
+              
+              {/* Empty space for second column on larger screens */}
+              <div className="hidden md:block"></div>
             </div>
 
             {/* Recurring Transaction Option */}
