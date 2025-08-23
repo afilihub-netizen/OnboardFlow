@@ -205,3 +205,89 @@ canvas {
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
 }
+
+/* Dark mode icon improvements */
+.dark svg,
+.dark .lucide {
+  @apply text-gray-300;
+}
+
+.dark .text-gray-600 svg,
+.dark .text-gray-500 svg {
+  @apply text-gray-400;
+}
+
+.dark .text-blue-600 svg {
+  @apply text-blue-400;
+}
+
+.dark .text-green-600 svg {
+  @apply text-green-400;
+}
+
+.dark .text-red-600 svg {
+  @apply text-red-400;
+}
+
+.dark .text-purple-600 svg {
+  @apply text-purple-400;
+}
+
+.dark .text-yellow-600 svg {
+  @apply text-yellow-400;
+}
+
+.dark .text-orange-600 svg {
+  @apply text-orange-400;
+}
+
+/* Status specific icons */
+.dark .status-success svg {
+  @apply text-green-400;
+}
+
+.dark .status-warning svg {
+  @apply text-yellow-400;
+}
+
+.dark .status-error svg {
+  @apply text-red-400;
+}
+
+.dark .status-info svg {
+  @apply text-blue-400;
+}
+
+/* Button icons in dark mode */
+.dark .bg-blue-600 svg,
+.dark .bg-blue-500 svg {
+  @apply text-white;
+}
+
+.dark .bg-green-600 svg,
+.dark .bg-green-500 svg {
+  @apply text-white;
+}
+
+.dark .bg-red-600 svg,
+.dark .bg-red-500 svg {
+  @apply text-white;
+}
+
+.dark .bg-purple-600 svg,
+.dark .bg-purple-500 svg {
+  @apply text-white;
+}
+
+/* Sidebar improvements */
+.dark .sidebar-item svg {
+  @apply text-gray-400;
+}
+
+.dark .sidebar-item:hover svg {
+  @apply text-gray-200;
+}
+
+.dark .sidebar-item.active svg {
+  @apply text-blue-400;
+}

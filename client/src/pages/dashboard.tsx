@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -11,10 +11,12 @@ import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { AIInsights } from "@/components/dashboard/ai-insights";
 import { FixedExpenses } from "@/components/dashboard/fixed-expenses";
 import { MonthlyGoalsNotifications } from "@/components/dashboard/monthly-goals-notifications";
+import { AIAssistant } from "@/components/ai/ai-assistant";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [isAIMinimized, setIsAIMinimized] = useState(true);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -67,6 +69,22 @@ export default function Dashboard() {
           {/* Fixed Expenses */}
           <FixedExpenses />
         </div>
+
+        {/* AI Assistant */}
+        {isAIMinimized ? (
+          <AIAssistant
+            className="fixed bottom-4 right-4 z-50"
+            isMinimized={true}
+            onToggleMinimize={() => setIsAIMinimized(false)}
+          />
+        ) : (
+          <div className="fixed bottom-4 right-4 w-96 h-[600px] z-50 shadow-xl">
+            <AIAssistant
+              isMinimized={false}
+              onToggleMinimize={() => setIsAIMinimized(true)}
+            />
+          </div>
+        )}
       </main>
     </div>
   );

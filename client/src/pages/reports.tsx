@@ -11,12 +11,18 @@ import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CashFlowChart } from "@/components/dashboard/cash-flow-chart";
 import { ExpensesChart } from "@/components/dashboard/expenses-chart";
+import { AdvancedFilters } from "@/components/reports/advanced-filters";
+import { DetailedAnalysis } from "@/components/reports/detailed-analysis";
 
 export default function Reports() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState("current-month");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<any>(null);
+  const [analysisData, setAnalysisData] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -122,11 +128,43 @@ export default function Reports() {
     },
   });
 
-  const handleExportReport = () => {
-    toast({
-      title: "Relatório exportado",
-      description: "O relatório foi exportado com sucesso.",
-    });
+  const handleAdvancedAnalysis = async () => {
+    if (!advancedFilters) {
+      toast({
+        title: "Filtros necessários",
+        description: "Configure os filtros antes de fazer a análise.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+      const response = await fetch('/api/reports/detailed-analysis', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(advancedFilters),
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch analysis');
+      
+      const data = await response.json();
+      setAnalysisData(data);
+      
+      toast({
+        title: "Análise concluída",
+        description: "Relatório detalhado gerado com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro na análise",
+        description: "Falha ao gerar análise detalhada.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   if (isLoading || !isAuthenticated) {
@@ -155,12 +193,37 @@ export default function Reports() {
         />
         
         <div className="p-6 space-y-6">
-          {/* Filter Controls */}
+          {/* Filter Toggle */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-semibold">Análise Financeira</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Escolha entre filtros básicos ou avançados para análise detalhada
+              </p>
+            </div>
+            <Button
+              variant={showAdvancedFilters ? "default" : "outline"}
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              data-testid="toggle-advanced-filters"
+            >
+              {showAdvancedFilters ? "Filtros Básicos" : "Filtros Avançados"}
+            </Button>
+          </div>
+
+          {/* Advanced or Basic Filters */}
+          {showAdvancedFilters ? (
+            <AdvancedFilters
+              onFiltersChange={setAdvancedFilters}
+              onAnalyze={handleAdvancedAnalysis}
+              isAnalyzing={isAnalyzing}
+            />
+          ) : (
+            /* Basic Filter Controls */
           <Card className="financial-card">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Filter className="w-5 h-5 mr-2" />
-                Filtros
+                Filtros Básicos
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -211,8 +274,17 @@ export default function Reports() {
               </div>
             </CardContent>
           </Card>
+          )}
 
-          {/* Summary Cards */}
+          {/* Detailed Analysis Results */}
+          {analysisData && showAdvancedFilters && (
+            <DetailedAnalysis data={analysisData} />
+          )}
+
+          {/* Only show regular reports when not using advanced filters */}
+          {!showAdvancedFilters && (
+            <>
+              {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="financial-card">
               <CardContent className="p-6">
@@ -326,6 +398,8 @@ export default function Reports() {
               )}
             </CardContent>
           </Card>
+              </>
+            )}
         </div>
       </main>
     </div>

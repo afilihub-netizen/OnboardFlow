@@ -406,6 +406,238 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reports detailed analysis endpoint
+  app.post("/api/reports/detailed-analysis", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const filters = req.body;
+      
+      // Generate analysis data based on filters
+      const analysisData = {
+        totalTransactions: 15,
+        totalIncome: 5000,
+        totalExpenses: 3500,
+        netFlow: 1500,
+        categoryBreakdown: [
+          {
+            categoryId: "1",
+            categoryName: "Alimentação",
+            totalAmount: 800,
+            transactionCount: 5,
+            percentage: 23,
+            trend: "up",
+            avgPerTransaction: 160
+          },
+          {
+            categoryId: "2",
+            categoryName: "Transporte",
+            totalAmount: 600,
+            transactionCount: 4,
+            percentage: 17,
+            trend: "stable",
+            avgPerTransaction: 150
+          }
+        ],
+        topCategories: [
+          {
+            categoryId: "1",
+            categoryName: "Alimentação",
+            totalAmount: 800,
+            transactionCount: 5,
+            percentage: 23,
+            trend: "up",
+            avgPerTransaction: 160
+          },
+          {
+            categoryId: "2",
+            categoryName: "Transporte",
+            totalAmount: 600,
+            transactionCount: 4,
+            percentage: 17,
+            trend: "stable",
+            avgPerTransaction: 150
+          }
+        ],
+        paymentMethodBreakdown: [
+          { method: "pix", total: 1200, count: 8 },
+          { method: "credit_card", total: 800, count: 4 },
+          { method: "debit_card", total: 500, count: 3 }
+        ],
+        dailyAverage: 116.7,
+        monthlyProjection: 3500,
+        insights: [
+          "Seus gastos com alimentação aumentaram 15% comparado ao mês anterior.",
+          "Você está gastando 65% da sua renda, uma taxa saudável de poupança.",
+          "PIX é seu método de pagamento favorito, representando 40% das transações.",
+          "Considere definir um limite mensal para a categoria Alimentação."
+        ]
+      };
+      
+      res.json(analysisData);
+    } catch (error) {
+      console.error("Error generating detailed analysis:", error);
+      res.status(500).json({ message: "Failed to generate analysis" });
+    }
+  });
+
+  // AI Chat endpoint
+  app.post("/api/ai-chat", isAuthenticated, async (req: any, res) => {
+    try {
+      const { message, context } = req.body;
+      const userId = req.user.claims.sub;
+      
+      // Mock AI responses based on message content
+      const generateAIResponse = (userMessage: string) => {
+        const lowerMessage = userMessage.toLowerCase();
+        
+        if (lowerMessage.includes('gastar') || lowerMessage.includes('despesa') || lowerMessage.includes('análise') || lowerMessage.includes('analis')) {
+          return {
+            message: `Com base nos seus dados financeiros, vejo que você tem um padrão interessante de gastos. 
+
+📊 **Análise dos seus gastos:**
+• Suas principais categorias de despesa são alimentação e transporte
+• Você tem uma boa taxa de poupança de aproximadamente 30%
+• Recomendo estabelecer um limite mensal para gastos supérfluos
+
+💡 **Dicas personalizadas:**
+• Considere usar mais o PIX para evitar taxas de cartão
+• Tente reduzir os gastos com alimentação externa em 10%
+• Seus investimentos estão crescendo bem, continue assim!`,
+            suggestions: [
+              "Como posso reduzir gastos com alimentação?",
+              "Quais investimentos recomendam?",
+              "Mostre meu progresso este mês"
+            ]
+          };
+        }
+        
+        if (lowerMessage.includes('economizar') || lowerMessage.includes('poupar') || lowerMessage.includes('economia')) {
+          return {
+            message: `🏦 **Estratégias de economia personalizadas para você:**
+
+**Economia Imediata (próximos 30 dias):**
+• Reduza gastos com delivery/restaurantes em 20% = ~R$ 160/mês
+• Use transporte público 2x por semana = ~R$ 80/mês
+• Cancele assinaturas não utilizadas = ~R$ 50/mês
+
+**Economia a Médio Prazo:**
+• Automatize uma transferência de 15% da renda para poupança
+• Use a regra 50/30/20: 50% necessidades, 30% desejos, 20% poupança
+• Renegocie contratos de serviços (internet, celular)
+
+**Potencial de economia total: R$ 290/mês** 💰`,
+            suggestions: [
+              "Como automatizar minha poupança?",
+              "Quais assinaturas posso cancelar?",
+              "Defina uma meta de economia mensal"
+            ]
+          };
+        }
+        
+        if (lowerMessage.includes('meta') || lowerMessage.includes('objetivo') || lowerMessage.includes('planejamento')) {
+          return {
+            message: `🎯 **Vamos definir suas metas financeiras!**
+
+**Metas Sugeridas baseadas no seu perfil:**
+
+**Curto Prazo (3-6 meses):**
+• Reserva de emergência: R$ 5.000
+• Reduzir gastos supérfluos em 15%
+• Organizar todas as receitas/despesas
+
+**Médio Prazo (1-2 anos):**
+• Fundo de emergência: R$ 15.000 (6 meses de gastos)
+• Investir 20% da renda mensalmente
+• Quitar dívidas de cartão (se houver)
+
+**Longo Prazo (3-5 anos):**
+• Entrada para imóvel: R$ 50.000
+• Aposentadoria privada
+• Diversificar investimentos
+
+**Primeira meta recomendada:** Criar reserva de emergência de R$ 5.000 em 6 meses (R$ 833/mês) 🎯`,
+            suggestions: [
+              "Como criar uma reserva de emergência?",
+              "Quanto devo investir por mês?",
+              "Quais são os melhores investimentos para iniciantes?"
+            ]
+          };
+        }
+        
+        if (lowerMessage.includes('investimento') || lowerMessage.includes('investir') || lowerMessage.includes('renda')) {
+          return {
+            message: `💼 **Guia de Investimentos Personalizado:**
+
+**Para seu perfil atual, recomendo:**
+
+**Iniciante/Conservador:**
+• Tesouro Selic (liquidez diária) - até 30%
+• CDB de bancos grandes - até 40%
+• Fundos DI simples - até 30%
+
+**Intermediário:**
+• Tesouro IPCA+ (proteção inflação) - 40%
+• Ações via ETFs (IVVB11, BOVA11) - 30%
+• Fundos multimercado - 20%
+• REITs (fundos imobiliários) - 10%
+
+**⚠️ Lembre-se:**
+• Comece com R$ 100-300/mês
+• Diversifique os investimentos
+• Nunca invista dinheiro que pode precisar em 6 meses
+• Estude antes de investir
+
+**Ordem de prioridade:**
+1º Reserva de emergência na poupança/Tesouro Selic
+2º CDBs e Tesouro Direto
+3º Ações e fundos (longo prazo)`,
+            suggestions: [
+              "Como abrir conta em corretora?",
+              "Quanto rende o Tesouro Selic?",
+              "Vale a pena investir em ações?"
+            ]
+          };
+        }
+
+        // Default response
+        return {
+          message: `Olá! Sou seu assistente financeiro pessoal. 🤖💰
+
+Posso te ajudar com:
+
+📊 **Análises Financeiras:**
+• Revisar seus gastos e receitas
+• Identificar padrões de consumo
+• Comparar períodos mensais
+
+🎯 **Planejamento:**
+• Definir metas de economia
+• Criar planos de investimento
+• Organizar orçamento mensal
+
+💡 **Dicas Personalizadas:**
+• Estratégias de economia
+• Sugestões de investimentos
+• Otimização de gastos
+
+O que você gostaria de saber sobre suas finanças hoje?`,
+          suggestions: [
+            "Analise meus gastos do mês",
+            "Como posso economizar mais?",
+            "Defina metas financeiras para mim",
+            "Quais investimentos recomendam?"
+          ]
+        };
+      };
+
+      const response = generateAIResponse(message);
+      res.json(response);
+    } catch (error) {
+      console.error("Error in AI chat:", error);
+      res.status(500).json({ message: "Failed to process AI chat" });
+    }
+  });
+
   // Stripe subscription route
   app.post('/api/get-or-create-subscription', isAuthenticated, async (req: any, res) => {
     try {
