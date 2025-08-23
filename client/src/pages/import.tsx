@@ -50,10 +50,14 @@ export default function Import() {
   const importTransactionsMutation = useMutation({
     mutationFn: async (transactions: any[]) => {
       const promises = transactions.map(transaction =>
-        apiRequest("/api/transactions", {
+        fetch("/api/transactions", {
           method: "POST",
+          credentials: 'include',
           body: JSON.stringify(transaction),
           headers: { "Content-Type": "application/json" },
+        }).then(res => {
+          if (!res.ok) throw new Error(`Failed to import transaction: ${res.status}`);
+          return res.json();
         })
       );
       return Promise.all(promises);
@@ -127,8 +131,9 @@ export default function Import() {
 
     try {
       // Call OpenAI API to analyze the bank statement
-      const response = await apiRequest("/api/analyze-extract", {
+      const response = await fetch("/api/analyze-extract", {
         method: "POST",
+        credentials: 'include',
         body: JSON.stringify({ 
           extractText,
           availableCategories: categories.map(cat => cat.name)
@@ -136,7 +141,12 @@ export default function Import() {
         headers: { "Content-Type": "application/json" },
       });
 
-      const analyzedTransactions = response.transactions || [];
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const analyzedTransactions = result.transactions || [];
       setParsedTransactions(analyzedTransactions);
       setCurrentStep(3);
       

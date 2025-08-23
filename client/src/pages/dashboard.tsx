@@ -10,6 +10,7 @@ import { ExpensesChart } from "@/components/dashboard/expenses-chart";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { AIInsights } from "@/components/dashboard/ai-insights";
 import { FixedExpenses } from "@/components/dashboard/fixed-expenses";
+import { MonthlyGoalsNotifications } from "@/components/dashboard/monthly-goals-notifications";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -45,6 +46,9 @@ export default function Dashboard() {
         />
         
         <div className="p-6 space-y-6">
+          {/* Monthly Goals Notifications */}
+          <MonthlyGoalsNotifications />
+          
           {/* Financial Overview Cards */}
           <FinancialOverview />
           
