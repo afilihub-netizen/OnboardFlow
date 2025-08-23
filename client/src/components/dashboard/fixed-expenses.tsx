@@ -51,6 +51,8 @@ const fixedExpenseSchema = z.object({
   }, "Dia deve estar entre 1 e 31"),
   categoryId: z.string().optional(),
   isPaid: z.boolean().default(false),
+  totalInstallments: z.string().optional(),
+  paidInstallments: z.string().optional(),
 });
 
 type FixedExpenseFormData = z.infer<typeof fixedExpenseSchema>;
@@ -64,6 +66,8 @@ export function FixedExpenses() {
     resolver: zodResolver(fixedExpenseSchema),
     defaultValues: {
       isPaid: false,
+      totalInstallments: "",
+      paidInstallments: "",
     },
   });
 
@@ -110,6 +114,8 @@ export function FixedExpenses() {
           amount: data.amount,
           dueDay: parseInt(data.dueDay),
           categoryId: data.categoryId,
+          totalInstallments: data.totalInstallments ? parseInt(data.totalInstallments) : undefined,
+          paidInstallments: data.paidInstallments ? parseInt(data.paidInstallments) : undefined,
         });
       }
     },
@@ -299,6 +305,83 @@ export function FixedExpenses() {
                       </FormItem>
                     )}
                   />
+
+                  {/* Controle de Parcelas */}
+                  <div className="border rounded-lg p-4 space-y-4">
+                    <h4 className="text-sm font-medium">📊 Controle de Parcelas (Opcional)</h4>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Total de Parcelas */}
+                      <FormField
+                        control={form.control}
+                        name="totalInstallments"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Total de Parcelas</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                type="number"
+                                min="1"
+                                placeholder="Ex: 12"
+                                data-testid="input-total-installments"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Parcelas Já Pagas */}
+                      <FormField
+                        control={form.control}
+                        name="paidInstallments"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Já Pagas</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                type="number"
+                                min="0"
+                                max={form.watch('totalInstallments') || "999"}
+                                placeholder="Ex: 3"
+                                data-testid="input-paid-installments"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Mostrar Progress */}
+                    {form.watch('totalInstallments') && form.watch('paidInstallments') && (
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        {(() => {
+                          const total = parseInt(form.watch('totalInstallments') || '0');
+                          const paid = parseInt(form.watch('paidInstallments') || '0');
+                          const remaining = total - paid;
+                          const percentage = total > 0 ? (paid / total) * 100 : 0;
+                          
+                          return (
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-xs">
+                                <span>Progresso: {paid}/{total} parcelas</span>
+                                <span>{remaining} restantes</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full" 
+                                  style={{ width: `${percentage}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Status Pago */}
                   <FormField

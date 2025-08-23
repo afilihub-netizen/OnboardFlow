@@ -86,6 +86,8 @@ export const fixedExpenses = pgTable("fixed_expenses", {
   isActive: boolean("is_active").default(true),
   isPaid: boolean("is_paid").default(false),
   lastPaidDate: timestamp("last_paid_date"),
+  totalInstallments: integer("total_installments"), // Total number of installments
+  paidInstallments: integer("paid_installments").default(0), // Number of installments paid
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
