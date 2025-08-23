@@ -1,8 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Home, Zap, Wifi, Car, Calendar, Plus } from "lucide-react";
+import { Home, Zap, Wifi, Car, Calendar, Plus, Save } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
 
 const getCategoryIcon = (categoryName: string, description: string) => {
   const text = `${categoryName || ''} ${description}`.toLowerCase();
@@ -30,7 +42,31 @@ const getStatusTitle = (isPaid: boolean) => {
   return isPaid ? 'Pago' : 'Pendente';
 };
 
+const fixedExpenseSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  amount: z.string().min(1, "Valor é obrigatório").refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Valor deve ser um número positivo"),
+  dueDay: z.string().min(1, "Dia do vencimento é obrigatório").refine((val) => {
+    const day = parseInt(val);
+    return day >= 1 && day <= 31;
+  }, "Dia deve estar entre 1 e 31"),
+  categoryId: z.string().optional(),
+  isPaid: z.boolean().default(false),
+});
+
+type FixedExpenseFormData = z.infer<typeof fixedExpenseSchema>;
+
 export function FixedExpenses() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const form = useForm<FixedExpenseFormData>({
+    resolver: zodResolver(fixedExpenseSchema),
+    defaultValues: {
+      isPaid: false,
+    },
+  });
+
   const { data: expenses, isLoading } = useQuery({
     queryKey: ['/api/transactions/recurring'],
     queryFn: async () => {
@@ -41,6 +77,77 @@ export function FixedExpenses() {
       return response.json();
     },
   });
+
+  const { data: categories } = useQuery({
+    queryKey: ['/api/categories'],
+    queryFn: async () => {
+      const response = await fetch('/api/categories', {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      return response.json();
+    },
+  });
+
+  const createFixedExpenseMutation = useMutation({
+    mutationFn: async (data: FixedExpenseFormData) => {
+      if (data.isPaid) {
+        // Se estiver pago, criar como transação recorrente
+        await apiRequest('POST', '/api/transactions', {
+          description: data.name,
+          amount: data.amount,
+          type: 'expense',
+          categoryId: data.categoryId,
+          paymentMethod: 'other',
+          date: new Date().toISOString().split('T')[0],
+          isRecurring: true,
+          dueDay: parseInt(data.dueDay),
+        });
+      } else {
+        // Se não estiver pago, criar como conta fixa
+        await apiRequest('POST', '/api/fixed-expenses', {
+          name: data.name,
+          amount: data.amount,
+          dueDay: parseInt(data.dueDay),
+          categoryId: data.categoryId,
+        });
+      }
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sucesso",
+        description: "Conta fixa criada com sucesso!",
+      });
+      form.reset();
+      setIsDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions/recurring'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/fixed-expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/financial-summary'] });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Não Autorizado",
+          description: "Você foi desconectado. Fazendo login novamente...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Erro",
+        description: "Falha ao criar conta fixa. Tente novamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: FixedExpenseFormData) => {
+    createFixedExpenseMutation.mutate(data);
+  };
 
   if (isLoading) {
     return (
@@ -83,14 +190,169 @@ export function FixedExpenses() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Contas Fixas do Mês</CardTitle>
-          <Button 
-            className="bg-blue-500 hover:bg-blue-600 text-white" 
-            data-testid="button-add-fixed-expense"
-            onClick={() => window.location.href = '/transactions'}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Lançamento
-          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                className="bg-blue-500 hover:bg-blue-600 text-white" 
+                data-testid="button-add-fixed-expense"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Nova Conta Fixa
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Nova Conta Fixa do Mês</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  {/* Nome */}
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome da Conta</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="Ex: Aluguel, Conta de Luz..."
+                            data-testid="input-name"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Valor */}
+                    <FormField
+                      control={form.control}
+                      name="amount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Valor</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <span className="absolute left-3 top-3 text-gray-500 dark:text-gray-400">R$</span>
+                              <Input
+                                {...field}
+                                type="number"
+                                step="0.01"
+                                placeholder="0,00"
+                                className="pl-8"
+                                data-testid="input-amount"
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Dia do Vencimento */}
+                    <FormField
+                      control={form.control}
+                      name="dueDay"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Dia Vencimento</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="number"
+                              min="1"
+                              max="31"
+                              placeholder="Ex: 10"
+                              data-testid="input-due-day"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Categoria */}
+                  <FormField
+                    control={form.control}
+                    name="categoryId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categoria</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-category">
+                              <SelectValue placeholder="Selecione uma categoria" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {categories?.map((category: any) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Status Pago */}
+                  <FormField
+                    control={form.control}
+                    name="isPaid"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-paid"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-medium">
+                            ✅ Já foi pago este mês?
+                          </FormLabel>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            Se já foi pago, aparecerá nos lançamentos. Se não, ficará pendente.
+                          </p>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex justify-end space-x-4">
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      onClick={() => setIsDialogOpen(false)}
+                      data-testid="button-cancel"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={createFixedExpenseMutation.isPending}
+                      data-testid="button-save"
+                    >
+                      {createFixedExpenseMutation.isPending ? (
+                        "Salvando..."
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Salvar
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
       </CardHeader>
       <CardContent>
