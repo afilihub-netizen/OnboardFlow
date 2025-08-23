@@ -31,7 +31,7 @@ export default function Categories() {
   const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
 
   const form = useForm<CategoryFormData>({
     resolver: zodResolver(categorySchema),
@@ -199,7 +199,6 @@ export default function Categories() {
   const handleCreateFromDefault = (defaultCategory: any) => {
     createCategoryMutation.mutate({
       name: defaultCategory.name,
-      icon: defaultCategory.icon,
       color: defaultCategory.color,
     });
   };
