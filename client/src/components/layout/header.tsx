@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { Bot } from "lucide-react";
+import NotificationPanel from "@/components/notifications/notification-panel";
 
 interface HeaderProps {
   title: string;
@@ -35,6 +36,9 @@ export function Header({ title, subtitle }: HeaderProps) {
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* Notifications */}
+            <NotificationPanel />
+            
             {/* AI Assistant Button */}
             <Button 
               className="bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-200"

@@ -2,6 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { notificationService } from "./notificationService";
+import { insertNotificationSchema, insertWorkflowTriggerSchema, insertEmailPreferencesSchema } from "@shared/schema";
 import { analyzeExtractWithAI, generateFinancialInsights } from "./openai";
 import {
   insertCategorySchema,
@@ -124,6 +126,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         date: new Date(req.body.date),
       });
       const transaction = await storage.createTransaction(transactionData);
+      
+      // Trigger automatic budget limit checks for expense transactions
+      if (transaction.type === 'expense') {
+        await notificationService.checkBudgetLimits(userId, transaction);
+      }
+      
       res.status(201).json(transaction);
     } catch (error) {
       console.error("Error creating transaction:", error);
@@ -490,6 +498,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         summary
       });
 
+      // Create notifications for important AI insights
+      if (result.insights && result.insights.length > 0) {
+        for (const insight of result.insights) {
+          if (insight.type === 'alert' || insight.type === 'opportunity') {
+            await notificationService.createAIInsightNotification(
+              userId,
+              `${insight.title}: ${insight.description}`,
+              { insightType: insight.type, category: insight.category }
+            );
+          }
+        }
+      }
+
       res.json(result);
     } catch (error) {
       console.error("Error generating AI insights:", error);
@@ -767,6 +788,132 @@ O que você gostaria de saber sobre suas finanças hoje?`,
     } catch (error) {
       console.error("Error creating subscription:", error);
       res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
+  // Notification routes
+  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { isRead, limit } = req.query;
+      const filters = {
+        isRead: isRead === 'true' ? true : isRead === 'false' ? false : undefined,
+        limit: limit ? parseInt(limit) : undefined
+      };
+      
+      const notifications = await storage.getNotifications(userId, filters);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const count = await storage.getUnreadNotificationCount(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ message: "Failed to fetch unread count" });
+    }
+  });
+
+  app.post("/api/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const notificationData = insertNotificationSchema.parse({
+        ...req.body,
+        userId,
+      });
+      const notification = await storage.createNotification(notificationData);
+      res.status(201).json(notification);
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      res.status(400).json({ message: "Failed to create notification" });
+    }
+  });
+
+  app.put("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.markNotificationAsRead(id);
+      if (!success) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      res.json({ message: "Notification marked as read" });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.delete("/api/notifications/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteNotification(id);
+      if (!success) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      res.json({ message: "Notification deleted" });
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+      res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
+  // Workflow trigger routes
+  app.get("/api/workflow-triggers", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const triggers = await storage.getWorkflowTriggers(userId);
+      res.json(triggers);
+    } catch (error) {
+      console.error("Error fetching workflow triggers:", error);
+      res.status(500).json({ message: "Failed to fetch workflow triggers" });
+    }
+  });
+
+  app.post("/api/workflow-triggers", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const triggerData = insertWorkflowTriggerSchema.parse({
+        ...req.body,
+        userId,
+      });
+      const trigger = await storage.createWorkflowTrigger(triggerData);
+      res.status(201).json(trigger);
+    } catch (error) {
+      console.error("Error creating workflow trigger:", error);
+      res.status(400).json({ message: "Failed to create workflow trigger" });
+    }
+  });
+
+  // Email preferences routes
+  app.get("/api/email-preferences", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const preferences = await storage.getEmailPreferences(userId);
+      res.json(preferences);
+    } catch (error) {
+      console.error("Error fetching email preferences:", error);
+      res.status(500).json({ message: "Failed to fetch email preferences" });
+    }
+  });
+
+  app.post("/api/email-preferences", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const preferencesData = insertEmailPreferencesSchema.parse(req.body);
+      const preferences = await storage.upsertEmailPreferences({
+        ...preferencesData,
+        userId,
+      });
+      res.json(preferences);
+    } catch (error) {
+      console.error("Error updating email preferences:", error);
+      res.status(400).json({ message: "Failed to update email preferences" });
     }
   });
 

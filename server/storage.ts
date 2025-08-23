@@ -7,6 +7,9 @@ import {
   investmentHistory,
   budgetGoals,
   familyMembers,
+  notifications,
+  workflowTriggers,
+  emailPreferences,
   type User,
   type UpsertUser,
   type Category,
@@ -23,6 +26,12 @@ import {
   type InsertBudgetGoal,
   type FamilyMember,
   type InsertFamilyMember,
+  type Notification,
+  type InsertNotification,
+  type WorkflowTrigger,
+  type InsertWorkflowTrigger,
+  type EmailPreferences,
+  type InsertEmailPreferences,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sum, count } from "drizzle-orm";
@@ -84,6 +93,23 @@ export interface IStorage {
   createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember>;
   updateFamilyMember(id: string, member: Partial<FamilyMember>): Promise<FamilyMember | undefined>;
   deleteFamilyMember(id: string): Promise<boolean>;
+  
+  // Notification operations
+  getNotifications(userId: string, filters?: { isRead?: boolean; limit?: number }): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: string): Promise<boolean>;
+  deleteNotification(id: string): Promise<boolean>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  
+  // Workflow trigger operations
+  getWorkflowTriggers(userId: string): Promise<WorkflowTrigger[]>;
+  createWorkflowTrigger(trigger: InsertWorkflowTrigger): Promise<WorkflowTrigger>;
+  updateWorkflowTrigger(id: string, trigger: Partial<WorkflowTrigger>): Promise<WorkflowTrigger | undefined>;
+  deleteWorkflowTrigger(id: string): Promise<boolean>;
+  
+  // Email preferences operations
+  getEmailPreferences(userId: string): Promise<EmailPreferences | undefined>;
+  upsertEmailPreferences(preferences: InsertEmailPreferences & { userId: string }): Promise<EmailPreferences>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -378,6 +404,102 @@ export class DatabaseStorage implements IStorage {
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(familyMembers.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Notification operations
+  async getNotifications(userId: string, filters: { isRead?: boolean; limit?: number } = {}): Promise<Notification[]> {
+    let query = db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId));
+
+    if (filters.isRead !== undefined) {
+      query = query.where(and(eq(notifications.userId, userId), eq(notifications.isRead, filters.isRead)));
+    }
+
+    if (filters.limit) {
+      query = query.limit(filters.limit);
+    }
+
+    return await query.orderBy(desc(notifications.createdAt));
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [newNotification] = await db.insert(notifications).values(notification).returning();
+    return newNotification;
+  }
+
+  async markNotificationAsRead(id: string): Promise<boolean> {
+    const result = await db
+      .update(notifications)
+      .set({ isRead: true, readAt: new Date() })
+      .where(eq(notifications.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async deleteNotification(id: string): Promise<boolean> {
+    const result = await db.delete(notifications).where(eq(notifications.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+    return result[0]?.count || 0;
+  }
+
+  // Workflow trigger operations
+  async getWorkflowTriggers(userId: string): Promise<WorkflowTrigger[]> {
+    return await db
+      .select()
+      .from(workflowTriggers)
+      .where(eq(workflowTriggers.userId, userId))
+      .orderBy(workflowTriggers.name);
+  }
+
+  async createWorkflowTrigger(trigger: InsertWorkflowTrigger): Promise<WorkflowTrigger> {
+    const [newTrigger] = await db.insert(workflowTriggers).values(trigger).returning();
+    return newTrigger;
+  }
+
+  async updateWorkflowTrigger(id: string, trigger: Partial<WorkflowTrigger>): Promise<WorkflowTrigger | undefined> {
+    const [updated] = await db
+      .update(workflowTriggers)
+      .set({ ...trigger, updatedAt: new Date() })
+      .where(eq(workflowTriggers.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteWorkflowTrigger(id: string): Promise<boolean> {
+    const result = await db.delete(workflowTriggers).where(eq(workflowTriggers.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Email preferences operations
+  async getEmailPreferences(userId: string): Promise<EmailPreferences | undefined> {
+    const [preferences] = await db
+      .select()
+      .from(emailPreferences)
+      .where(eq(emailPreferences.userId, userId));
+    return preferences;
+  }
+
+  async upsertEmailPreferences(preferences: InsertEmailPreferences & { userId: string }): Promise<EmailPreferences> {
+    const [upserted] = await db
+      .insert(emailPreferences)
+      .values(preferences)
+      .onConflictDoUpdate({
+        target: emailPreferences.userId,
+        set: {
+          ...preferences,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return upserted;
   }
 }
 

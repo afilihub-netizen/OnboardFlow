@@ -249,3 +249,116 @@ export const insertFamilyMemberSchema = createInsertSchema(familyMembers).omit({
   createdAt: true,
   updatedAt: true,
 });
+
+// Notification types enum
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'budget_limit', 'goal_achieved', 'fixed_expense_due', 'investment_milestone', 
+  'ai_insight', 'payment_reminder', 'subscription_renewal', 'family_activity'
+]);
+
+export const notificationPriorityEnum = pgEnum('notification_priority', [
+  'low', 'medium', 'high', 'urgent'
+]);
+
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  type: notificationTypeEnum("type").notNull(),
+  priority: notificationPriorityEnum("priority").default('medium'),
+  title: varchar("title", { length: 200 }).notNull(),
+  message: text("message").notNull(),
+  metadata: jsonb("metadata"), // Additional data like amounts, IDs, etc.
+  isRead: boolean("is_read").default(false),
+  isActionRequired: boolean("is_action_required").default(false),
+  actionUrl: varchar("action_url", { length: 500 }), // URL to redirect for action
+  expiresAt: timestamp("expires_at"), // When notification should be auto-removed
+  triggeredBy: varchar("triggered_by"), // What triggered this notification (transaction_id, goal_id, etc.)
+  createdAt: timestamp("created_at").defaultNow(),
+  readAt: timestamp("read_at"),
+});
+
+// Automated workflow triggers
+export const workflowTriggers = pgTable("workflow_triggers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  triggerType: varchar("trigger_type").notNull(), // budget_exceeded, goal_reached, due_date_approaching
+  conditions: jsonb("conditions").notNull(), // Trigger conditions as JSON
+  actions: jsonb("actions").notNull(), // Actions to perform as JSON
+  isActive: boolean("is_active").default(true),
+  lastTriggered: timestamp("last_triggered"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Email notification preferences
+export const emailPreferences = pgTable("email_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  budgetAlerts: boolean("budget_alerts").default(true),
+  goalNotifications: boolean("goal_notifications").default(true),
+  paymentReminders: boolean("payment_reminders").default(true),
+  aiInsights: boolean("ai_insights").default(true),
+  weeklyReports: boolean("weekly_reports").default(false),
+  monthlyReports: boolean("monthly_reports").default(true),
+  emailFrequency: varchar("email_frequency").default('daily'), // immediate, daily, weekly
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Notification relations
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
+}));
+
+export const workflowTriggersRelations = relations(workflowTriggers, ({ one }) => ({
+  user: one(users, { fields: [workflowTriggers.userId], references: [users.id] }),
+}));
+
+export const emailPreferencesRelations = relations(emailPreferences, ({ one }) => ({
+  user: one(users, { fields: [emailPreferences.userId], references: [users.id] }),
+}));
+
+// Add to users relations
+export const usersRelationsUpdated = relations(users, ({ many }) => ({
+  categories: many(categories),
+  transactions: many(transactions),
+  fixedExpenses: many(fixedExpenses),
+  investments: many(investments),
+  budgetGoals: many(budgetGoals),
+  familyMembers: many(familyMembers),
+  notifications: many(notifications),
+  workflowTriggers: many(workflowTriggers),
+  emailPreferences: many(emailPreferences),
+}));
+
+// Notification types
+export type InsertNotification = typeof notifications.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
+
+export type InsertWorkflowTrigger = typeof workflowTriggers.$inferInsert;
+export type WorkflowTrigger = typeof workflowTriggers.$inferSelect;
+
+export type InsertEmailPreferences = typeof emailPreferences.$inferInsert;
+export type EmailPreferences = typeof emailPreferences.$inferSelect;
+
+// Insert schemas for notifications
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+  readAt: true,
+});
+
+export const insertWorkflowTriggerSchema = createInsertSchema(workflowTriggers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastTriggered: true,
+});
+
+export const insertEmailPreferencesSchema = createInsertSchema(emailPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
