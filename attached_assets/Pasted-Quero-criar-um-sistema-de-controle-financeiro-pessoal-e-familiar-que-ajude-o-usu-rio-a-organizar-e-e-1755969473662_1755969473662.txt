@@ -1,0 +1,50 @@
+Quero criar um sistema de controle financeiro pessoal e familiar que ajude o usuário a organizar e enriquecer.
+
+Funcionalidades principais:
+1. Cadastro e login de usuários com senha (autenticação segura).
+2. Dashboard inicial com:
+   - Saldo total atual
+   - Gráficos de entradas e saídas por mês
+   - Percentual de gastos por categoria
+   - Evolução do patrimônio
+3. Aba de lançamentos:
+   - Formulário para adicionar entrada ou saída
+   - Campos: descrição, valor, categoria, data, forma de pagamento (cartão, dinheiro, Pix, etc.)
+   - Possibilidade de anexar comprovantes ou extrato do banco
+   - Opção de importar arquivo de extrato bancário (CSV ou PDF simples) para preencher automaticamente
+4. Categorias de gastos e receitas:
+   - Mercado, farmácia, transporte, aluguel, luz, internet, lazer, investimentos etc.
+   - Usuário pode criar novas categorias personalizadas
+5. Relatórios e filtros:
+   - Filtro por período (dia, semana, mês, ano)
+   - Filtro por categoria
+   - Exportar relatório em PDF ou Excel
+6. Inteligência Artificial no sistema:
+   - Sugestões automáticas para reduzir custos e otimizar orçamento
+   - Alertas quando um gasto extrapola a média ou categoria
+   - Recomendações de investimento (simples)
+7. Contas fixas:
+   - Cadastro de contas fixas mensais (ex: aluguel, luz, internet)
+   - Essas contas aparecem automaticamente no dashboard
+8. Investimentos:
+   - Aba separada para cadastrar investimentos
+   - Mostrar evolução dos investimentos em gráfico
+   - Destacar quanto do orçamento foi destinado para investir
+9. Usuários:
+   - Cada usuário vê apenas seus dados
+   - Possibilidade de criar perfil “casal/familiar” para controle conjunto
+
+Design e usabilidade:
+- Layout moderno, intuitivo e responsivo
+- Estilo parecido com dashboards premium (como Notion, Lovable ou aplicativos de banco digital)
+- Fontes limpas, ícones claros e botões bem destacados
+- Tema claro e escuro (dark mode)
+
+Tecnologias:
+- Frontend: React com Tailwind
+- Backend: Node.js ou Next.js
+- Banco: Supabase ou Prisma
+- Autenticação pronta
+- Integração com APIs externas (IA e importação de extratos)
+
+Quero que o Lovable gere o sistema completo, com todas as telas já estruturadas e funcionando.
