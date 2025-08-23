@@ -139,6 +139,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get recurring transactions for dashboard
+  app.get("/api/transactions/recurring", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const recurringTransactions = await storage.getRecurringTransactions(userId);
+      res.json(recurringTransactions);
+    } catch (error) {
+      console.error("Error fetching recurring transactions:", error);
+      res.status(500).json({ message: "Failed to fetch recurring transactions" });
+    }
+  });
+
   app.put("/api/transactions/:id", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;

@@ -223,6 +223,33 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
+  // Get recurring transactions for dashboard
+  async getRecurringTransactions(userId: string): Promise<any[]> {
+    return await db
+      .select({
+        id: transactions.id,
+        description: transactions.description,
+        amount: transactions.amount,
+        type: transactions.type,
+        dueDay: transactions.dueDay,
+        paymentMethod: transactions.paymentMethod,
+        date: transactions.date,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          icon: categories.icon,
+          color: categories.color,
+        }
+      })
+      .from(transactions)
+      .leftJoin(categories, eq(transactions.categoryId, categories.id))
+      .where(and(
+        eq(transactions.userId, userId),
+        eq(transactions.isRecurring, true)
+      ))
+      .orderBy(desc(transactions.createdAt));
+  }
+
   // Fixed expense operations
   async getFixedExpenses(userId: string): Promise<FixedExpense[]> {
     return await db

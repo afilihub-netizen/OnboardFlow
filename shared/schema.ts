@@ -69,6 +69,8 @@ export const transactions = pgTable("transactions", {
   date: timestamp("date").notNull(),
   userId: varchar("user_id").references(() => users.id).notNull(),
   attachmentUrl: text("attachment_url"),
+  isRecurring: boolean("is_recurring").default(false), // Indica se é um lançamento mensal
+  dueDay: integer("due_day"), // Dia do mês para vencimento (1-31) - apenas para recorrentes
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

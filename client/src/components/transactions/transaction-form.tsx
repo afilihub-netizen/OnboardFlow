@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -23,6 +24,8 @@ const transactionSchema = z.object({
   categoryId: z.string().optional(),
   paymentMethod: z.enum(["pix", "debit_card", "credit_card", "cash", "transfer", "other"]),
   date: z.string().min(1, "Data é obrigatória"),
+  isRecurring: z.boolean().default(false),
+  dueDay: z.string().optional(),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -38,6 +41,7 @@ export function TransactionForm() {
       type: "expense",
       date: new Date().toISOString().split('T')[0],
       paymentMethod: "pix",
+      isRecurring: false,
     },
   });
 
@@ -58,6 +62,8 @@ export function TransactionForm() {
         ...data,
         amount: data.amount,
         date: data.date,
+        isRecurring: data.isRecurring,
+        dueDay: data.isRecurring && data.dueDay ? parseInt(data.dueDay) : undefined,
       });
     },
     onSuccess: () => {
@@ -255,6 +261,30 @@ export function TransactionForm() {
                 )}
               />
 
+              {/* Due Day - only show if recurring */}
+              {form.watch('isRecurring') && (
+                <FormField
+                  control={form.control}
+                  name="dueDay"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dia do Vencimento</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          min="1"
+                          max="31"
+                          placeholder="Ex: 10"
+                          data-testid="input-due-day"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
               {/* Attachment */}
               <div>
                 <Label>Comprovante</Label>
@@ -279,6 +309,33 @@ export function TransactionForm() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Recurring Transaction Option */}
+            <div className="border-t pt-6">
+              <FormField
+                control={form.control}
+                name="isRecurring"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-recurring"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-sm font-medium">
+                        📅 É um lançamento mensal?
+                      </FormLabel>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        Marque se esta é uma despesa ou receita que se repete mensalmente (ex: aluguel, salário, conta de luz)
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
             </div>
 
             <div className="flex justify-end space-x-4">

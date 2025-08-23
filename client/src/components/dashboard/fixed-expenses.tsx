@@ -4,12 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Home, Zap, Wifi, Car, Calendar, Plus } from "lucide-react";
 
-const getCategoryIcon = (name: string) => {
-  const lowerName = name.toLowerCase();
-  if (lowerName.includes('aluguel') || lowerName.includes('casa')) return Home;
-  if (lowerName.includes('energia') || lowerName.includes('luz')) return Zap;
-  if (lowerName.includes('internet') || lowerName.includes('wifi')) return Wifi;
-  if (lowerName.includes('seguro') || lowerName.includes('carro')) return Car;
+const getCategoryIcon = (categoryName: string, description: string) => {
+  const text = `${categoryName || ''} ${description}`.toLowerCase();
+  if (text.includes('aluguel') || text.includes('casa') || text.includes('habitação')) return Home;
+  if (text.includes('energia') || text.includes('luz') || text.includes('elétrica')) return Zap;
+  if (text.includes('internet') || text.includes('wifi') || text.includes('telecom')) return Wifi;
+  if (text.includes('seguro') || text.includes('carro') || text.includes('veículo')) return Car;
   return Calendar;
 };
 
@@ -32,12 +32,12 @@ const getStatusTitle = (isPaid: boolean) => {
 
 export function FixedExpenses() {
   const { data: expenses, isLoading } = useQuery({
-    queryKey: ['/api/fixed-expenses'],
+    queryKey: ['/api/transactions/recurring'],
     queryFn: async () => {
-      const response = await fetch('/api/fixed-expenses', {
+      const response = await fetch('/api/transactions/recurring', {
         credentials: 'include',
       });
-      if (!response.ok) throw new Error('Failed to fetch fixed expenses');
+      if (!response.ok) throw new Error('Failed to fetch recurring transactions');
       return response.json();
     },
   });
@@ -83,9 +83,13 @@ export function FixedExpenses() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Contas Fixas do Mês</CardTitle>
-          <Button className="bg-blue-500 hover:bg-blue-600 text-white" data-testid="button-add-fixed-expense">
+          <Button 
+            className="bg-blue-500 hover:bg-blue-600 text-white" 
+            data-testid="button-add-fixed-expense"
+            onClick={() => window.location.href = '/transactions'}
+          >
             <Plus className="w-4 h-4 mr-2" />
-            Nova Conta
+            Novo Lançamento
           </Button>
         </div>
       </CardHeader>
@@ -98,35 +102,35 @@ export function FixedExpenses() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {expenses.map((expense) => {
-              const Icon = getCategoryIcon(expense.name);
+            {expenses.map((transaction) => {
+              const Icon = getCategoryIcon(transaction.category?.name || '', transaction.description);
               
               return (
                 <div 
-                  key={expense.id}
+                  key={transaction.id}
                   className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
-                  data-testid={`fixed-expense-${expense.id}`}
+                  data-testid={`fixed-expense-${transaction.id}`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getCategoryColor(expense.name)}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getCategoryColor(transaction.description)}`}>
                         <Icon className="w-4 h-4" />
                       </div>
-                      <span className="font-medium text-gray-900 dark:text-white text-sm" data-testid={`expense-name-${expense.id}`}>
-                        {expense.name}
+                      <span className="font-medium text-gray-900 dark:text-white text-sm" data-testid={`expense-name-${transaction.id}`}>
+                        {transaction.description}
                       </span>
                     </div>
                     <span 
-                      className={`w-2 h-2 ${getStatusColor(expense.isPaid)} rounded-full`} 
-                      title={getStatusTitle(expense.isPaid)}
-                      data-testid={`expense-status-${expense.id}`}
+                      className={`w-2 h-2 bg-blue-500 rounded-full`} 
+                      title="Lançamento Mensal"
+                      data-testid={`expense-status-${transaction.id}`}
                     ></span>
                   </div>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white" data-testid={`expense-amount-${expense.id}`}>
-                    {formatCurrency(expense.amount)}
+                  <p className="text-lg font-bold text-gray-900 dark:text-white" data-testid={`expense-amount-${transaction.id}`}>
+                    {formatCurrency(transaction.amount)}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400" data-testid={`expense-due-date-${expense.id}`}>
-                    {formatDueDate(expense.dueDay)}
+                  <p className="text-xs text-gray-500 dark:text-gray-400" data-testid={`expense-due-date-${transaction.id}`}>
+                    {transaction.dueDay ? formatDueDate(transaction.dueDay) : 'Data não definida'}
                   </p>
                 </div>
               );
