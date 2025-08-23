@@ -13,6 +13,7 @@ import Investments from "@/pages/investments";
 import Reports from "@/pages/reports";
 import Categories from "@/pages/categories";
 import Profile from "@/pages/profile";
+import Goals from "@/pages/goals";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -26,6 +27,7 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/transactions" component={Transactions} />
           <Route path="/investments" component={Investments} />
+          <Route path="/goals" component={Goals} />
           <Route path="/reports" component={Reports} />
           <Route path="/categories" component={Categories} />
           <Route path="/profile" component={Profile} />

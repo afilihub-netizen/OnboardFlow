@@ -123,6 +123,21 @@ export const budgetGoals = pgTable("budget_goals", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Family members for family accounts
+export const familyMembers = pgTable("family_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  familyAccountId: varchar("family_account_id").references(() => users.id).notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  email: varchar("email"),
+  role: varchar("role").default("member"), // admin, member, child
+  canManageTransactions: boolean("can_manage_transactions").default(false),
+  canViewReports: boolean("can_view_reports").default(true),
+  monthlyAllowance: decimal("monthly_allowance", { precision: 10, scale: 2 }),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   categories: many(categories),
@@ -130,6 +145,11 @@ export const usersRelations = relations(users, ({ many }) => ({
   fixedExpenses: many(fixedExpenses),
   investments: many(investments),
   budgetGoals: many(budgetGoals),
+  familyMembers: many(familyMembers),
+}));
+
+export const familyMembersRelations = relations(familyMembers, ({ one }) => ({
+  familyAccount: one(users, { fields: [familyMembers.familyAccountId], references: [users.id] }),
 }));
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
@@ -185,6 +205,9 @@ export type InvestmentHistory = typeof investmentHistory.$inferSelect;
 export type InsertBudgetGoal = typeof budgetGoals.$inferInsert;
 export type BudgetGoal = typeof budgetGoals.$inferSelect;
 
+export type InsertFamilyMember = typeof familyMembers.$inferInsert;
+export type FamilyMember = typeof familyMembers.$inferSelect;
+
 // Insert schemas
 export const insertCategorySchema = createInsertSchema(categories).omit({
   id: true,
@@ -212,4 +235,10 @@ export const insertInvestmentSchema = createInsertSchema(investments).omit({
 export const insertBudgetGoalSchema = createInsertSchema(budgetGoals).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertFamilyMemberSchema = createInsertSchema(familyMembers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });

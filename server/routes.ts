@@ -8,6 +8,7 @@ import {
   insertFixedExpenseSchema,
   insertInvestmentSchema,
   insertBudgetGoalSchema,
+  insertFamilyMemberSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -328,6 +329,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching financial summary:", error);
       res.status(500).json({ message: "Failed to fetch financial summary" });
+    }
+  });
+
+  // Family member routes
+  app.get("/api/family-members", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const familyMembers = await storage.getFamilyMembers(userId);
+      res.json(familyMembers);
+    } catch (error) {
+      console.error("Error fetching family members:", error);
+      res.status(500).json({ message: "Failed to fetch family members" });
+    }
+  });
+
+  app.post("/api/family-members", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const memberData = insertFamilyMemberSchema.parse({
+        ...req.body,
+        familyAccountId: userId,
+      });
+      const member = await storage.createFamilyMember(memberData);
+      res.status(201).json(member);
+    } catch (error) {
+      console.error("Error creating family member:", error);
+      res.status(400).json({ message: "Failed to create family member" });
+    }
+  });
+
+  app.put("/api/family-members/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const memberData = insertFamilyMemberSchema.partial().parse(req.body);
+      const member = await storage.updateFamilyMember(id, memberData);
+      if (!member) {
+        return res.status(404).json({ message: "Family member not found" });
+      }
+      res.json(member);
+    } catch (error) {
+      console.error("Error updating family member:", error);
+      res.status(400).json({ message: "Failed to update family member" });
+    }
+  });
+
+  app.delete("/api/family-members/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteFamilyMember(id);
+      if (!success) {
+        return res.status(404).json({ message: "Family member not found" });
+      }
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting family member:", error);
+      res.status(500).json({ message: "Failed to delete family member" });
     }
   });
 

@@ -23,7 +23,7 @@ export function Header({ title, subtitle }: HeaderProps) {
 
   return (
     <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-      <div className="px-6 py-4">
+      <div className="px-6 py-4 ml-0 md:ml-0 pl-16 md:pl-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="page-title">

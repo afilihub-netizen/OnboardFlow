@@ -6,6 +6,7 @@ import {
   investments,
   investmentHistory,
   budgetGoals,
+  familyMembers,
   type User,
   type UpsertUser,
   type Category,
@@ -20,6 +21,8 @@ import {
   type InvestmentHistory,
   type BudgetGoal,
   type InsertBudgetGoal,
+  type FamilyMember,
+  type InsertFamilyMember,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sum, count } from "drizzle-orm";
@@ -75,6 +78,12 @@ export interface IStorage {
     transactionCount: number;
     categoryBreakdown: Array<{ categoryName: string; total: string; count: number; }>;
   }>;
+
+  // Family member operations
+  getFamilyMembers(familyAccountId: string): Promise<FamilyMember[]>;
+  createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember>;
+  updateFamilyMember(id: string, member: Partial<FamilyMember>): Promise<FamilyMember | undefined>;
+  deleteFamilyMember(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -124,11 +133,18 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCategory(id: string): Promise<boolean> {
     const result = await db.delete(categories).where(eq(categories.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Transaction operations
-  async getTransactions(userId: string, filters = {}): Promise<Transaction[]> {
+  async getTransactions(userId: string, filters: {
+    categoryId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    type?: 'income' | 'expense';
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<Transaction[]> {
     const {
       categoryId,
       startDate,
@@ -138,25 +154,25 @@ export class DatabaseStorage implements IStorage {
       offset = 0
     } = filters;
 
-    let query = db
-      .select()
-      .from(transactions)
-      .where(eq(transactions.userId, userId));
+    const conditions = [eq(transactions.userId, userId)];
 
     if (categoryId) {
-      query = query.where(eq(transactions.categoryId, categoryId));
+      conditions.push(eq(transactions.categoryId, categoryId));
     }
     if (startDate) {
-      query = query.where(gte(transactions.date, startDate));
+      conditions.push(gte(transactions.date, startDate));
     }
     if (endDate) {
-      query = query.where(lte(transactions.date, endDate));
+      conditions.push(lte(transactions.date, endDate));
     }
     if (type) {
-      query = query.where(eq(transactions.type, type));
+      conditions.push(eq(transactions.type, type));
     }
 
-    return await query
+    return await db
+      .select()
+      .from(transactions)
+      .where(and(...conditions))
       .orderBy(desc(transactions.date))
       .limit(limit)
       .offset(offset);
@@ -178,7 +194,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTransaction(id: string): Promise<boolean> {
     const result = await db.delete(transactions).where(eq(transactions.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Fixed expense operations
@@ -209,7 +225,7 @@ export class DatabaseStorage implements IStorage {
       .update(fixedExpenses)
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(fixedExpenses.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Investment operations
@@ -237,7 +253,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteInvestment(id: string): Promise<boolean> {
     const result = await db.delete(investments).where(eq(investments.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async addInvestmentHistory(history: InsertInvestmentHistory): Promise<InvestmentHistory> {
@@ -247,19 +263,20 @@ export class DatabaseStorage implements IStorage {
 
   // Budget goal operations
   async getBudgetGoals(userId: string, month?: number, year?: number): Promise<BudgetGoal[]> {
-    let query = db
-      .select()
-      .from(budgetGoals)
-      .where(eq(budgetGoals.userId, userId));
+    const conditions = [eq(budgetGoals.userId, userId)];
 
     if (month) {
-      query = query.where(eq(budgetGoals.month, month));
+      conditions.push(eq(budgetGoals.month, month));
     }
     if (year) {
-      query = query.where(eq(budgetGoals.year, year));
+      conditions.push(eq(budgetGoals.year, year));
     }
 
-    return await query.orderBy(budgetGoals.month);
+    return await db
+      .select()
+      .from(budgetGoals)
+      .where(and(...conditions))
+      .orderBy(budgetGoals.month);
   }
 
   async createBudgetGoal(goal: InsertBudgetGoal): Promise<BudgetGoal> {
@@ -278,7 +295,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBudgetGoal(id: string): Promise<boolean> {
     const result = await db.delete(budgetGoals).where(eq(budgetGoals.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Financial summary operations
@@ -330,6 +347,37 @@ export class DatabaseStorage implements IStorage {
       transactionCount,
       categoryBreakdown,
     };
+  }
+
+  // Family member operations
+  async getFamilyMembers(familyAccountId: string): Promise<FamilyMember[]> {
+    return await db
+      .select()
+      .from(familyMembers)
+      .where(and(eq(familyMembers.familyAccountId, familyAccountId), eq(familyMembers.isActive, true)))
+      .orderBy(familyMembers.name);
+  }
+
+  async createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember> {
+    const [newMember] = await db.insert(familyMembers).values(member).returning();
+    return newMember;
+  }
+
+  async updateFamilyMember(id: string, member: Partial<FamilyMember>): Promise<FamilyMember | undefined> {
+    const [updated] = await db
+      .update(familyMembers)
+      .set({ ...member, updatedAt: new Date() })
+      .where(eq(familyMembers.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFamilyMember(id: string): Promise<boolean> {
+    const result = await db
+      .update(familyMembers)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(familyMembers.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 

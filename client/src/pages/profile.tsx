@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -10,11 +10,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { User, LogOut, Settings, Shield } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { User, LogOut, Settings, Shield, Users, Plus, Camera } from "lucide-react";
 
 export default function Profile() {
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading } = useAuth();
+  const [isNewMemberDialogOpen, setIsNewMemberDialogOpen] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -52,6 +55,25 @@ export default function Profile() {
     });
   };
 
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setPhotoFile(file);
+      // Here you would typically upload to your file storage
+      toast({
+        title: "Foto carregada",
+        description: "Sua foto de perfil foi atualizada com sucesso.",
+      });
+    }
+  };
+
+  // Mock family members data
+  const familyMembers = [
+    { id: "1", name: "Maria Silva", email: "maria@email.com", role: "admin" },
+    { id: "2", name: "João Silva", email: "joao@email.com", role: "member" },
+    { id: "3", name: "Ana Silva", email: "ana@email.com", role: "child" },
+  ];
+
   if (isLoading || !isAuthenticated) {
     return <div className="flex h-screen items-center justify-center">Carregando...</div>;
   }
@@ -84,9 +106,19 @@ export default function Profile() {
                       {getUserInitials()}
                     </AvatarFallback>
                   </Avatar>
-                  <Button variant="outline" size="sm" data-testid="button-change-avatar">
-                    Alterar Foto
-                  </Button>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      data-testid="input-photo-upload"
+                    />
+                    <Button variant="outline" size="sm" data-testid="button-change-avatar">
+                      <Camera className="w-4 h-4 mr-2" />
+                      Alterar Foto
+                    </Button>
+                  </div>
                 </div>
                 
                 <div className="flex-1 space-y-4">
@@ -240,6 +272,98 @@ export default function Profile() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Family Members Section - Only show for family accounts */}
+          {user?.accountType === 'family' && (
+            <Card className="financial-card">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center">
+                  <Users className="w-5 h-5 mr-2" />
+                  Membros da Família
+                </CardTitle>
+                
+                <Dialog open={isNewMemberDialogOpen} onOpenChange={setIsNewMemberDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button data-testid="button-add-family-member">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Membro
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Adicionar Membro da Família</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="memberName">Nome Completo</Label>
+                        <Input id="memberName" placeholder="Ex: João Silva" data-testid="input-member-name" />
+                      </div>
+                      <div>
+                        <Label htmlFor="memberEmail">Email (opcional)</Label>
+                        <Input id="memberEmail" type="email" placeholder="joao@email.com" data-testid="input-member-email" />
+                      </div>
+                      <div>
+                        <Label htmlFor="memberRole">Função</Label>
+                        <Select>
+                          <SelectTrigger data-testid="select-member-role">
+                            <SelectValue placeholder="Selecione uma função" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Administrador</SelectItem>
+                            <SelectItem value="member">Membro</SelectItem>
+                            <SelectItem value="child">Criança/Adolescente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="monthlyAllowance">Mesada (opcional)</Label>
+                        <Input id="monthlyAllowance" type="number" placeholder="200.00" data-testid="input-member-allowance" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Permissões</Label>
+                        <div className="space-y-2">
+                          <label className="flex items-center space-x-2">
+                            <input type="checkbox" className="rounded" data-testid="checkbox-manage-transactions" />
+                            <span className="text-sm">Pode gerenciar transações</span>
+                          </label>
+                          <label className="flex items-center space-x-2">
+                            <input type="checkbox" defaultChecked className="rounded" data-testid="checkbox-view-reports" />
+                            <span className="text-sm">Pode visualizar relatórios</span>
+                          </label>
+                        </div>
+                      </div>
+                      <Button className="w-full" data-testid="button-create-member">Adicionar Membro</Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {familyMembers.map((member) => (
+                    <div key={member.id} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg" data-testid={`family-member-${member.id}`}>
+                      <div className="flex items-center space-x-3">
+                        <Avatar>
+                          <AvatarFallback className="bg-blue-100 text-blue-600">
+                            {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">{member.name}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{member.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant={member.role === 'admin' ? 'default' : 'secondary'}>
+                          {member.role === 'admin' ? 'Admin' : member.role === 'member' ? 'Membro' : 'Criança'}
+                        </Badge>
+                        <Button variant="outline" size="sm" data-testid={`button-edit-member-${member.id}`}>Editar</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>
