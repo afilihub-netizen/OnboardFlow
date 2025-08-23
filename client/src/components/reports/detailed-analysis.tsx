@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { TrendingUp, TrendingDown, PieChart, BarChart3, DollarSign, Calendar, Target, AlertCircle } from "lucide-react";
+import { PAYMENT_METHODS } from "@/lib/constants";
 
 interface CategoryAnalysis {
   categoryId: string;
@@ -49,6 +50,11 @@ export function DetailedAnalysis({ data }: DetailedAnalysisProps) {
       default:
         return <div className="w-4 h-4" />;
     }
+  };
+
+  const getPaymentMethodLabel = (method: string) => {
+    const paymentMethod = PAYMENT_METHODS.find(p => p.value === method);
+    return paymentMethod?.label || method.replace('_', ' ');
   };
 
   return (
@@ -204,8 +210,8 @@ export function DetailedAnalysis({ data }: DetailedAnalysisProps) {
                 <div className="text-lg font-semibold" data-testid={`payment-method-${method.method}`}>
                   {formatCurrency(method.total)}
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 capitalize">
-                  {method.method.replace('_', ' ')}
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {getPaymentMethodLabel(method.method)}
                 </div>
                 <div className="text-xs text-gray-500">
                   {method.count} transações

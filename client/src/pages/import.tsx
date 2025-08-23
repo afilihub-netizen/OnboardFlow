@@ -173,7 +173,7 @@ export default function Import() {
       description: transaction.description,
       date: transaction.date,
       categoryId: categories.find((cat: any) => cat.name.toLowerCase().includes(transaction.category.toLowerCase()))?.id || null,
-      paymentMethod: "bank_transfer"
+      paymentMethod: "transfer"
     }));
 
     importTransactionsMutation.mutate(transactionsToImport);

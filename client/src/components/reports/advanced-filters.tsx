@@ -139,6 +139,7 @@ export function AdvancedFilters({ onFiltersChange, onAnalyze, isAnalyzing = fals
                   selected={filters.startDate}
                   onSelect={(date) => updateFilters({ startDate: date })}
                   initialFocus
+                  locale={ptBR}
                   data-testid="calendar-start-date"
                 />
               </PopoverContent>
@@ -164,6 +165,7 @@ export function AdvancedFilters({ onFiltersChange, onAnalyze, isAnalyzing = fals
                   selected={filters.endDate}
                   onSelect={(date) => updateFilters({ endDate: date })}
                   initialFocus
+                  locale={ptBR}
                   data-testid="calendar-end-date"
                 />
               </PopoverContent>
