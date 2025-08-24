@@ -78,13 +78,13 @@ export function Sidebar() {
     }
 
     // Filter active goals and calculate total budget
-    const activeGoals = budgetGoals.filter(goal => goal.isActive);
-    const totalBudget = activeGoals.reduce((sum, goal) => sum + parseFloat(goal.targetAmount), 0);
+    const activeGoals = budgetGoals.filter((goal: any) => goal.isActive);
+    const totalBudget = activeGoals.reduce((sum: number, goal: any) => sum + parseFloat(goal.targetAmount), 0);
     
     // Calculate total spent this month
     const totalSpent = transactions
-      .filter(transaction => transaction.type === 'expense')
-      .reduce((sum, transaction) => sum + parseFloat(transaction.amount), 0);
+      .filter((transaction: any) => transaction.type === 'expense')
+      .reduce((sum: number, transaction: any) => sum + parseFloat(transaction.amount), 0);
 
     // Savings = Budget - Spent (assuming budget includes savings goal)
     const savedAmount = Math.max(0, totalBudget - totalSpent);
@@ -124,17 +124,35 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed md:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-800 shadow-lg border-r border-gray-200 dark:border-gray-700 h-screen flex flex-col transition-transform duration-300 ease-in-out",
+        "fixed md:static inset-y-0 left-0 z-40 w-64 shadow-lg border-r h-screen flex flex-col transition-transform duration-300 ease-in-out",
         "md:translate-x-0",
-        isOpen ? "translate-x-0" : "-translate-x-full"
+        isOpen ? "translate-x-0" : "-translate-x-full",
+        isBusinessAccount 
+          ? "bg-gradient-to-b from-white to-slate-50 border-slate-300" 
+          : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
       )}>
         {/* Logo */}
         <div className="p-6">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+            <div className={cn(
+              "w-10 h-10 rounded-lg flex items-center justify-center",
+              isBusinessAccount 
+                ? "bg-gradient-to-r from-slate-700 to-slate-800" 
+                : "bg-gradient-to-r from-blue-500 to-blue-600"
+            )}>
               <TrendingUp className="text-white text-lg" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">FinanceFlow</h1>
+            <div>
+              <h1 className={cn(
+                "text-xl font-bold",
+                isBusinessAccount ? "text-slate-800" : "text-gray-900 dark:text-white"
+              )}>
+                FinanceFlow
+              </h1>
+              {isBusinessAccount && (
+                <span className="text-xs text-slate-600 font-medium">EMPRESARIAL</span>
+              )}
+            </div>
           </div>
         </div>
 

@@ -16,6 +16,7 @@ import { MonthlyGoalsNotifications } from "@/components/dashboard/monthly-goals-
 import { AIAssistant } from "@/components/ai/ai-assistant";
 import { BusinessMetrics } from "@/components/business/business-metrics";
 import { BusinessDashboardHeader } from "@/components/business/business-dashboard-header";
+import { BusinessModeIndicator } from "@/components/business/business-mode-indicator";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -43,7 +44,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className={`flex h-screen ${isBusinessAccount ? '' : 'bg-gray-50 dark:bg-gray-900'}`}>
+      <BusinessModeIndicator />
       <Sidebar />
       
       <main className="flex-1 overflow-auto">

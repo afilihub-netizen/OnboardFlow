@@ -324,25 +324,110 @@ canvas {
 
 /* Business theme styling */
 .business-theme {
-  @apply text-slate-700;
+  @apply text-slate-800;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  min-height: 100vh;
 }
 
 .business-theme .financial-card {
-  @apply border-slate-200 shadow-sm;
+  @apply border-slate-300 shadow-lg bg-white;
+  border-left: 4px solid #475569;
+  transform: translateY(0);
+  transition: all 0.3s ease;
+}
+
+.business-theme .financial-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(51, 65, 85, 0.1), 0 10px 10px -5px rgba(51, 65, 85, 0.04);
+}
+
+.business-theme .sidebar-item {
+  @apply text-slate-700 hover:bg-slate-100 hover:text-slate-900;
+  transition: all 0.2s ease;
 }
 
 .business-theme .sidebar-item.active {
-  @apply bg-slate-100 text-slate-800 border-r-2 border-slate-600;
+  @apply bg-slate-200 text-slate-900 border-r-4 border-slate-700;
+  background: linear-gradient(to right, #e2e8f0, #f1f5f9);
+  box-shadow: inset 2px 0 4px rgba(51, 65, 85, 0.1);
 }
 
 .business-theme .gradient-card {
-  @apply bg-gradient-to-br from-slate-600 to-slate-800;
-}
-
-.business-theme header {
-  @apply bg-slate-50 border-slate-200;
+  @apply bg-gradient-to-br from-slate-700 to-slate-900;
+  box-shadow: 0 20px 40px rgba(51, 65, 85, 0.3);
 }
 
 .business-theme .business-header {
-  @apply bg-gradient-to-r from-slate-700 to-slate-800 text-white;
+  @apply bg-gradient-to-r from-slate-800 to-slate-900 text-white;
+  box-shadow: 0 8px 30px rgba(51, 65, 85, 0.4);
+}
+
+.business-theme .chart-container {
+  @apply bg-white border-slate-300 shadow-lg;
+  border-left: 4px solid #64748b;
+  transition: all 0.3s ease;
+}
+
+.business-theme .chart-container:hover {
+  box-shadow: 0 20px 25px -5px rgba(51, 65, 85, 0.1), 0 10px 10px -5px rgba(51, 65, 85, 0.04);
+}
+
+.business-theme aside {
+  @apply bg-gradient-to-b from-white to-slate-50 border-slate-300;
+  box-shadow: 4px 0 20px rgba(51, 65, 85, 0.1);
+}
+
+.business-theme .business-badge {
+  @apply bg-slate-800 text-white;
+  animation: businessPulse 3s infinite;
+}
+
+.business-theme header {
+  border-bottom: 3px solid #1e293b;
+}
+
+/* Enhanced business animations */
+@keyframes businessPulse {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+}
+
+/* Business notification style */
+.business-theme .notification-badge {
+  background: linear-gradient(45deg, #1e293b, #334155);
+  color: white;
+  border: 2px solid #475569;
+}
+
+/* Business mode indicator */
+.business-mode-indicator {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(45deg, #1e293b, #334155);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(30, 41, 59, 0.3);
+  animation: slideInRight 0.5s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
