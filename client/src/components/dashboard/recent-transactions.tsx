@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShoppingCart, Briefcase, Car, Home, Utensils, HeartHandshake, Activity } from "lucide-react";
 import { Link } from "wouter";
+import { PAYMENT_METHODS, TRANSACTION_TYPES } from "@/lib/constants";
 
 const getCategoryIcon = (categoryName: string) => {
   const name = categoryName.toLowerCase();
@@ -17,6 +18,18 @@ const getCategoryIcon = (categoryName: string) => {
 
 const getCategoryColor = (type: string) => {
   return type === 'income' ? 'text-green-600 bg-green-100 dark:bg-green-900' : 'text-red-600 bg-red-100 dark:bg-red-900';
+};
+
+// Função para traduzir tipos de transação
+const getTransactionTypeLabel = (type: string) => {
+  const transactionType = TRANSACTION_TYPES.find(t => t.value === type);
+  return transactionType?.label || type;
+};
+
+// Função para traduzir métodos de pagamento
+const getPaymentMethodLabel = (method: string) => {
+  const paymentMethod = PAYMENT_METHODS.find(p => p.value === method);
+  return paymentMethod?.label || method;
 };
 
 export function RecentTransactions() {
@@ -129,7 +142,7 @@ export function RecentTransactions() {
                       </p>
                     )}
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {transaction.paymentMethod}
+                      {getPaymentMethodLabel(transaction.paymentMethod)}
                     </p>
                   </div>
                 </div>
