@@ -165,6 +165,26 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(users.id, userId))
       .returning();
+    
+    // Se mudou para business, criar organização automaticamente
+    if (updateData.accountType === 'business' && updatedUser) {
+      const existingOrg = await this.getUserOrganization(userId);
+      if (!existingOrg) {
+        const organization = await this.createOrganization({
+          name: updateData.companyName || `${updatedUser.firstName || 'Empresa'} ${updatedUser.lastName || ''}`.trim(),
+          cnpj: updateData.cnpj,
+          industry: updateData.industry,
+          ownerId: userId,
+        });
+        
+        // Atualizar usuário com organizationId
+        await db
+          .update(users)
+          .set({ organizationId: organization.id })
+          .where(eq(users.id, userId));
+      }
+    }
+    
     return updatedUser;
   }
 
@@ -180,17 +200,58 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  // Helper function to get data filter based on user account type
+  private async getDataFilter(userId: string): Promise<{
+    userId: string;
+    organizationId?: string | null;
+    familyGroupId?: string | null;
+  }> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error('User not found');
+    
+    const baseFilter: { userId: string; organizationId?: string | null; familyGroupId?: string | null } = { userId };
+    
+    if (user.accountType === 'business' && user.organizationId) {
+      baseFilter.organizationId = user.organizationId;
+    } else if (user.accountType === 'family' && user.familyGroupId) {
+      baseFilter.familyGroupId = user.familyGroupId;
+    }
+    
+    return baseFilter;
+  }
+
   // Category operations
   async getCategories(userId: string): Promise<Category[]> {
+    const filter = await this.getDataFilter(userId);
+    const conditions = [eq(categories.userId, userId)];
+    
+    if (filter.organizationId) {
+      conditions.push(eq(categories.organizationId, filter.organizationId));
+    } else if (filter.familyGroupId) {
+      conditions.push(eq(categories.familyGroupId, filter.familyGroupId));
+    } else {
+      // Individual account - exclude business and family categories
+      conditions.push(sql`${categories.organizationId} IS NULL`);
+      conditions.push(sql`${categories.familyGroupId} IS NULL`);
+    }
+    
     return await db
       .select()
       .from(categories)
-      .where(eq(categories.userId, userId))
+      .where(and(...conditions))
       .orderBy(categories.name);
   }
 
   async createCategory(category: InsertCategory): Promise<Category> {
-    const [newCategory] = await db.insert(categories).values(category).returning();
+    // Apply organization/family context to new category
+    const filter = await this.getDataFilter(category.userId || '');
+    const enrichedCategory = {
+      ...category,
+      organizationId: filter.organizationId || null,
+      familyGroupId: filter.familyGroupId || null,
+    };
+    
+    const [newCategory] = await db.insert(categories).values(enrichedCategory).returning();
     return newCategory;
   }
 
@@ -206,6 +267,23 @@ export class DatabaseStorage implements IStorage {
   async deleteCategory(id: string): Promise<boolean> {
     const result = await db.delete(categories).where(eq(categories.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Organization operations
+  async getUserOrganization(userId: string): Promise<Organization | undefined> {
+    const [organization] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.ownerId, userId));
+    return organization;
+  }
+
+  async createOrganization(orgData: InsertOrganization): Promise<Organization> {
+    const [organization] = await db
+      .insert(organizations)
+      .values(orgData)
+      .returning();
+    return organization;
   }
 
   // Transaction operations
@@ -226,7 +304,19 @@ export class DatabaseStorage implements IStorage {
       offset = 0
     } = filters;
 
+    const filter = await this.getDataFilter(userId);
     const conditions = [eq(transactions.userId, userId)];
+
+    // Apply data isolation based on account type
+    if (filter.organizationId) {
+      conditions.push(eq(transactions.organizationId, filter.organizationId));
+    } else if (filter.familyGroupId) {
+      conditions.push(eq(transactions.familyGroupId, filter.familyGroupId));
+    } else {
+      // Individual account - exclude business and family transactions
+      conditions.push(sql`${transactions.organizationId} IS NULL`);
+      conditions.push(sql`${transactions.familyGroupId} IS NULL`);
+    }
 
     if (categoryId) {
       conditions.push(eq(transactions.categoryId, categoryId));
@@ -251,7 +341,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
-    const [newTransaction] = await db.insert(transactions).values(transaction).returning();
+    // Apply organization/family context to new transaction  
+    const filter = await this.getDataFilter(transaction.userId);
+    const enrichedTransaction = {
+      ...transaction,
+      organizationId: filter.organizationId || null,
+      familyGroupId: filter.familyGroupId || null,
+    };
+    
+    const [newTransaction] = await db.insert(transactions).values(enrichedTransaction).returning();
     return newTransaction;
   }
 
@@ -636,10 +734,23 @@ export class DatabaseStorage implements IStorage {
 
   // Investment operations
   async getInvestments(userId: string): Promise<Investment[]> {
+    const filter = await this.getDataFilter(userId);
+    const conditions = [eq(investments.userId, userId)];
+    
+    if (filter.organizationId) {
+      conditions.push(eq(investments.organizationId, filter.organizationId));
+    } else if (filter.familyGroupId) {
+      conditions.push(eq(investments.familyGroupId, filter.familyGroupId));
+    } else {
+      // Individual account - exclude business and family investments
+      conditions.push(sql`${investments.organizationId} IS NULL`);
+      conditions.push(sql`${investments.familyGroupId} IS NULL`);
+    }
+    
     return await db
       .select()
       .from(investments)
-      .where(eq(investments.userId, userId))
+      .where(and(...conditions))
       .orderBy(desc(investments.createdAt));
   }
 
@@ -669,7 +780,19 @@ export class DatabaseStorage implements IStorage {
 
   // Budget goal operations
   async getBudgetGoals(userId: string, month?: number, year?: number): Promise<BudgetGoal[]> {
+    const filter = await this.getDataFilter(userId);
     const conditions = [eq(budgetGoals.userId, userId)];
+
+    // Apply data isolation based on account type
+    if (filter.organizationId) {
+      conditions.push(eq(budgetGoals.organizationId, filter.organizationId));
+    } else if (filter.familyGroupId) {
+      conditions.push(eq(budgetGoals.familyGroupId, filter.familyGroupId));
+    } else {
+      // Individual account - exclude business and family budget goals
+      conditions.push(sql`${budgetGoals.organizationId} IS NULL`);
+      conditions.push(sql`${budgetGoals.familyGroupId} IS NULL`);
+    }
 
     if (month) {
       conditions.push(eq(budgetGoals.month, month));
