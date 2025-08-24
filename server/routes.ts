@@ -94,6 +94,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create subscription endpoint
+  app.post('/api/create-subscription', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const { planId } = req.body;
+
+      if (!user?.email) {
+        return res.status(400).json({ message: 'User email not found' });
+      }
+
+      // Mapear planos para price IDs (você deve configurar estes no Stripe Dashboard)
+      const planPrices = {
+        individual: process.env.STRIPE_INDIVIDUAL_PRICE_ID || 'price_individual_test',
+        family: process.env.STRIPE_FAMILY_PRICE_ID || 'price_family_test', 
+        business: process.env.STRIPE_BUSINESS_PRICE_ID || 'price_business_test'
+      };
+
+      const priceId = planPrices[planId as keyof typeof planPrices];
+      if (!priceId) {
+        return res.status(400).json({ message: 'Invalid plan selected' });
+      }
+
+      let customerId = user.stripeCustomerId;
+
+      // Criar cliente no Stripe se não existir
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+          metadata: {
+            userId: userId
+          }
+        });
+        customerId = customer.id;
+        
+        // Atualizar usuário com customer ID
+        await storage.updateUserStripeInfo(userId, { 
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: user.stripeSubscriptionId
+        });
+      }
+
+      // Verificar se já tem uma assinatura ativa
+      if (user.stripeSubscriptionId) {
+        const existingSubscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+        
+        if (existingSubscription.status === 'active') {
+          // Fazer upgrade da assinatura existente
+          const updatedSubscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
+            items: [{
+              id: existingSubscription.items.data[0].id,
+              price: priceId,
+            }],
+            proration_behavior: 'create_prorations',
+          });
+
+          return res.json({
+            subscriptionId: updatedSubscription.id,
+            clientSecret: null // Upgrade não precisa de pagamento adicional imediato
+          });
+        }
+      }
+
+      // Criar nova assinatura
+      const subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: priceId }],
+        payment_behavior: 'default_incomplete',
+        payment_settings: { save_default_payment_method: 'on_subscription' },
+        expand: ['latest_invoice.payment_intent'],
+        metadata: {
+          userId: userId,
+          planId: planId
+        }
+      });
+
+      // Atualizar usuário com subscription ID
+      await storage.updateUserStripeInfo(userId, {
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscription.id
+      });
+
+      const invoice = subscription.latest_invoice as any;
+      const paymentIntent = invoice?.payment_intent;
+
+      res.json({
+        subscriptionId: subscription.id,
+        clientSecret: paymentIntent?.client_secret
+      });
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
+  // Webhook para confirmar pagamentos
+  app.post('/api/stripe/webhook', async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig!, process.env.STRIPE_WEBHOOK_SECRET!);
+    } catch (err: any) {
+      console.log(`Webhook signature verification failed.`, err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Handle the event
+    switch (event.type) {
+      case 'invoice.payment_succeeded':
+        const invoice = event.data.object;
+        const subscriptionId = invoice.subscription;
+        
+        if (subscriptionId) {
+          try {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId as string);
+            const userId = subscription.metadata?.userId;
+            
+            if (userId) {
+              // Atualizar tipo de conta do usuário baseado no plano pago
+              const priceId = subscription.items.data[0]?.price.id;
+              let accountType = 'individual';
+              
+              if (priceId === process.env.STRIPE_FAMILY_PRICE_ID) {
+                accountType = 'family';
+              } else if (priceId === process.env.STRIPE_BUSINESS_PRICE_ID) {
+                accountType = 'business';
+              }
+              
+              await storage.updateUserProfile(userId, { accountType });
+              console.log(`User ${userId} upgraded to ${accountType} plan`);
+            }
+          } catch (error) {
+            console.error('Error updating user after payment:', error);
+          }
+        }
+        break;
+        
+      case 'customer.subscription.deleted':
+        const deletedSubscription = event.data.object;
+        const userId = deletedSubscription.metadata?.userId;
+        
+        if (userId) {
+          // Reverter para plano gratuito
+          await storage.updateUserProfile(userId, { accountType: 'individual' });
+          await storage.updateUserStripeInfo(userId, {
+            stripeCustomerId: null,
+            stripeSubscriptionId: null
+          });
+          console.log(`User ${userId} subscription cancelled, reverted to free plan`);
+        }
+        break;
+        
+      default:
+        console.log(`Unhandled event type ${event.type}`);
+    }
+
+    res.json({ received: true });
+  });
+
   // User profile update route
   app.patch('/api/user/profile', isAuthenticated, async (req: any, res) => {
     try {

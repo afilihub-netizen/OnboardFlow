@@ -132,11 +132,8 @@ export function AccountTypeSelector({ currentType, currentCompanyData }: Account
   };
 
   const handleUpgrade = (planType: string) => {
-    // Redirecionar para página de pagamento/upgrade
-    toast({
-      title: "Upgrade de plano",
-      description: "Funcionalidade de upgrade será implementada em breve!",
-    });
+    // Redirecionar para página de upgrade
+    window.location.href = '/upgrade';
   };
 
   return (
