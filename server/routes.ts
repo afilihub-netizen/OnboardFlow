@@ -549,6 +549,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Process large texts by splitting into chunks with progress tracking
       const result = await analyzeExtractWithAI(extractText, availableCategories || [], sessionId);
+      
+      console.log("Final result being sent to client:", JSON.stringify(result.transactions?.slice(0, 2), null, 2));
       res.json(result);
     } catch (error) {
       console.error("Error analyzing extract:", error);

@@ -205,6 +205,10 @@ export default function Import() {
 
       const result = await response.json();
       const analyzedTransactions = result.transactions || [];
+      
+      console.log("Raw result from server:", result);
+      console.log("Analyzed transactions received:", analyzedTransactions.slice(0, 3));
+      
       setParsedTransactions(analyzedTransactions);
       setCurrentStep(3);
       

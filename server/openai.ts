@@ -307,10 +307,13 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
       sendProgressUpdate(sessionId, 95, "Finalizando análise...");
     }
     
-    console.log("Total transactions found:", allTransactions.length);
+    console.log("Total transactions found BEFORE final normalization:", allTransactions.length);
+    console.log("Sample transaction BEFORE normalization:", JSON.stringify(allTransactions[0], null, 2));
     
     // FORÇA normalização final - garantir que todos os campos estejam corretos
     const finalTransactions = allTransactions.map((t: any, index: number) => {
+      console.log(`Processing transaction ${index + 1} for final normalization:`, t);
+      
       const normalized = {
         date: t.date || t.Date || t.DATA || "2024-12-10",
         description: t.description || t.Description || t.DESCRIPTION || `Transação ${index + 1}`,
@@ -319,13 +322,11 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
         category: t.category || t.Category || t.CATEGORY || "Outros"
       };
       
-      // Log apenas primeiras 3 para debug
-      if (index < 3) {
-        console.log(`Final normalization ${index + 1}:`, normalized);
-      }
-      
+      console.log(`Transaction ${index + 1} AFTER normalization:`, normalized);
       return normalized;
     });
+    
+    console.log("Sample transaction AFTER final normalization:", JSON.stringify(finalTransactions[0], null, 2));
     
     if (sessionId) {
       sendProgressUpdate(sessionId, 100, `Análise concluída! ${finalTransactions.length} transações encontradas`);
