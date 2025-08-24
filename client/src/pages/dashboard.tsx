@@ -17,6 +17,11 @@ import { AIAssistant } from "@/components/ai/ai-assistant";
 import { BusinessMetrics } from "@/components/business/business-metrics";
 import { BusinessDashboardHeader } from "@/components/business/business-dashboard-header";
 import { BusinessModeIndicator } from "@/components/business/business-mode-indicator";
+import { BusinessDepartmentalMetrics } from "@/components/business/business-departmental-metrics";
+import { BusinessSuppliersWidget } from "@/components/business/business-suppliers-widget";
+import { BusinessFinancialHealth } from "@/components/business/business-financial-health";
+import { BusinessCashFlow } from "@/components/business/business-cash-flow";
+import { BusinessProjectsROI } from "@/components/business/business-projects-roi";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -54,34 +59,50 @@ export default function Dashboard() {
           subtitle={isBusinessAccount ? "Controle financeiro empresarial" : "Visão geral das suas finanças"} 
         />
         
-        <div className="p-6 space-y-6">
-          {/* Business Header (only for business accounts) */}
-          {isBusinessAccount && <BusinessDashboardHeader />}
-          
-          {/* Business Metrics (only for business accounts) */}
-          {isBusinessAccount && <BusinessMetrics />}
-          
-          {/* Monthly Goals Notifications */}
-          <MonthlyGoalsNotifications />
-          
-          {/* Financial Overview Cards */}
-          <FinancialOverview />
-          
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <FutureCommitments />
-            <ExpensesChart />
-            <FinancialHealthScore />
-          </div>
-          
-          {/* Recent Transactions & AI Insights */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <RecentTransactions />
-            <AIInsights />
-          </div>
-          
-          {/* Fixed Expenses */}
-          <FixedExpenses />
+        <div className="p-6 space-y-8">
+          {/* Business Mode Components - Sistema Empresarial Exclusivo */}
+          {isBusinessAccount && (
+            <>
+              <BusinessDashboardHeader />
+              <BusinessMetrics />
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <BusinessDepartmentalMetrics />
+                <BusinessSuppliersWidget />
+              </div>
+              <BusinessFinancialHealth />
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <BusinessCashFlow />
+                <BusinessProjectsROI />
+              </div>
+            </>
+          )}
+
+          {/* Personal/Family Mode Components - Sistema Pessoal/Familiar */}
+          {!isBusinessAccount && (
+            <>
+              {/* Monthly Goals Notifications */}
+              <MonthlyGoalsNotifications />
+              
+              {/* Financial Overview Cards */}
+              <FinancialOverview />
+              
+              {/* Charts Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <FutureCommitments />
+                <ExpensesChart />
+                <FinancialHealthScore />
+              </div>
+              
+              {/* Recent Transactions & AI Insights */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <RecentTransactions />
+                <AIInsights />
+              </div>
+              
+              {/* Fixed Expenses */}
+              <FixedExpenses />
+            </>
+          )}
         </div>
 
         {/* AI Assistant */}
