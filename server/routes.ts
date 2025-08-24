@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { notificationService } from "./notificationService";
 import { insertNotificationSchema, insertWorkflowTriggerSchema, insertEmailPreferencesSchema } from "@shared/schema";
-import { analyzeExtractWithAI, generateFinancialInsights } from "./openai";
+import { analyzeExtractWithAI, generateFinancialInsights, setProgressSessions } from "./openai";
 import {
   insertCategorySchema,
   insertTransactionSchema,
@@ -21,6 +21,9 @@ export const extractProgressSessions = new Map<string, any>();
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+  
+  // Set progress sessions in openai module
+  setProgressSessions(extractProgressSessions);
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {

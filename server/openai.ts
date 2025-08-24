@@ -92,21 +92,28 @@ async function processChunk(extractText: string, availableCategories: string[] =
     messages: [
       {
         role: "system",
-        content: `CRÍTICO: Extraia TODAS as transações do extrato, sem exceção. Não pare em 10 ou qualquer outro número.
+        content: `CRÍTICO: Extraia TODAS as transações do extrato bancário, sem limites ou exceções.
 
-Analise LINHA POR LINHA e encontre CADA transação individual. Responda APENAS com JSON válido.
+INSTRUÇÕES DETALHADAS:
+1. Processe LINHA POR LINHA do texto completo
+2. Identifique TODAS as transações (podem ser 10, 50, 100, 200+ transações)
+3. Extraia informações PRECISAS de origem/destino dos valores
+4. Categorize baseado no estabelecimento/descrição real
 
-REGRAS OBRIGATÓRIAS:
-- Processar TODO o texto fornecido
-- Extrair TODAS as transações, podem ser 5, 50, 100 ou mais
-- Data: YYYY-MM-DD (use 2024 se ano não especificado)
-- Amount: número negativo para despesas, positivo para receitas
-- Type: "expense" ou "income" 
-- Category: Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros
+FORMATO OBRIGATÓRIO para cada transação:
+- Date: YYYY-MM-DD (use 2024 se ano ausente)
+- Description: texto COMPLETO da transação (inclua estabelecimento, referência)
+- Amount: valor numérico (negativo para saídas, positivo para entradas)
+- Type: "expense" ou "income"
+- Category: baseado no estabelecimento real (Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros)
 
-EXEMPLO: Se há 50 transações no texto, retorne 50 transações no JSON.
+EXEMPLOS de descrições CORRETAS:
+- "PIX ENVIADO - João Silva - Churrasco"
+- "TED RECEBIDO - Empresa XYZ - Salário" 
+- "COMPRA DÉBITO - SUPERMERCADO ABC"
+- "SAQUE ENVELOPE - AG 1234"
 
-JSON: {"transactions":[...TODAS as transações encontradas...]}`
+Responda APENAS JSON: {"transactions":[...TODAS as transações...]}`
       },
       {
         role: "user",
@@ -152,12 +159,21 @@ JSON: {"transactions":[...TODAS as transações encontradas...]}`
   }
 }
 
+// Global progress sessions map
+let globalProgressSessions = new Map<string, any>();
+
+// Function to set progress sessions (called from routes)
+export function setProgressSessions(sessions: Map<string, any>) {
+  globalProgressSessions = sessions;
+}
+
 // Function to send progress updates
-function sendProgressUpdate(sessionId: string, progress: number, message: string, extractProgressSessions: Map<string, any>) {
-  const res = extractProgressSessions.get(sessionId);
+function sendProgressUpdate(sessionId: string, progress: number, message: string) {
+  const res = globalProgressSessions.get(sessionId);
   if (res && !res.destroyed) {
     try {
       res.write(`data: ${JSON.stringify({ progress, message })}\n\n`);
+      console.log(`Progress sent: ${progress}% - ${message}`);
     } catch (error) {
       console.error("Error sending progress update:", error);
     }
@@ -168,21 +184,14 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
   try {
     console.log("Processing extract with length:", extractText.length);
     
-    // Import session map for progress updates
-    let extractProgressSessions: Map<string, any> = new Map();
-    try {
-      const routesModule = require('./routes');
-      extractProgressSessions = routesModule.extractProgressSessions;
-    } catch (error) {
-      console.log("Could not import progress sessions map");
-    }
+    // Progress tracking available via global sessions
     
     // Split large texts into chunks
     const chunks = splitTextIntoChunks(extractText, 6000);
     console.log("Split into", chunks.length, "chunks");
     
     if (sessionId) {
-      sendProgressUpdate(sessionId, 10, `Dividido em ${chunks.length} partes para análise`, extractProgressSessions);
+      sendProgressUpdate(sessionId, 10, `Dividido em ${chunks.length} partes para análise`);
     }
     
     const allTransactions: any[] = [];
@@ -192,7 +201,7 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
       const progress = 10 + ((i / chunks.length) * 80);
       
       if (sessionId) {
-        sendProgressUpdate(sessionId, progress, `Analisando parte ${i + 1} de ${chunks.length}...`, extractProgressSessions);
+        sendProgressUpdate(sessionId, progress, `Analisando parte ${i + 1} de ${chunks.length}...`);
       }
       
       console.log(`Processing chunk ${i + 1}/${chunks.length}, size: ${chunks[i].length}`);
@@ -208,13 +217,13 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     }
     
     if (sessionId) {
-      sendProgressUpdate(sessionId, 95, "Finalizando análise...", extractProgressSessions);
+      sendProgressUpdate(sessionId, 95, "Finalizando análise...");
     }
     
     console.log("Total transactions found:", allTransactions.length);
     
     if (sessionId) {
-      sendProgressUpdate(sessionId, 100, `Análise concluída! ${allTransactions.length} transações encontradas`, extractProgressSessions);
+      sendProgressUpdate(sessionId, 100, `Análise concluída! ${allTransactions.length} transações encontradas`);
     }
     
     return {
