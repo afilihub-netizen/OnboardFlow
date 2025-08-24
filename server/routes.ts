@@ -30,6 +30,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User profile update route
+  app.patch('/api/user/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Validate the update data
+      const updateData = z.object({
+        accountType: z.enum(['individual', 'family', 'business']).optional(),
+        companyName: z.string().optional(),
+        cnpj: z.string().optional(),
+        industry: z.string().optional(),
+      }).parse(req.body);
+
+      const updatedUser = await storage.updateUserProfile(userId, updateData);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(400).json({ message: "Failed to update user profile" });
+    }
+  });
+
   // Category routes
   app.get("/api/categories", isAuthenticated, async (req: any, res) => {
     try {

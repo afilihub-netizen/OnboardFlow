@@ -148,6 +148,23 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async updateUserProfile(userId: string, updateData: {
+    accountType?: 'individual' | 'family' | 'business';
+    companyName?: string;
+    cnpj?: string;
+    industry?: string;
+  }): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        ...updateData,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return updatedUser;
+  }
+
   // Category operations
   async getCategories(userId: string): Promise<Category[]> {
     return await db

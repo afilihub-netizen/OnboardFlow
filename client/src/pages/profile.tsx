@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { User, LogOut, Settings, Shield, Users, Plus, Camera } from "lucide-react";
 import { FamilyManagement } from "@/components/profile/family-management";
+import { AccountTypeSelector } from "@/components/profile/account-type-selector";
 
 export default function Profile() {
   const { toast } = useToast();
@@ -187,18 +188,7 @@ export default function Profile() {
                     </p>
                   </div>
                   
-                  <div>
-                    <Label htmlFor="accountType">Tipo de Conta</Label>
-                    <Select defaultValue={user?.accountType || 'individual'}>
-                      <SelectTrigger data-testid="select-account-type">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="individual">Individual</SelectItem>
-                        <SelectItem value="family">Familiar</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Tipo de conta será gerenciado em seção separada */}
                 </div>
               </div>
               
@@ -232,7 +222,8 @@ export default function Profile() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Tipo</span>
                   <span className="text-sm font-medium text-gray-900 dark:text-white" data-testid="account-type">
-                    {user?.accountType === 'family' ? 'Conta Familiar' : 'Conta Individual'}
+                    {user?.accountType === 'family' ? 'Conta Familiar' : 
+                     user?.accountType === 'business' ? 'Conta Empresarial' : 'Conta Individual'}
                   </span>
                 </div>
                 
@@ -301,6 +292,23 @@ export default function Profile() {
                   Sair
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Account Type Selection */}
+          <Card className="financial-card">
+            <CardHeader>
+              <CardTitle>Configuração da Conta</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AccountTypeSelector 
+                currentType={user?.accountType || 'individual'}
+                currentCompanyData={{
+                  companyName: user?.companyName,
+                  cnpj: user?.cnpj,
+                  industry: user?.industry
+                }}
+              />
             </CardContent>
           </Card>
 

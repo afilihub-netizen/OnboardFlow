@@ -63,6 +63,10 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   accountType: accountTypeEnum("account_type").default("individual"),
+  // Campos opcionais para empresas (CPF também pode usar funcionalidades empresariais)
+  companyName: varchar("company_name", { length: 200 }),
+  cnpj: varchar("cnpj", { length: 18 }),
+  industry: varchar("industry", { length: 100 }),
   organizationId: varchar("organization_id").references(() => organizations.id),
   familyGroupId: varchar("family_group_id").references(() => familyGroups.id),
   role: userRoleEnum("role").default("owner"),
