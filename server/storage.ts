@@ -313,9 +313,20 @@ export class DatabaseStorage implements IStorage {
     } else if (filter.familyGroupId) {
       conditions.push(eq(transactions.familyGroupId, filter.familyGroupId));
     } else {
-      // Individual account - exclude business and family transactions
-      conditions.push(sql`${transactions.organizationId} IS NULL`);
-      conditions.push(sql`${transactions.familyGroupId} IS NULL`);
+      // Individual account - show transactions that don't belong to any organization or family
+      // This includes old transactions that were created before the separation was implemented
+      conditions.push(
+        or(
+          isNull(transactions.organizationId),
+          eq(transactions.organizationId, '')
+        )
+      );
+      conditions.push(
+        or(
+          isNull(transactions.familyGroupId),
+          eq(transactions.familyGroupId, '')
+        )
+      );
     }
 
     if (categoryId) {
