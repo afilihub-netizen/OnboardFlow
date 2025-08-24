@@ -186,51 +186,39 @@ export function FutureCommitments() {
       
       <CardContent className="space-y-6">
         {/* Current Month */}
-        <div className="flex items-center justify-between p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-          <div className="flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-blue-600" />
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{currentMonthName}</h3>
-              <p className="text-xs text-gray-600 dark:text-gray-400">{currentMonthCommitments.length} compromisso{currentMonthCommitments.length !== 1 ? 's' : ''}</p>
-            </div>
+        <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-center">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Calendar className="w-4 h-4 text-blue-600" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white capitalize">{currentMonthName}</h3>
           </div>
-          <div className="text-right">
-            <p className="text-lg font-bold text-blue-600">
-              {formatCurrency(currentMonthTotal.toString())}
-            </p>
-          </div>
+          <p className="text-lg font-bold text-blue-600 mb-1">
+            {formatCurrency(currentMonthTotal.toString())}
+          </p>
+          <p className="text-xs text-gray-600 dark:text-gray-400">{currentMonthCommitments.length} compromisso{currentMonthCommitments.length !== 1 ? 's' : ''}</p>
         </div>
 
         {/* Next Month */}
-        <div className="flex items-center justify-between p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
-          <div className="flex items-center gap-3">
-            <Clock className="w-5 h-5 text-purple-600" />
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{nextMonthName}</h3>
-              <p className="text-xs text-gray-600 dark:text-gray-400">{nextMonthCommitments.length} compromisso{nextMonthCommitments.length !== 1 ? 's' : ''}</p>
-            </div>
+        <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 text-center">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Clock className="w-4 h-4 text-purple-600" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white capitalize">{nextMonthName}</h3>
           </div>
-          <div className="text-right">
-            <p className="text-lg font-bold text-purple-600">
-              {formatCurrency(nextMonthTotal.toString())}
-            </p>
-          </div>
+          <p className="text-lg font-bold text-purple-600 mb-1">
+            {formatCurrency(nextMonthTotal.toString())}
+          </p>
+          <p className="text-xs text-gray-600 dark:text-gray-400">{nextMonthCommitments.length} compromisso{nextMonthCommitments.length !== 1 ? 's' : ''}</p>
         </div>
 
         {/* Third Month */}
-        <div className="flex items-center justify-between p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-          <div className="flex items-center gap-3">
-            <Clock className="w-5 h-5 text-green-600" />
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{thirdMonthName}</h3>
-              <p className="text-xs text-gray-600 dark:text-gray-400">{thirdMonthCommitments.length} compromisso{thirdMonthCommitments.length !== 1 ? 's' : ''}</p>
-            </div>
+        <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-center">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Clock className="w-4 h-4 text-green-600" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white capitalize">{thirdMonthName}</h3>
           </div>
-          <div className="text-right">
-            <p className="text-lg font-bold text-green-600">
-              {formatCurrency(thirdMonthTotal.toString())}
-            </p>
-          </div>
+          <p className="text-lg font-bold text-green-600 mb-1">
+            {formatCurrency(thirdMonthTotal.toString())}
+          </p>
+          <p className="text-xs text-gray-600 dark:text-gray-400">{thirdMonthCommitments.length} compromisso{thirdMonthCommitments.length !== 1 ? 's' : ''}</p>
         </div>
 
         {/* Ver Compromissos Button */}
