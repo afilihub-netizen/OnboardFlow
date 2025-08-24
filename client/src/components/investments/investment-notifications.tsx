@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Target, TrendingUp, TrendingDown, AlertTriangle, Calendar, CheckCircle2, X } from "lucide-react";
+import { Target, TrendingUp, CheckCircle2, X, Calendar, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Goal {
@@ -20,7 +20,7 @@ interface Goal {
   };
 }
 
-export function MonthlyGoalsNotifications() {
+export function InvestmentNotifications() {
   const [dismissedGoals, setDismissedGoals] = useState<string[]>([]);
   
   const currentMonth = new Date().getMonth() + 1;
@@ -54,68 +54,27 @@ export function MonthlyGoalsNotifications() {
     },
   });
 
-  // Fetch current month transactions for category analysis
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['/api/transactions', currentMonth, currentYear],
-    queryFn: async () => {
-      const startDate = new Date(currentYear, currentMonth - 1, 1).toISOString();
-      const endDate = new Date(currentYear, currentMonth, 0).toISOString();
-      const response = await fetch(`/api/transactions?startDate=${startDate}&endDate=${endDate}`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch transactions');
-      return response.json();
-    },
-  });
-
-  const calculateGoalProgress = (goal: Goal) => {
+  const calculateInvestmentGoalProgress = (goal: Goal) => {
     const targetAmount = parseFloat(goal.targetAmount);
     
-    if (goal.categoryId) {
-      // Category-specific goal
-      const categoryTransactions = transactions.filter(
-        (t: any) => t.categoryId === goal.categoryId && t.type === 'expense'
-      );
-      const spent = categoryTransactions.reduce((sum: number, t: any) => sum + parseFloat(t.amount), 0);
-      const remaining = Math.max(0, targetAmount - spent);
-      const progress = Math.min(100, (spent / targetAmount) * 100);
-      
-      return {
-        spent,
-        remaining,
-        progress,
-        isOverBudget: spent > targetAmount,
-        categoryName: goal.category?.name || 'Categoria'
-      };
-    } else {
-      // General savings goal - compare with balance
-      const currentBalance = summary ? parseFloat(summary.balance) : 0;
-      const progress = Math.min(100, (currentBalance / targetAmount) * 100);
-      
-      return {
-        spent: 0,
-        remaining: Math.max(0, targetAmount - currentBalance),
-        progress,
-        isOverBudget: false,
-        categoryName: 'Poupança Geral',
-        currentAmount: currentBalance
-      };
-    }
+    // Investment goals are savings goals (categoryId is null)
+    const currentBalance = summary ? parseFloat(summary.balance) : 0;
+    const progress = Math.min(100, (currentBalance / targetAmount) * 100);
+    
+    return {
+      spent: 0,
+      remaining: Math.max(0, targetAmount - currentBalance),
+      progress,
+      isOverBudget: false,
+      categoryName: 'Meta de Investimento',
+      currentAmount: currentBalance
+    };
   };
 
   const getGoalStatus = (goal: Goal, progressData: any) => {
-    const { progress, isOverBudget } = progressData;
+    const { progress } = progressData;
     
-    if (isOverBudget || (isEndOfMonth && progress < 80)) {
-      return {
-        status: 'danger',
-        color: 'text-red-600 dark:text-red-400',
-        bgColor: 'bg-red-50 dark:bg-red-900/20',
-        borderColor: 'border-red-200 dark:border-red-800',
-        icon: AlertTriangle,
-        message: isOverBudget ? 'Orçamento ultrapassado!' : 'Meta em risco!'
-      };
-    } else if (progress >= 100) {
+    if (progress >= 100) {
       return {
         status: 'success',
         color: 'text-green-600 dark:text-green-400',
@@ -123,6 +82,15 @@ export function MonthlyGoalsNotifications() {
         borderColor: 'border-green-200 dark:border-green-800',
         icon: CheckCircle2,
         message: 'Meta alcançada!'
+      };
+    } else if (isEndOfMonth && progress < 80) {
+      return {
+        status: 'danger',
+        color: 'text-red-600 dark:text-red-400',
+        bgColor: 'bg-red-50 dark:bg-red-900/20',
+        borderColor: 'border-red-200 dark:border-red-800',
+        icon: AlertTriangle,
+        message: 'Meta em risco!'
       };
     } else if (progress >= 70) {
       return {
@@ -156,16 +124,16 @@ export function MonthlyGoalsNotifications() {
     setDismissedGoals(prev => [...prev, goalId]);
   };
 
-  if (isLoading || goals.length === 0) {
+  if (isLoading) {
     return null;
   }
 
-  // Filter out investment goals (those without categoryId) from dashboard
-  const activeGoals = goals.filter((goal: Goal) => 
-    !dismissedGoals.includes(goal.id) && goal.categoryId !== null
+  // Filter only investment goals (those without categoryId - savings goals)
+  const investmentGoals = goals.filter((goal: Goal) => 
+    goal.categoryId === null && !dismissedGoals.includes(goal.id)
   );
 
-  if (activeGoals.length === 0) {
+  if (investmentGoals.length === 0) {
     return null;
   }
 
@@ -175,16 +143,16 @@ export function MonthlyGoalsNotifications() {
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center">
             <Target className="w-5 h-5 mr-2" />
-            Notificações de Metas - {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            Notificações de Metas de Investimento
           </div>
           <Badge variant="outline" className="text-xs">
-            {activeGoals.length} ativas
+            {investmentGoals.length} ativas
           </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {activeGoals.map((goal: Goal) => {
-          const progressData = calculateGoalProgress(goal);
+        {investmentGoals.map((goal: Goal) => {
+          const progressData = calculateInvestmentGoalProgress(goal);
           const statusInfo = getGoalStatus(goal, progressData);
           const StatusIcon = statusInfo.icon;
 
@@ -192,7 +160,7 @@ export function MonthlyGoalsNotifications() {
             <Alert
               key={goal.id}
               className={`${statusInfo.bgColor} ${statusInfo.borderColor} border-2`}
-              data-testid={`goal-notification-${goal.id}`}
+              data-testid={`investment-goal-notification-${goal.id}`}
             >
               <div className="flex items-start justify-between w-full">
                 <div className="flex items-start space-x-3 flex-1">
@@ -208,27 +176,9 @@ export function MonthlyGoalsNotifications() {
                     </div>
                     
                     <AlertDescription className="text-gray-600 dark:text-gray-400">
-                      {goal.categoryId ? (
-                        <>
-                          Orçamento: {formatCurrency(parseFloat(goal.targetAmount))} | 
-                          Gasto: {formatCurrency(progressData.spent)} | 
-                          {progressData.isOverBudget ? (
-                            <span className="text-red-600 dark:text-red-400 font-medium">
-                              Excesso: {formatCurrency(progressData.spent - parseFloat(goal.targetAmount))}
-                            </span>
-                          ) : (
-                            <span className="text-green-600 dark:text-green-400">
-                              Restante: {formatCurrency(progressData.remaining)}
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          Meta: {formatCurrency(parseFloat(goal.targetAmount))} | 
-                          Atual: {formatCurrency(progressData.currentAmount || 0)} | 
-                          Falta: {formatCurrency(progressData.remaining)}
-                        </>
-                      )}
+                      Meta: {formatCurrency(parseFloat(goal.targetAmount))} | 
+                      Atual: {formatCurrency(progressData.currentAmount || 0)} | 
+                      Falta: {formatCurrency(progressData.remaining)}
                     </AlertDescription>
                     
                     <div className="space-y-1">
@@ -239,7 +189,7 @@ export function MonthlyGoalsNotifications() {
                       <Progress 
                         value={progressData.progress} 
                         className="h-2"
-                        data-testid={`progress-${goal.id}`}
+                        data-testid={`investment-progress-${goal.id}`}
                       />
                     </div>
                   </div>
@@ -250,7 +200,7 @@ export function MonthlyGoalsNotifications() {
                   size="sm"
                   onClick={() => dismissGoal(goal.id)}
                   className="ml-2 h-6 w-6 p-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  data-testid={`dismiss-goal-${goal.id}`}
+                  data-testid={`dismiss-investment-goal-${goal.id}`}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -263,7 +213,7 @@ export function MonthlyGoalsNotifications() {
           <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
             <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             <AlertDescription className="text-blue-800 dark:text-blue-200">
-              <strong>Final do mês:</strong> Revise suas metas e prepare-se para o próximo mês!
+              <strong>Final do mês:</strong> Revise suas metas de investimento e planeje para o próximo mês!
             </AlertDescription>
           </Alert>
         )}
