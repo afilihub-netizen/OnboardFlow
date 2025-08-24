@@ -520,6 +520,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+  // Test OpenAI API route
+  app.post("/api/test-openai", isAuthenticated, async (req: any, res) => {
+    try {
+      const { analyzeExtractWithAI } = await import("./openai");
+      const result = await analyzeExtractWithAI("10/12/2024 PIX RECEBIDO João Silva R$ 100,00", []);
+      res.json({ success: true, result });
+    } catch (error) {
+      console.error("OpenAI test error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // Extract analysis route
   app.post("/api/analyze-extract", isAuthenticated, async (req: any, res) => {
     try {
@@ -530,8 +542,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Limit text size to prevent timeout issues
-      const limitedText = extractText.length > 5000 
-        ? extractText.substring(0, 5000) + "\n[texto truncado...]"
+      const limitedText = extractText.length > 2000 
+        ? extractText.substring(0, 2000) + "\n[texto truncado...]"
         : extractText;
 
       const result = await analyzeExtractWithAI(limitedText, availableCategories || []);

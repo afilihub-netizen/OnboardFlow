@@ -69,35 +69,17 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
       messages: [
         {
           role: "system",
-          content: `Você é um assistente especializado em análise de extratos bancários. Analise o extrato fornecido e extraia as transações em formato JSON.
+          content: `Analise o extrato bancário e extraia as transações. Responda APENAS com JSON válido.
 
-IMPORTANTE: Responda APENAS com JSON válido, sem explicações, sem markdown, sem texto adicional.
+Regras:
+- Data: YYYY-MM-DD (use 2024 se ano não especificado)
+- Amount: número negativo para despesas, positivo para receitas
+- Type: "expense" ou "income"
+- Category: uma das categorias: Alimentação, Transporte, Casa, Saúde, Outros
+- Máximo 10 transações
 
-Instruções:
-1. Identifique cada transação individual no extrato
-2. Para cada transação, determine:
-   - Data (formato YYYY-MM-DD, use 2024 se não especificado)
-   - Descrição (simplifique, remova códigos desnecessários)
-   - Valor (número, positivo para receitas, negativo para despesas)
-   - Tipo ("income" para receitas, "expense" para despesas)
-   - Categoria (escolha a mais adequada)
-   - Confiança (0.8 a 1.0)
-
-Categorias disponíveis: ${availableCategories.length > 0 ? availableCategories.join(', ') : 'Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros'}
-
-Formato exato da resposta (JSON válido):
-{
-  "transactions": [
-    {
-      "date": "2024-01-15",
-      "description": "Descrição da transação",
-      "amount": -50.00,
-      "type": "expense",
-      "category": "Alimentação",
-      "confidence": 0.9
-    }
-  ]
-}`
+JSON obrigatório:
+{"transactions":[{"date":"2024-12-10","description":"PIX João","amount":-100,"type":"expense","category":"Outros"}]}`
         },
         {
           role: "user",
@@ -105,53 +87,57 @@ Formato exato da resposta (JSON válido):
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 2000,
+      max_tokens: 1000,
       temperature: 0.1
     });
 
-    const content = response.choices[0].message.content || '{"transactions": []}';
-    console.log("OpenAI raw response length:", content.length);
-    console.log("OpenAI raw response preview:", content.substring(0, 200) + "...");
+    let content = response.choices[0].message.content || '{"transactions": []}';
+    console.log("OpenAI response length:", content.length);
     
-    // Try to clean up the response if it has any formatting issues
-    let cleanContent = content.trim();
+    // Force clean JSON response - remove any extra formatting
+    content = content.trim();
     
-    // Remove any markdown formatting if present
-    if (cleanContent.startsWith('```json')) {
-      cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (cleanContent.startsWith('```')) {
-      cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    // Remove markdown if present
+    if (content.includes('```')) {
+      content = content.replace(/```json?/g, '').replace(/```/g, '');
     }
     
-    // Try to fix common JSON issues
-    cleanContent = cleanContent
-      .replace(/,\s*]/g, ']')  // Remove trailing commas in arrays
-      .replace(/,\s*}/g, '}')  // Remove trailing commas in objects
-      .replace(/\n/g, ' ')     // Replace newlines with spaces
-      .replace(/\t/g, ' ')     // Replace tabs with spaces
-      .replace(/\s+/g, ' ');   // Normalize whitespace
+    // Ensure it starts and ends properly
+    if (!content.startsWith('{')) {
+      const startIndex = content.indexOf('{');
+      if (startIndex > -1) {
+        content = content.substring(startIndex);
+      }
+    }
+    
+    if (!content.endsWith('}')) {
+      const endIndex = content.lastIndexOf('}');
+      if (endIndex > -1) {
+        content = content.substring(0, endIndex + 1);
+      }
+    }
     
     try {
-      const result = JSON.parse(cleanContent);
+      const result = JSON.parse(content);
+      console.log("Parsed successfully:", result.transactions?.length || 0, "transactions");
       return result;
     } catch (parseError) {
-      console.error("JSON parse error:", parseError);
-      console.error("Content that failed to parse:", cleanContent.substring(0, 500));
+      console.error("JSON parse failed, returning empty result");
+      console.error("Failed content preview:", content.substring(0, 200));
       
-      // Try to extract just the transactions array if possible
-      try {
-        const transactionsMatch = cleanContent.match(/"transactions"\s*:\s*\[(.*?)\]/s);
-        if (transactionsMatch) {
-          const transactionsStr = `{"transactions": [${transactionsMatch[1]}]}`;
-          const result = JSON.parse(transactionsStr);
-          return result;
-        }
-      } catch (secondError) {
-        console.error("Second parsing attempt failed:", secondError);
-      }
-      
-      // Return empty result if all parsing attempts fail
-      return { transactions: [] };
+      // Last resort: return a safe empty structure
+      return { 
+        transactions: [
+          {
+            date: "2024-12-10",
+            description: "Análise falhada - adicione manualmente",
+            amount: 0,
+            type: "expense",
+            category: "Outros",
+            confidence: 0.5
+          }
+        ]
+      };
     }
   } catch (error) {
     console.error("Error analyzing extract with AI:", error);
