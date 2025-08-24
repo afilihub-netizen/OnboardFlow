@@ -178,80 +178,47 @@ export function AccountTypeSelector({ currentType, currentCompanyData }: Account
         </Card>
       )}
 
-      <div className="grid gap-4">
-        {accountTypes.map((type) => {
-          const Icon = type.icon;
-          const isSelected = selectedType === type.id;
-          const status = getAccountTypeStatus(type.id);
-          const isLocked = status === 'locked';
-          const isCurrent = status === 'current';
-          
-          return (
-            <Card 
-              key={type.id}
-              className={`transition-all ${
-                isSelected && !isLocked 
-                  ? 'ring-2 ring-primary border-primary' 
-                  : isLocked 
-                    ? 'opacity-75 border-gray-200 dark:border-gray-700'
-                    : 'hover:shadow-md cursor-pointer'
-              }`}
-              onClick={() => !isLocked && setSelectedType(type.id)}
-              data-testid={`account-type-${type.id}`}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Icon className={`h-5 w-5 ${
-                      isSelected && !isLocked ? 'text-primary' : 
-                      isLocked ? 'text-gray-400' : 'text-muted-foreground'
-                    }`} />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-base">{type.title}</CardTitle>
-                        {isCurrent && (
-                          <Badge variant="outline" className="text-xs">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Atual
-                          </Badge>
-                        )}
-                        {isLocked && (
-                          <Lock className="h-4 w-4 text-gray-400" />
-                        )}
-                      </div>
-                      <CardDescription className="text-sm">{type.description}</CardDescription>
-                      <p className="text-sm font-medium text-green-600 mt-1">{type.price}</p>
-                    </div>
-                  </div>
-                  {isLocked && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUpgrade(type.id);
-                      }}
-                      data-testid={`button-upgrade-${type.id}`}
-                    >
-                      Fazer Upgrade
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  {type.features.map((feature, index) => (
-                    <li key={index} className="flex items-center gap-2">
-                      <div className="w-1 h-1 bg-current rounded-full" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      {/* Configuração de tipo de conta */}
+      <Card className="p-6">
+        <h4 className="font-medium mb-4">Configuração da Conta</h4>
+        
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="account-type">Tipo de Conta</Label>
+            <Select value={selectedType} onValueChange={setSelectedType} disabled={isLoading}>
+              <SelectTrigger data-testid="select-account-type">
+                <SelectValue placeholder="Selecione o tipo de conta" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="individual">Individual</SelectItem>
+                <SelectItem value="family" disabled={getAccountTypeStatus('family') === 'locked'}>
+                  Família {getAccountTypeStatus('family') === 'locked' && '(Premium)'}
+                </SelectItem>
+                <SelectItem value="business" disabled={getAccountTypeStatus('business') === 'locked'}>
+                  Empresarial {getAccountTypeStatus('business') === 'locked' && '(Premium)'}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Botão de upgrade se necessário */}
+          {(getAccountTypeStatus('family') === 'locked' || getAccountTypeStatus('business') === 'locked') && (
+            <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                <Crown className="h-4 w-4" />
+                <span className="text-sm font-medium">Precisa de mais recursos?</span>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => handleUpgrade('upgrade')}
+                data-testid="button-upgrade-plan"
+              >
+                Fazer Upgrade
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
 
       {selectedType === 'business' && (
         <Card>
