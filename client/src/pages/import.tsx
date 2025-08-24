@@ -228,15 +228,36 @@ export default function Import() {
   };
 
   const handleImportTransactions = () => {
-    const transactionsToImport = parsedTransactions.map(transaction => ({
-      amount: Math.abs(transaction.amount).toString(),
-      type: transaction.type,
-      description: transaction.description,
-      date: transaction.date,
-      categoryId: categories.find((cat: any) => cat.name.toLowerCase().includes(transaction.category.toLowerCase()))?.id || null,
-      paymentMethod: "transfer"
-    }));
+    console.log("Parsed transactions before import:", parsedTransactions.slice(0, 3));
+    
+    const transactionsToImport = parsedTransactions.map(transaction => {
+      // Ensure we have valid data
+      const amount = transaction.amount ? Math.abs(Number(transaction.amount)) : 0;
+      const date = transaction.date || "2024-12-10";
+      const description = transaction.description || "Transação importada";
+      const type = transaction.type || "expense";
+      
+      console.log("Processing transaction:", { 
+        original: transaction, 
+        amount, 
+        date, 
+        description, 
+        type 
+      });
+      
+      return {
+        amount: amount.toString(),
+        type: type,
+        description: description,
+        date: date,
+        categoryId: categories.find((cat: any) => 
+          cat.name.toLowerCase().includes((transaction.category || "outros").toLowerCase())
+        )?.id || null,
+        paymentMethod: "transfer"
+      };
+    });
 
+    console.log("Final transactions to import:", transactionsToImport.slice(0, 3));
     importTransactionsMutation.mutate(transactionsToImport);
   };
 

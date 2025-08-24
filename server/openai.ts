@@ -160,7 +160,7 @@ EXEMPLO COMPLETO:
     const result = JSON.parse(content);
     let transactions = result.transactions || [];
     
-    console.log("Raw transactions before normalization:", transactions.slice(0, 2));
+    console.log("Raw transactions before normalization:", JSON.stringify(transactions.slice(0, 2), null, 2));
     
     // Normalize and validate transaction data
     transactions = transactions.map((t: any, index: number) => {
@@ -230,7 +230,9 @@ EXEMPLO COMPLETO:
         category: rawCategory.toString().trim() || "Outros"
       };
       
-      console.log(`Transaction ${index + 1} normalized:`, normalized);
+      if (index < 3) { // Log first 3 transactions for debugging
+        console.log(`Transaction ${index + 1} normalized:`, normalized);
+      }
       return normalized;
     });
     
