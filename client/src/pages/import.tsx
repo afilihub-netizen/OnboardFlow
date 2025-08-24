@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Brain, CheckCircle, AlertCircle, Download } from "lucide-react";
+import { Upload, FileText, Brain, CheckCircle, AlertCircle, Download, Check, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -31,6 +32,7 @@ export default function Import() {
   const [extractText, setExtractText] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
+  const [selectedTransactions, setSelectedTransactions] = useState<Set<number>>(new Set());
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [analysisProgress, setAnalysisProgress] = useState(0);
@@ -68,10 +70,11 @@ export default function Import() {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       toast({
         title: "Transações importadas",
-        description: `${parsedTransactions.length} transações foram importadas com sucesso.`,
+        description: `${selectedTransactions.size} transações foram importadas com sucesso.`,
       });
       setCurrentStep(1);
       setParsedTransactions([]);
+      setSelectedTransactions(new Set());
       setExtractText("");
       setSelectedFile(null);
     },
@@ -210,6 +213,8 @@ export default function Import() {
       console.log("Analyzed transactions received:", analyzedTransactions.slice(0, 3));
       
       setParsedTransactions(analyzedTransactions);
+      // Seleciona todas as transações por padrão
+      setSelectedTransactions(new Set(Array.from({ length: analyzedTransactions.length }, (_, i) => i)));
       setCurrentStep(3);
       
       toast({
@@ -231,10 +236,34 @@ export default function Import() {
     }
   };
 
+  // Funções para gerenciar seleção de transações
+  const toggleTransaction = (index: number) => {
+    const newSelected = new Set(selectedTransactions);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+    } else {
+      newSelected.add(index);
+    }
+    setSelectedTransactions(newSelected);
+  };
+
+  const selectAll = () => {
+    setSelectedTransactions(new Set(Array.from({ length: parsedTransactions.length }, (_, i) => i)));
+  };
+
+  const deselectAll = () => {
+    setSelectedTransactions(new Set());
+  };
+
   const handleImportTransactions = () => {
-    console.log("Parsed transactions before import:", parsedTransactions.slice(0, 3));
+    // Filtra apenas as transações selecionadas
+    const selectedParsedTransactions = parsedTransactions.filter((_, index) => 
+      selectedTransactions.has(index)
+    );
     
-    const transactionsToImport = parsedTransactions.map(transaction => {
+    console.log("Selected transactions before import:", selectedParsedTransactions.slice(0, 3));
+    
+    const transactionsToImport = selectedParsedTransactions.map(transaction => {
       // Ensure we have valid data
       const amount = transaction.amount ? Math.abs(Number(transaction.amount)) : 0;
       const date = transaction.date || "2024-12-10";
@@ -421,56 +450,110 @@ export default function Import() {
           {/* Step 3: Review and Import */}
           {currentStep === 3 && parsedTransactions.length > 0 && (
             <Card className="financial-card">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="flex items-center">
-                  <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
-                  Transações Identificadas ({parsedTransactions.length})
-                </CardTitle>
-                <div className="flex space-x-2">
-                  <Button variant="outline" onClick={() => setCurrentStep(1)}>
-                    Analisar Novamente
-                  </Button>
-                  <Button 
-                    onClick={handleImportTransactions}
-                    disabled={importTransactionsMutation.isPending}
-                    data-testid="button-import-transactions"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    {importTransactionsMutation.isPending ? "Importando..." : "Importar Transações"}
-                  </Button>
+              <CardHeader className="space-y-4">
+                <div className="flex flex-row items-center justify-between">
+                  <CardTitle className="flex items-center">
+                    <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+                    Transações Identificadas ({parsedTransactions.length})
+                  </CardTitle>
+                  <div className="flex space-x-2">
+                    <Button variant="outline" onClick={() => setCurrentStep(1)}>
+                      Analisar Novamente
+                    </Button>
+                    <Button 
+                      onClick={handleImportTransactions}
+                      disabled={importTransactionsMutation.isPending || selectedTransactions.size === 0}
+                      data-testid="button-import-transactions"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      {importTransactionsMutation.isPending 
+                        ? "Importando..." 
+                        : `Importar ${selectedTransactions.size} transação${selectedTransactions.size !== 1 ? 'ões' : ''}`
+                      }
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Controles de seleção */}
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <span className="text-sm font-medium">
+                      {selectedTransactions.size} de {parsedTransactions.length} selecionadas
+                    </span>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={selectAll}
+                      disabled={selectedTransactions.size === parsedTransactions.length}
+                      data-testid="button-select-all"
+                    >
+                      <Check className="w-4 h-4 mr-1" />
+                      Selecionar Tudo
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={deselectAll}
+                      disabled={selectedTransactions.size === 0}
+                      data-testid="button-deselect-all"
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Desmarcar Tudo
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4 max-h-96 overflow-y-auto">
                   {parsedTransactions.map((transaction, index) => (
-                    <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <span className="font-medium">{transaction.description}</span>
-                            <Badge variant={transaction.type === 'income' ? 'default' : 'secondary'}>
-                              {transaction.type === 'income' ? 'Receita' : 'Despesa'}
-                            </Badge>
-                            <Badge variant="outline">
-                              {transaction.category}
-                            </Badge>
+                    <div 
+                      key={index} 
+                      className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                        selectedTransactions.has(index)
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                      }`}
+                      onClick={() => toggleTransaction(index)}
+                      data-testid={`transaction-item-${index}`}
+                    >
+                      <div className="flex items-center">
+                        <Checkbox
+                          checked={selectedTransactions.has(index)}
+                          onChange={() => toggleTransaction(index)}
+                          className="mr-4"
+                          data-testid={`checkbox-transaction-${index}`}
+                        />
+                        
+                        <div className="flex items-center justify-between flex-1">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <span className="font-medium">{transaction.description}</span>
+                              <Badge variant={transaction.type === 'income' ? 'default' : 'secondary'}>
+                                {transaction.type === 'income' ? 'Receita' : 'Despesa'}
+                              </Badge>
+                              <Badge variant="outline">
+                                {transaction.category}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
+                              <span>{new Date(transaction.date).toLocaleDateString('pt-BR')}</span>
+                              <span className="flex items-center">
+                                Confiança: {Math.round((transaction.confidence || 0.9) * 100)}%
+                                {(transaction.confidence || 0.9) < 0.7 && (
+                                  <AlertCircle className="w-4 h-4 ml-1 text-yellow-500" />
+                                )}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
-                            <span>{new Date(transaction.date).toLocaleDateString('pt-BR')}</span>
-                            <span className="flex items-center">
-                              Confiança: {Math.round(transaction.confidence * 100)}%
-                              {transaction.confidence < 0.7 && (
-                                <AlertCircle className="w-4 h-4 ml-1 text-yellow-500" />
-                              )}
+                          <div className="text-right">
+                            <span className={`text-lg font-semibold ${
+                              transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Math.abs(transaction.amount))}
                             </span>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <span className={`text-lg font-semibold ${
-                            transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Math.abs(transaction.amount))}
-                          </span>
                         </div>
                       </div>
                     </div>
