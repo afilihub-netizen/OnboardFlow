@@ -73,67 +73,6 @@ export function Sidebar() {
     },
   });
 
-  // Get current month dates
-  const currentDate = new Date();
-  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-
-  // Fetch budget goals
-  const { data: budgetGoals } = useQuery({
-    queryKey: ['/api/budget-goals'],
-    queryFn: async () => {
-      const response = await fetch('/api/budget-goals', {
-        credentials: 'include',
-      });
-      if (!response.ok) return [];
-      return response.json();
-    },
-  });
-
-  // Fetch transactions for the current month to calculate spending
-  const { data: transactions } = useQuery({
-    queryKey: ['/api/transactions', startOfMonth.toISOString(), endOfMonth.toISOString()],
-    queryFn: async ({ queryKey }) => {
-      const [, startDate, endDate] = queryKey;
-      const response = await fetch(`/api/transactions?startDate=${startDate}&endDate=${endDate}`, {
-        credentials: 'include',
-      });
-      if (!response.ok) return [];
-      return response.json();
-    },
-  });
-
-  // Calculate monthly savings goal progress
-  const calculateMonthlySavings = () => {
-    if (!budgetGoals || !transactions) {
-      return { savedAmount: 0, totalGoal: 0, percentage: 0 };
-    }
-
-    // Filter active goals and calculate total budget
-    const activeGoals = budgetGoals.filter((goal: any) => goal.isActive);
-    const totalBudget = activeGoals.reduce((sum: number, goal: any) => sum + parseFloat(goal.targetAmount), 0);
-    
-    // Calculate total spent this month
-    const totalSpent = transactions
-      .filter((transaction: any) => transaction.type === 'expense')
-      .reduce((sum: number, transaction: any) => sum + parseFloat(transaction.amount), 0);
-
-    // Savings = Budget - Spent (assuming budget includes savings goal)
-    const savedAmount = Math.max(0, totalBudget - totalSpent);
-    const totalGoal = totalBudget;
-    const percentage = totalGoal > 0 ? Math.min(100, (savedAmount / totalGoal) * 100) : 0;
-
-    return { savedAmount, totalGoal, percentage };
-  };
-
-  const savingsData = calculateMonthlySavings();
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
 
   return (
     <>
@@ -262,35 +201,6 @@ export function Sidebar() {
           </div>
         </nav>
 
-        {/* Monthly Goal Widget */}
-        <div className="p-6">
-          <Link href="/goals">
-            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-4 text-white cursor-pointer hover:from-green-600 hover:to-green-700 transition-all duration-200">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Meta Mensal</span>
-                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                  savingsData.percentage >= 80 ? 'bg-green-300' : savingsData.percentage >= 50 ? 'bg-yellow-300' : 'bg-red-300'
-                }`}>
-                  <div className="w-2 h-2 rounded-full bg-white"></div>
-                </div>
-              </div>
-              <div className="text-xs mb-2">
-                Economia: {formatCurrency(savingsData.savedAmount)} / {formatCurrency(savingsData.totalGoal)}
-              </div>
-              <div className="w-full bg-green-400 rounded-full h-2">
-                <div 
-                  className="bg-white rounded-full h-2 transition-all duration-300" 
-                  style={{ width: `${Math.min(100, savingsData.percentage)}%` }}
-                ></div>
-              </div>
-              {savingsData.totalGoal === 0 && (
-                <div className="text-xs mt-1 opacity-80">
-                  Configure suas metas
-                </div>
-              )}
-            </div>
-          </Link>
-        </div>
       </aside>
     </>
   );
