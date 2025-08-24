@@ -134,10 +134,72 @@ export function TransactionHistory() {
   };
 
   const handleExport = () => {
-    toast({
-      title: "Exportação iniciada",
-      description: "O relatório será baixado em breve.",
-    });
+    if (!transactions || transactions.length === 0) {
+      toast({
+        title: "Nada para exportar",
+        description: "Não há transações para exportar com os filtros aplicados.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Criar cabeçalho CSV
+      const headers = [
+        'Data',
+        'Tipo',
+        'Descrição',
+        'Categoria',
+        'Forma de Pagamento',
+        'Valor'
+      ];
+
+      // Converter transações para CSV
+      const csvData = transactions.map(transaction => [
+        formatDate(transaction.date),
+        transaction.type === 'income' ? 'Receita' : 'Despesa',
+        transaction.description,
+        getCategoryName(transaction.categoryId),
+        getPaymentMethodLabel(transaction.paymentMethod),
+        `"${formatCurrency(transaction.amount)}"`
+      ]);
+
+      // Combinar cabeçalho com dados
+      const csvContent = [headers, ...csvData]
+        .map(row => row.join(','))
+        .join('\n');
+
+      // Criar e baixar arquivo
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        
+        // Nome do arquivo com data atual
+        const today = new Date().toISOString().split('T')[0];
+        const fileName = `transacoes_${today}.csv`;
+        link.setAttribute('download', fileName);
+        
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast({
+          title: "Exportação concluída",
+          description: `Arquivo ${fileName} baixado com sucesso!`,
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao exportar:', error);
+      toast({
+        title: "Erro na exportação",
+        description: "Falha ao gerar o arquivo. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatCurrency = (value: string) => {
