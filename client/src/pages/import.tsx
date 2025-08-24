@@ -104,6 +104,18 @@ export default function Import() {
         reader.onload = (e) => {
           const content = e.target?.result as string;
           setExtractText(content);
+          
+          toast({
+            title: "Arquivo carregado",
+            description: "Iniciando análise automática do extrato...",
+          });
+          
+          // Automatically analyze the extract after loading
+          setTimeout(() => {
+            if (content.trim()) {
+              analyzeExtractWithAI();
+            }
+          }, 500); // Small delay to ensure state is updated
         };
         reader.readAsText(file);
       } else {
