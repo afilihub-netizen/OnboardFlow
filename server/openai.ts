@@ -61,84 +61,121 @@ Responda APENAS com JSON válido no formato:
   }
 }
 
-export async function analyzeExtractWithAI(extractText: string, availableCategories: string[] = []) {
-  try {
-    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `Analise o extrato bancário e extraia TODAS as transações encontradas. Responda APENAS com JSON válido.
+// Function to split text into chunks
+function splitTextIntoChunks(text: string, maxChunkSize: number = 7000): string[] {
+  const chunks: string[] = [];
+  const lines = text.split('\n');
+  let currentChunk = '';
+  
+  for (const line of lines) {
+    // If adding this line would exceed the limit, save current chunk and start new one
+    if (currentChunk.length + line.length + 1 > maxChunkSize && currentChunk.length > 0) {
+      chunks.push(currentChunk.trim());
+      currentChunk = line;
+    } else {
+      currentChunk += (currentChunk ? '\n' : '') + line;
+    }
+  }
+  
+  // Add the last chunk if it has content
+  if (currentChunk.trim()) {
+    chunks.push(currentChunk.trim());
+  }
+  
+  return chunks;
+}
+
+// Function to process a single chunk
+async function processChunk(extractText: string, availableCategories: string[] = []) {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      {
+        role: "system",
+        content: `Analise o extrato bancário e extraia TODAS as transações encontradas. Responda APENAS com JSON válido.
 
 Regras:
 - Data: YYYY-MM-DD (use 2024 se ano não especificado)
 - Amount: número negativo para despesas, positivo para receitas  
 - Type: "expense" ou "income"
 - Category: uma das categorias: Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros
-- Extraia TODAS as transações, sem limite de quantidade
+- Extraia TODAS as transações do texto fornecido
 
 JSON obrigatório:
 {"transactions":[{"date":"2024-12-10","description":"PIX João","amount":-100,"type":"expense","category":"Outros"}]}`
-        },
-        {
-          role: "user",
-          content: `Analise este extrato bancário e extraia as transações:\n\n${extractText}`
-        }
-      ],
-      response_format: { type: "json_object" },
-      max_tokens: 4000,
-      temperature: 0.1
-    });
+      },
+      {
+        role: "user",
+        content: `Analise este extrato bancário e extraia as transações:\n\n${extractText}`
+      }
+    ],
+    response_format: { type: "json_object" },
+    max_tokens: 4000,
+    temperature: 0.1
+  });
 
-    let content = response.choices[0].message.content || '{"transactions": []}';
-    console.log("OpenAI response length:", content.length);
-    
-    // Force clean JSON response - remove any extra formatting
-    content = content.trim();
-    
-    // Remove markdown if present
-    if (content.includes('```')) {
-      content = content.replace(/```json?/g, '').replace(/```/g, '');
+  let content = response.choices[0].message.content || '{"transactions": []}';
+  
+  // Clean up the response
+  content = content.trim();
+  
+  if (content.includes('```')) {
+    content = content.replace(/```json?/g, '').replace(/```/g, '');
+  }
+  
+  if (!content.startsWith('{')) {
+    const startIndex = content.indexOf('{');
+    if (startIndex > -1) {
+      content = content.substring(startIndex);
     }
-    
-    // Ensure it starts and ends properly
-    if (!content.startsWith('{')) {
-      const startIndex = content.indexOf('{');
-      if (startIndex > -1) {
-        content = content.substring(startIndex);
-      }
+  }
+  
+  if (!content.endsWith('}')) {
+    const endIndex = content.lastIndexOf('}');
+    if (endIndex > -1) {
+      content = content.substring(0, endIndex + 1);
     }
+  }
+  
+  try {
+    const result = JSON.parse(content);
+    return result.transactions || [];
+  } catch (parseError) {
+    console.error("JSON parse failed for chunk");
+    return [];
+  }
+}
+
+export async function analyzeExtractWithAI(extractText: string, availableCategories: string[] = []) {
+  try {
+    console.log("Processing extract with length:", extractText.length);
     
-    if (!content.endsWith('}')) {
-      const endIndex = content.lastIndexOf('}');
-      if (endIndex > -1) {
-        content = content.substring(0, endIndex + 1);
-      }
-    }
+    // Split large texts into chunks
+    const chunks = splitTextIntoChunks(extractText, 7000);
+    console.log("Split into", chunks.length, "chunks");
     
-    try {
-      const result = JSON.parse(content);
-      console.log("Parsed successfully:", result.transactions?.length || 0, "transactions");
-      return result;
-    } catch (parseError) {
-      console.error("JSON parse failed, returning empty result");
-      console.error("Failed content preview:", content.substring(0, 200));
+    const allTransactions: any[] = [];
+    
+    // Process each chunk
+    for (let i = 0; i < chunks.length; i++) {
+      console.log(`Processing chunk ${i + 1}/${chunks.length}, size: ${chunks[i].length}`);
       
-      // Last resort: return a safe empty structure
-      return { 
-        transactions: [
-          {
-            date: "2024-12-10",
-            description: "Análise falhada - adicione manualmente",
-            amount: 0,
-            type: "expense",
-            category: "Outros",
-            confidence: 0.5
-          }
-        ]
-      };
+      try {
+        const chunkTransactions = await processChunk(chunks[i], availableCategories);
+        allTransactions.push(...chunkTransactions);
+        console.log(`Chunk ${i + 1} processed: ${chunkTransactions.length} transactions`);
+      } catch (chunkError) {
+        console.error(`Error processing chunk ${i + 1}:`, chunkError);
+        // Continue with other chunks even if one fails
+      }
     }
+    
+    console.log("Total transactions found:", allTransactions.length);
+    
+    return {
+      transactions: allTransactions
+    };
+    
   } catch (error) {
     console.error("Error analyzing extract with AI:", error);
     throw new Error("Failed to analyze extract with AI");

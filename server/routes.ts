@@ -541,12 +541,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Extract text is required" });
       }
 
-      // Limit text size to prevent timeout issues
-      const limitedText = extractText.length > 8000 
-        ? extractText.substring(0, 8000) + "\n[texto truncado...]"
-        : extractText;
-
-      const result = await analyzeExtractWithAI(limitedText, availableCategories || []);
+      // Process large texts by splitting into chunks
+      const result = await analyzeExtractWithAI(extractText, availableCategories || []);
       res.json(result);
     } catch (error) {
       console.error("Error analyzing extract:", error);
