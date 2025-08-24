@@ -252,6 +252,7 @@ export class DatabaseStorage implements IStorage {
 
   // Get future commitments - transactions with pending installments + fixed expenses
   async getFutureCommitments(userId: string): Promise<any[]> {
+    console.log('=== DEBUG getFutureCommitments for user:', userId);
     
     // Get transactions with installments where paidInstallments < totalInstallments
     const commitmentTransactions = await db
@@ -299,6 +300,9 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(fixedExpenses.dueDay);
 
+    console.log('=== DEBUG installment transactions:', commitmentTransactions.length);
+    console.log('=== DEBUG fixed expenses:', fixedExpenseCommitments.length);
+
     // Process installment transactions
     const installmentCommitments = commitmentTransactions.map(commitment => {
       const installmentValue = commitment.totalValue && commitment.totalInstallments
@@ -330,7 +334,10 @@ export class DatabaseStorage implements IStorage {
     }));
 
     // Combine both types of commitments
-    return [...installmentCommitments, ...monthlyCommitments];
+    const combined = [...installmentCommitments, ...monthlyCommitments];
+    console.log('=== DEBUG combined commitments:', combined.length);
+    console.log('=== DEBUG combined data:', combined);
+    return combined;
   }
 
   // Fixed expense operations
