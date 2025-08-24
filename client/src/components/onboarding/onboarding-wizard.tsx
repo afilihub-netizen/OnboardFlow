@@ -103,28 +103,49 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
   // Get AI recommendations
   const getAIRecommendations = useMutation({
     mutationFn: async (data: OnboardingData) => {
+      console.log('Chamando API de análise...', data);
       const response = await apiRequest('POST', '/api/ai/onboarding-analysis', data);
-      return response.json();
+      const result = await response.json();
+      console.log('Resposta da API:', result);
+      return result;
     },
     onSuccess: (recommendations) => {
+      console.log('Recomendações recebidas:', recommendations);
       setAiRecommendations(recommendations);
       setIsAnalyzing(false);
-      // Automatically advance to next step after analysis is complete
-      setTimeout(() => {
-        setCurrentStep(5); // Move to setup step
-      }, 1500); // Give user time to see the results
     },
     onError: (error: any) => {
+      console.error('Erro na mutação:', error);
       toast({
         title: "Erro na análise",
         description: error.message || "Erro ao gerar recomendações.",
         variant: "destructive",
       });
       setIsAnalyzing(false);
-      // Even on error, advance to setup with fallback data
-      setTimeout(() => {
-        setCurrentStep(5);
-      }, 1000);
+      // Create fallback recommendations on error
+      const fallbackRecommendations = {
+        categories: [
+          { name: "Alimentação", icon: "🍔", budget: 800, description: "Gastos com supermercado e refeições" },
+          { name: "Transporte", icon: "🚗", budget: 400, description: "Combustível e transporte" },
+          { name: "Moradia", icon: "🏠", budget: 1200, description: "Aluguel e contas da casa" },
+          { name: "Lazer", icon: "🎯", budget: 300, description: "Entretenimento e diversão" }
+        ],
+        goals: [
+          { title: "Reserva de Emergência", target: 5000, timeframe: "12 meses", description: "Criar uma reserva para imprevistos" },
+          { title: "Viagem", target: 3000, timeframe: "8 meses", description: "Economizar para uma viagem" }
+        ],
+        tips: [
+          "Comece com pequenas economias diárias",
+          "Use a regra 50-30-20 para organizar sua renda",
+          "Automatize sua poupança"
+        ],
+        nextSteps: [
+          "Configure suas categorias",
+          "Cadastre suas transações",
+          "Defina suas metas"
+        ]
+      };
+      setAiRecommendations(fallbackRecommendations);
     }
   });
 
@@ -692,6 +713,11 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
                     <div className="flex items-center gap-2">
                       <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
                       Analisando...
+                    </div>
+                  ) : aiRecommendations ? (
+                    <div className="flex items-center gap-2">
+                      Continuar
+                      <ArrowRight className="w-4 h-4 ml-2" />
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
