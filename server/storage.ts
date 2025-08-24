@@ -225,7 +225,8 @@ export class DatabaseStorage implements IStorage {
 
   // Get recurring transactions for dashboard
   async getRecurringTransactions(userId: string): Promise<any[]> {
-    return await db
+    // Get recurring transactions
+    const recurringTransactions = await db
       .select({
         id: transactions.id,
         description: transactions.description,
@@ -234,6 +235,8 @@ export class DatabaseStorage implements IStorage {
         dueDay: transactions.dueDay,
         paymentMethod: transactions.paymentMethod,
         date: transactions.date,
+        totalInstallments: transactions.totalInstallments,
+        paidInstallments: transactions.paidInstallments,
         category: {
           id: categories.id,
           name: categories.name,
@@ -248,6 +251,36 @@ export class DatabaseStorage implements IStorage {
         eq(transactions.isRecurring, true)
       ))
       .orderBy(desc(transactions.createdAt));
+
+    // Get active fixed expenses
+    const activeFixedExpenses = await db
+      .select({
+        id: fixedExpenses.id,
+        description: fixedExpenses.name,
+        amount: fixedExpenses.amount,
+        type: sql`'expense'`.as('type'),
+        dueDay: fixedExpenses.dueDay,
+        paymentMethod: sql`'recurring'`.as('paymentMethod'),
+        date: fixedExpenses.createdAt,
+        totalInstallments: fixedExpenses.totalInstallments,
+        paidInstallments: fixedExpenses.paidInstallments,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          icon: categories.icon,
+          color: categories.color,
+        }
+      })
+      .from(fixedExpenses)
+      .leftJoin(categories, eq(fixedExpenses.categoryId, categories.id))
+      .where(and(
+        eq(fixedExpenses.userId, userId),
+        eq(fixedExpenses.isActive, true)
+      ))
+      .orderBy(fixedExpenses.dueDay);
+
+    // Combine both types
+    return [...recurringTransactions, ...activeFixedExpenses];
   }
 
   // Get future commitments - transactions with pending installments + fixed expenses
