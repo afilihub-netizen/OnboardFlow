@@ -6,7 +6,7 @@ import { useBusinessTheme } from "@/hooks/useBusinessTheme";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload, Crown, Building2, Users, Receipt, Package, Briefcase } from "lucide-react";
+import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload, Crown, Building2, Users, Receipt, Package, Briefcase, LogOut } from "lucide-react";
 
 const getNavigation = (isBusinessAccount: boolean) => {
   const baseNavigation = [
@@ -196,6 +196,17 @@ export function Sidebar() {
                   {toggleBusinessModeMutation.isPending ? 'Alterando...' : 
                    isBusinessAccount ? "Modo Individual" : "Modo Empresarial"}
                 </span>
+              </button>
+
+              <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+              
+              <button
+                onClick={() => window.location.href = '/api/logout'}
+                className="sidebar-item w-full text-left hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400"
+                data-testid="button-logout"
+              >
+                <LogOut className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300" />
+                <span>Sair</span>
               </button>
             </div>
           </div>
