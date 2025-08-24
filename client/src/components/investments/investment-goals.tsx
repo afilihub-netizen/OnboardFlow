@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Target, Plus, Edit, Trash2 } from "lucide-react";
+import { Target, Plus, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import useEmblaCarousel from 'embla-carousel-react';
 
 export function InvestmentGoals() {
   const { user } = useAuth();
@@ -17,6 +18,11 @@ export function InvestmentGoals() {
   const queryClient = useQueryClient();
   const [isNewGoalDialogOpen, setIsNewGoalDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<any>(null);
+  const [emblaRef, emblaApi] = useEmblaCarousel({ 
+    align: 'start',
+    containScroll: 'trimSnaps',
+    dragFree: true,
+  });
 
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
@@ -132,6 +138,14 @@ export function InvestmentGoals() {
 
   const investmentGoals = goals.filter(goal => !goal.categoryId); // Investment goals without specific category
 
+  const scrollPrev = () => {
+    if (emblaApi) emblaApi.scrollPrev();
+  };
+
+  const scrollNext = () => {
+    if (emblaApi) emblaApi.scrollNext();
+  };
+
   return (
     <Card className="financial-card">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -203,90 +217,119 @@ export function InvestmentGoals() {
             </Button>
           </div>
         ) : (
-          <div className="space-y-4">
-            {investmentGoals.map((goal) => {
-              const targetAmount = parseFloat(goal.targetAmount);
-              const currentAmount = 800; // This would come from actual investment data
-              const percentage = Math.min((currentAmount / targetAmount) * 100, 100);
-              
-              return (
-                <div key={goal.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-gray-900 dark:text-white">
-                      Meta Mensal de Investimento
-                    </h4>
-                    <div className="flex items-center space-x-2">
-                      <Dialog open={editingGoal?.id === goal.id} onOpenChange={(open) => setEditingGoal(open ? goal : null)}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" data-testid={`button-edit-goal-${goal.id}`}>
-                            <Edit className="w-4 h-4" />
+          <div className="relative">
+            {/* Navigation Buttons */}
+            {investmentGoals.length > 1 && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white dark:bg-gray-800 shadow-md"
+                  onClick={scrollPrev}
+                  data-testid="button-carousel-prev"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white dark:bg-gray-800 shadow-md"
+                  onClick={scrollNext}
+                  data-testid="button-carousel-next"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </>
+            )}
+
+            {/* Carousel Container */}
+            <div ref={emblaRef} className="overflow-hidden" data-testid="goals-carousel">
+              <div className="flex gap-4">
+                {investmentGoals.map((goal) => {
+                  const targetAmount = parseFloat(goal.targetAmount);
+                  const currentAmount = 800; // This would come from actual investment data
+                  const percentage = Math.min((currentAmount / targetAmount) * 100, 100);
+                  
+                  return (
+                    <div key={goal.id} className="flex-none w-80 border border-gray-200 dark:border-gray-700 rounded-lg p-4" data-testid={`goal-card-${goal.id}`}>
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
+                          Meta Mensal de Investimento
+                        </h4>
+                        <div className="flex items-center space-x-1">
+                          <Dialog open={editingGoal?.id === goal.id} onOpenChange={(open) => setEditingGoal(open ? goal : null)}>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="sm" data-testid={`button-edit-goal-${goal.id}`}>
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Editar Meta de Investimento</DialogTitle>
+                              </DialogHeader>
+                              <form onSubmit={handleUpdateGoal} className="space-y-4">
+                                <div>
+                                  <Label htmlFor="editTargetAmount">Valor da Meta</Label>
+                                  <Input
+                                    id="editTargetAmount"
+                                    name="targetAmount"
+                                    type="number"
+                                    step="0.01"
+                                    defaultValue={goal.targetAmount}
+                                    required
+                                    data-testid="input-edit-goal-amount"
+                                  />
+                                </div>
+                                <div className="flex justify-end space-x-2">
+                                  <Button type="button" variant="outline" onClick={() => setEditingGoal(null)}>
+                                    Cancelar
+                                  </Button>
+                                  <Button type="submit" disabled={updateGoalMutation.isPending}>
+                                    {updateGoalMutation.isPending ? "Salvando..." : "Salvar"}
+                                  </Button>
+                                </div>
+                              </form>
+                            </DialogContent>
+                          </Dialog>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteGoalMutation.mutate(goal.id)}
+                            disabled={deleteGoalMutation.isPending}
+                            data-testid={`button-delete-goal-${goal.id}`}
+                          >
+                            <Trash2 className="w-3 h-3" />
                           </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Editar Meta de Investimento</DialogTitle>
-                          </DialogHeader>
-                          <form onSubmit={handleUpdateGoal} className="space-y-4">
-                            <div>
-                              <Label htmlFor="editTargetAmount">Valor da Meta</Label>
-                              <Input
-                                id="editTargetAmount"
-                                name="targetAmount"
-                                type="number"
-                                step="0.01"
-                                defaultValue={goal.targetAmount}
-                                required
-                                data-testid="input-edit-goal-amount"
-                              />
-                            </div>
-                            <div className="flex justify-end space-x-2">
-                              <Button type="button" variant="outline" onClick={() => setEditingGoal(null)}>
-                                Cancelar
-                              </Button>
-                              <Button type="submit" disabled={updateGoalMutation.isPending}>
-                                {updateGoalMutation.isPending ? "Salvando..." : "Salvar"}
-                              </Button>
-                            </div>
-                          </form>
-                        </DialogContent>
-                      </Dialog>
+                        </div>
+                      </div>
                       
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => deleteGoalMutation.mutate(goal.id)}
-                        disabled={deleteGoalMutation.isPending}
-                        data-testid={`button-delete-goal-${goal.id}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="mb-4">
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className="text-gray-600 dark:text-gray-400">
+                            {formatCurrency(currentAmount)} / {formatCurrency(targetAmount)}
+                          </span>
+                          <span className="text-gray-600 dark:text-gray-400">{Math.round(percentage)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                          <div 
+                            className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+                            style={{ width: `${percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {currentAmount >= targetAmount 
+                          ? "🎉 Meta atingida!" 
+                          : `Faltam ${formatCurrency(targetAmount - currentAmount)} para atingir sua meta`
+                        }
+                      </p>
                     </div>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {formatCurrency(currentAmount)} / {formatCurrency(targetAmount)}
-                      </span>
-                      <span className="text-gray-600 dark:text-gray-400">{Math.round(percentage)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                      <div 
-                        className="bg-purple-500 h-2 rounded-full transition-all duration-300" 
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {currentAmount >= targetAmount 
-                      ? "🎉 Meta atingida!" 
-                      : `Faltam ${formatCurrency(targetAmount - currentAmount)} para atingir sua meta`
-                    }
-                  </p>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
       </CardContent>
