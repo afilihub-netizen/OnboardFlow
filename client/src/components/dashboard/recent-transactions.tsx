@@ -105,9 +105,9 @@ export function RecentTransactions() {
       <CardContent>
         <div className="space-y-4">
           {transactions?.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <p>Nenhuma transação encontrada.</p>
-              <p className="text-sm">Adicione sua primeira transação para começar.</p>
+            <div className="text-center py-8 text-gray-500 dark:text-gray-300">
+              <p className="text-gray-600 dark:text-gray-300">Nenhuma transação encontrada.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Adicione sua primeira transação para começar.</p>
             </div>
           ) : (
             transactions?.map((transaction: any, index: number) => {

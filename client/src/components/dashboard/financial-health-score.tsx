@@ -111,9 +111,9 @@ export function FinancialHealthScore() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            <p>Dados insuficientes para calcular o score.</p>
-            <p className="text-sm">Adicione mais transações para obter uma análise completa.</p>
+          <div className="text-center py-8 text-gray-500 dark:text-gray-300">
+            <p className="text-gray-600 dark:text-gray-300">Dados insuficientes para calcular o score.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Adicione mais transações para obter uma análise completa.</p>
           </div>
         </CardContent>
       </Card>

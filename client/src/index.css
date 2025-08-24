@@ -245,24 +245,39 @@
 }
 
 @layer utilities {
-  /* Skeleton improvements for dark mode */
-  .dark .skeleton {
-    @apply bg-gray-700;
+  /* Force better dark mode visibility */
+  .dark .text-gray-500 {
+    @apply text-gray-300 !important;
+  }
+  
+  .dark .text-gray-600 {
+    @apply text-gray-200 !important;
+  }
+  
+  .dark .bg-gray-100 {
+    @apply bg-gray-700 !important;
+  }
+  
+  .dark .bg-gray-200 {
+    @apply bg-gray-600 !important;
+  }
+  
+  .dark .border-gray-200 {
+    @apply border-gray-600 !important;
+  }
+  
+  .dark .border-gray-300 {
+    @apply border-gray-500 !important;
   }
 
-  /* Progress bar improvements */
-  .dark .progress-background {
-    @apply bg-gray-700;
-  }
-
-  /* Badge improvements */
-  .dark [data-testid*="badge"] {
-    @apply border-gray-600;
+  /* Better progress bars */
+  .dark [data-testid*="progress"] {
+    @apply bg-gray-700 !important;
   }
 
   /* Better text contrast */
   .dark .text-muted {
-    @apply text-gray-300;
+    @apply text-gray-300 !important;
   }
 
   .text-success {
