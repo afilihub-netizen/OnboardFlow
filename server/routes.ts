@@ -359,6 +359,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Change password endpoint (Note: Since we use Replit Auth, password changes should be done on Replit's platform)
+  app.post('/api/user/change-password', isAuthenticated, async (req: any, res) => {
+    try {
+      // Since we're using Replit OpenID Connect authentication,
+      // users don't have passwords stored in our system.
+      // Password changes should be done through Replit's account settings.
+      
+      res.status(400).json({ 
+        message: "Para alterar sua senha, acesse as configurações da sua conta Replit em replit.com/account." 
+      });
+      
+    } catch (error) {
+      console.error('Erro no endpoint de alteração de senha:', error);
+      res.status(500).json({ message: 'Erro interno do servidor' });
+    }
+  });
+
   // Category routes
   app.get("/api/categories", isAuthenticated, async (req: any, res) => {
     try {

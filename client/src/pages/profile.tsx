@@ -22,10 +22,12 @@ export default function Profile() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
   const [isNewMemberDialogOpen, setIsNewMemberDialogOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState('');
+  
 
   // Update local state when user data changes
   useEffect(() => {
@@ -88,6 +90,7 @@ export default function Profile() {
     },
   });
 
+
   const handleSaveProfile = () => {
     updateProfileMutation.mutate({
       firstName: firstName.trim(),
@@ -95,6 +98,7 @@ export default function Profile() {
       profileImageUrl,
     });
   };
+
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -300,14 +304,83 @@ export default function Profile() {
                   </span>
                 </div>
 
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full"
-                  data-testid="button-security-settings"
-                >
-                  Configurações de Segurança
-                </Button>
+                <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
+                      data-testid="button-security-settings"
+                    >
+                      Configurações de Segurança
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center">
+                        <Shield className="w-5 h-5 mr-2" />
+                        Configurações de Segurança
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                        <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+                          Alterar Senha
+                        </h4>
+                        <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                          Como você está usando a autenticação do Replit, para alterar sua senha 
+                          você precisa acessar as configurações da sua conta Replit.
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-600 dark:text-blue-300 dark:hover:bg-blue-800/50"
+                          onClick={() => window.open('https://replit.com/account', '_blank')}
+                          data-testid="button-replit-account"
+                        >
+                          Abrir Configurações do Replit
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-gray-900 dark:text-white">
+                          Informações de Segurança
+                        </h4>
+                        
+                        <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Autenticação</span>
+                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            Replit OAuth
+                          </Badge>
+                        </div>
+
+                        <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Último login</span>
+                          <span className="text-sm text-gray-900 dark:text-white">
+                            Agora
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between py-2">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Sessão ativa</span>
+                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            Segura
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsPasswordModalOpen(false)}
+                          data-testid="button-close-security"
+                        >
+                          Fechar
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </CardContent>
             </Card>
           </div>
