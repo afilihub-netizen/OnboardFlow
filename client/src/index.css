@@ -49,6 +49,14 @@
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
   --radius: 0.75rem;
+  
+  /* Business theme variables */
+  --business-primary: 27 100% 20%;
+  --business-primary-foreground: 0 0% 98%;
+  --business-secondary: 210 40% 95%;
+  --business-accent: 210 100% 50%;
+  --business-muted: 210 20% 94%;
+  --business-border: 210 20% 82%;
 }
 
 .dark {
@@ -312,4 +320,29 @@ canvas {
 
 .ai-insights-card:hover {
   @apply shadow-xl scale-[1.01] transition-all duration-200;
+}
+
+/* Business theme styling */
+.business-theme {
+  @apply text-slate-700;
+}
+
+.business-theme .financial-card {
+  @apply border-slate-200 shadow-sm;
+}
+
+.business-theme .sidebar-item.active {
+  @apply bg-slate-100 text-slate-800 border-r-2 border-slate-600;
+}
+
+.business-theme .gradient-card {
+  @apply bg-gradient-to-br from-slate-600 to-slate-800;
+}
+
+.business-theme header {
+  @apply bg-slate-50 border-slate-200;
+}
+
+.business-theme .business-header {
+  @apply bg-gradient-to-r from-slate-700 to-slate-800 text-white;
 }

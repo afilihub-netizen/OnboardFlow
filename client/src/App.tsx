@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { useAuth } from "@/hooks/useAuth";
+import { useBusinessTheme } from "@/hooks/useBusinessTheme";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
@@ -19,6 +20,9 @@ import Subscription from "@/pages/subscription";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  
+  // Initialize business theme
+  useBusinessTheme();
 
   return (
     <Switch>

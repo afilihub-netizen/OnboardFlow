@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useBusinessTheme } from "@/hooks/useBusinessTheme";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -13,10 +14,13 @@ import { AIInsights } from "@/components/dashboard/ai-insights";
 import { FixedExpenses } from "@/components/dashboard/fixed-expenses";
 import { MonthlyGoalsNotifications } from "@/components/dashboard/monthly-goals-notifications";
 import { AIAssistant } from "@/components/ai/ai-assistant";
+import { BusinessMetrics } from "@/components/business/business-metrics";
+import { BusinessDashboardHeader } from "@/components/business/business-dashboard-header";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { isBusinessAccount, companyName } = useBusinessTheme();
   const [isAIMinimized, setIsAIMinimized] = useState(true);
 
   // Redirect to login if not authenticated
@@ -44,11 +48,17 @@ export default function Dashboard() {
       
       <main className="flex-1 overflow-auto">
         <Header 
-          title="Dashboard" 
-          subtitle="Visão geral das suas finanças" 
+          title={isBusinessAccount ? "Painel Corporativo" : "Dashboard"} 
+          subtitle={isBusinessAccount ? "Controle financeiro empresarial" : "Visão geral das suas finanças"} 
         />
         
         <div className="p-6 space-y-6">
+          {/* Business Header (only for business accounts) */}
+          {isBusinessAccount && <BusinessDashboardHeader />}
+          
+          {/* Business Metrics (only for business accounts) */}
+          {isBusinessAccount && <BusinessMetrics />}
+          
           {/* Monthly Goals Notifications */}
           <MonthlyGoalsNotifications />
           

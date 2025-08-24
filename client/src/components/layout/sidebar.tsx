@@ -2,24 +2,44 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/ui/theme-provider";
+import { useBusinessTheme } from "@/hooks/useBusinessTheme";
 import { useQuery } from "@tanstack/react-query";
-import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload, Crown } from "lucide-react";
+import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload, Crown, Building2, Users, Receipt, Package } from "lucide-react";
 
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: Home },
-  { name: 'Lançamentos', href: '/transactions', icon: ArrowLeftRight },
-  { name: 'Investimentos', href: '/investments', icon: PieChart },
-  { name: 'Metas', href: '/goals', icon: Target },
-  { name: 'Importação', href: '/import', icon: Upload },
-  { name: 'Relatórios', href: '/reports', icon: FileText },
-  { name: 'Categorias', href: '/categories', icon: Tags },
-  { name: 'Premium', href: '/subscription', icon: Crown },
-];
+const getNavigation = (isBusinessAccount: boolean) => {
+  const baseNavigation = [
+    { name: isBusinessAccount ? 'Painel' : 'Dashboard', href: '/', icon: Home },
+    { name: isBusinessAccount ? 'Movimentações' : 'Lançamentos', href: '/transactions', icon: ArrowLeftRight },
+    { name: 'Investimentos', href: '/investments', icon: PieChart },
+    { name: isBusinessAccount ? 'Orçamentos' : 'Metas', href: '/goals', icon: Target },
+    { name: 'Importação', href: '/import', icon: Upload },
+    { name: 'Relatórios', href: '/reports', icon: FileText },
+    { name: 'Categorias', href: '/categories', icon: Tags },
+  ];
+
+  if (isBusinessAccount) {
+    return [
+      ...baseNavigation,
+      { name: 'Fornecedores', href: '/suppliers', icon: Building2 },
+      { name: 'Departamentos', href: '/departments', icon: Users },
+      { name: 'Notas Fiscais', href: '/invoices', icon: Receipt },
+      { name: 'Premium', href: '/subscription', icon: Crown },
+    ];
+  }
+
+  return [
+    ...baseNavigation,
+    { name: 'Premium', href: '/subscription', icon: Crown },
+  ];
+};
 
 export function Sidebar() {
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
+  const { isBusinessAccount } = useBusinessTheme();
   const [isOpen, setIsOpen] = useState(false);
+  
+  const navigation = getNavigation(isBusinessAccount);
 
   // Get current month dates
   const currentDate = new Date();
