@@ -3,7 +3,9 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/ui/theme-provider";
 import { useBusinessTheme } from "@/hooks/useBusinessTheme";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload, Crown, Building2, Users, Receipt, Package, Briefcase } from "lucide-react";
 
 const getNavigation = (isBusinessAccount: boolean) => {
@@ -36,10 +38,40 @@ const getNavigation = (isBusinessAccount: boolean) => {
 export function Sidebar() {
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
-  const { isBusinessAccount, isBusinessThemeActive, manualBusinessMode, toggleBusinessMode } = useBusinessTheme();
+  const { isBusinessAccount } = useBusinessTheme();
   const [isOpen, setIsOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const navigation = getNavigation(isBusinessAccount);
+
+  // Mutation to toggle business mode
+  const toggleBusinessModeMutation = useMutation({
+    mutationFn: async () => {
+      const newAccountType = isBusinessAccount ? 'individual' : 'business';
+      const response = await apiRequest("PATCH", "/api/user/profile", {
+        accountType: newAccountType
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: isBusinessAccount ? "Modo Individual ativado" : "Modo Empresarial ativado",
+        description: isBusinessAccount 
+          ? "Você está agora no sistema pessoal/familiar." 
+          : "Você está agora no sistema empresarial.",
+      });
+      // Invalidate user data to refresh the interface
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao alterar modo do sistema.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Get current month dates
   const currentDate = new Date();
@@ -212,16 +244,18 @@ export function Sidebar() {
               </button>
 
               <button
-                onClick={toggleBusinessMode}
+                onClick={() => toggleBusinessModeMutation.mutate()}
                 className="sidebar-item w-full text-left"
                 data-testid="button-business-mode-toggle"
+                disabled={toggleBusinessModeMutation.isPending}
               >
                 <Briefcase className={cn(
                   "w-5 h-5 sidebar-icon",
-                  isBusinessThemeActive ? "text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-300"
+                  isBusinessAccount ? "text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-300"
                 )} />
-                <span className={isBusinessThemeActive ? "text-blue-600 dark:text-blue-400 font-medium" : ""}>
-                  Modo Empresarial
+                <span className={isBusinessAccount ? "text-blue-600 dark:text-blue-400 font-medium" : ""}>
+                  {toggleBusinessModeMutation.isPending ? 'Alterando...' : 
+                   isBusinessAccount ? "Modo Individual" : "Modo Empresarial"}
                 </span>
               </button>
             </div>
