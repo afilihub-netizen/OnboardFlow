@@ -33,6 +33,8 @@ export default function Import() {
   const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState("");
 
   // Fetch categories for mapping
   const { data: categories = [] } = useQuery({
@@ -141,6 +143,28 @@ export default function Import() {
     }
   };
 
+  // Function to connect to SSE for progress tracking
+  const connectToProgressStream = (sessionId: string) => {
+    const eventSource = new EventSource(`/api/analyze-extract-progress/${sessionId}`);
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setAnalysisProgress(data.progress);
+        setProgressMessage(data.message);
+      } catch (error) {
+        console.error("Error parsing SSE data:", error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error("SSE connection error:", error);
+      eventSource.close();
+    };
+
+    return eventSource;
+  };
+
   const analyzeExtractWithAI = async () => {
     if (!extractText.trim()) {
       toast({
@@ -153,6 +177,14 @@ export default function Import() {
 
     setIsAnalyzing(true);
     setCurrentStep(2);
+    setAnalysisProgress(0);
+    setProgressMessage("Iniciando análise...");
+
+    // Generate unique session ID for progress tracking
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Connect to progress stream
+    const eventSource = connectToProgressStream(sessionId);
 
     try {
       // Call OpenAI API to analyze the bank statement
@@ -161,7 +193,8 @@ export default function Import() {
         credentials: 'include',
         body: JSON.stringify({ 
           extractText,
-          availableCategories: categories.map((cat: any) => cat.name)
+          availableCategories: categories.map((cat: any) => cat.name),
+          sessionId
         }),
         headers: { "Content-Type": "application/json" },
       });
@@ -187,7 +220,10 @@ export default function Import() {
       });
       setCurrentStep(1);
     } finally {
+      eventSource.close();
       setIsAnalyzing(false);
+      setAnalysisProgress(0);
+      setProgressMessage("");
     }
   };
 
@@ -341,8 +377,17 @@ export default function Import() {
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
                   A IA está identificando e categorizando suas transações
                 </p>
-                <div className="w-64 mx-auto">
-                  <Progress value={85} className="h-3" />
+                <div className="w-96 mx-auto space-y-4">
+                  <div className="flex justify-between text-sm">
+                    <span>Progresso da análise</span>
+                    <span>{analysisProgress}%</span>
+                  </div>
+                  <Progress value={analysisProgress} className="h-3" data-testid="progress-analysis" />
+                  {progressMessage && (
+                    <p className="text-sm text-muted-foreground mt-2" data-testid="text-progress-message">
+                      {progressMessage}
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

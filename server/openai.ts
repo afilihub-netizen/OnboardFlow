@@ -152,18 +152,49 @@ JSON: {"transactions":[...TODAS as transações encontradas...]}`
   }
 }
 
-export async function analyzeExtractWithAI(extractText: string, availableCategories: string[] = []) {
+// Function to send progress updates
+function sendProgressUpdate(sessionId: string, progress: number, message: string, extractProgressSessions: Map<string, any>) {
+  const res = extractProgressSessions.get(sessionId);
+  if (res && !res.destroyed) {
+    try {
+      res.write(`data: ${JSON.stringify({ progress, message })}\n\n`);
+    } catch (error) {
+      console.error("Error sending progress update:", error);
+    }
+  }
+}
+
+export async function analyzeExtractWithAI(extractText: string, availableCategories: string[] = [], sessionId?: string) {
   try {
     console.log("Processing extract with length:", extractText.length);
+    
+    // Import session map for progress updates
+    let extractProgressSessions: Map<string, any> = new Map();
+    try {
+      const routesModule = require('./routes');
+      extractProgressSessions = routesModule.extractProgressSessions;
+    } catch (error) {
+      console.log("Could not import progress sessions map");
+    }
     
     // Split large texts into chunks
     const chunks = splitTextIntoChunks(extractText, 6000);
     console.log("Split into", chunks.length, "chunks");
     
+    if (sessionId) {
+      sendProgressUpdate(sessionId, 10, `Dividido em ${chunks.length} partes para análise`, extractProgressSessions);
+    }
+    
     const allTransactions: any[] = [];
     
     // Process each chunk
     for (let i = 0; i < chunks.length; i++) {
+      const progress = 10 + ((i / chunks.length) * 80);
+      
+      if (sessionId) {
+        sendProgressUpdate(sessionId, progress, `Analisando parte ${i + 1} de ${chunks.length}...`, extractProgressSessions);
+      }
+      
       console.log(`Processing chunk ${i + 1}/${chunks.length}, size: ${chunks[i].length}`);
       
       try {
@@ -176,7 +207,15 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
       }
     }
     
+    if (sessionId) {
+      sendProgressUpdate(sessionId, 95, "Finalizando análise...", extractProgressSessions);
+    }
+    
     console.log("Total transactions found:", allTransactions.length);
+    
+    if (sessionId) {
+      sendProgressUpdate(sessionId, 100, `Análise concluída! ${allTransactions.length} transações encontradas`, extractProgressSessions);
+    }
     
     return {
       transactions: allTransactions

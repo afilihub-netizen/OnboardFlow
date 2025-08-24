@@ -15,6 +15,9 @@ import {
 import { z } from "zod";
 import multer from "multer";
 
+// Store SSE connections for progress tracking
+export const extractProgressSessions = new Map<string, any>();
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -535,19 +538,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Extract analysis route
   app.post("/api/analyze-extract", isAuthenticated, async (req: any, res) => {
     try {
-      const { extractText, availableCategories } = req.body;
+      const { extractText, availableCategories, sessionId } = req.body;
       
       if (!extractText || typeof extractText !== 'string') {
         return res.status(400).json({ message: "Extract text is required" });
       }
 
-      // Process large texts by splitting into chunks
-      const result = await analyzeExtractWithAI(extractText, availableCategories || []);
+      // Process large texts by splitting into chunks with progress tracking
+      const result = await analyzeExtractWithAI(extractText, availableCategories || [], sessionId);
       res.json(result);
     } catch (error) {
       console.error("Error analyzing extract:", error);
       res.status(500).json({ message: "Failed to analyze extract" });
     }
+  });
+
+  // SSE endpoint for extract analysis progress
+  app.get("/api/analyze-extract-progress/:sessionId", isAuthenticated, (req: any, res) => {
+    const sessionId = req.params.sessionId;
+    
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+    });
+
+    // Store the response object for this session
+    extractProgressSessions.set(sessionId, res);
+
+    // Send initial progress
+    res.write(`data: ${JSON.stringify({ progress: 0, message: "Iniciando análise..." })}\n\n`);
+
+    // Clean up on client disconnect
+    req.on('close', () => {
+      extractProgressSessions.delete(sessionId);
+      res.end();
+    });
   });
 
   // Generate AI insights endpoint
