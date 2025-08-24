@@ -160,43 +160,90 @@ EXEMPLO COMPLETO:
     const result = JSON.parse(content);
     let transactions = result.transactions || [];
     
+    console.log("Raw transactions before normalization:", transactions.slice(0, 2));
+    
     // Normalize and validate transaction data
-    transactions = transactions.map((t: any) => {
-      // Normalize field names (handle case variations)
-      const normalized: any = {
-        date: t.date || t.Date || t.DATA || "2024-01-01",
-        description: t.description || t.Description || t.DESCRIPTION || "Transação sem descrição",
-        amount: parseFloat(t.amount || t.Amount || t.AMOUNT || t.valor || t.VALOR || 0),
-        type: (t.type || t.Type || t.TYPE || "expense").toLowerCase(),
-        category: t.category || t.Category || t.CATEGORY || "Outros"
-      };
+    transactions = transactions.map((t: any, index: number) => {
+      // Get raw values from all possible field names
+      const rawDate = t.date || t.Date || t.DATA || t.d || "";
+      const rawDescription = t.description || t.Description || t.DESCRIPTION || t.desc || "Transação";
+      const rawAmount = t.amount || t.Amount || t.AMOUNT || t.valor || t.VALOR || t.value || 0;
+      const rawType = t.type || t.Type || t.TYPE || t.t || "expense";
+      const rawCategory = t.category || t.Category || t.CATEGORY || t.cat || "Outros";
       
-      // Validate and fix date format
-      if (!normalized.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        // Try to parse common date formats
-        const dateStr = normalized.date.toString();
-        if (dateStr.includes('/')) {
+      // Parse amount properly
+      let parsedAmount = 0;
+      if (typeof rawAmount === 'string') {
+        // Remove currency symbols and spaces
+        const cleanAmount = rawAmount.replace(/[R$\s,]/g, '').replace(',', '.');
+        parsedAmount = parseFloat(cleanAmount) || 0;
+      } else {
+        parsedAmount = parseFloat(rawAmount) || 0;
+      }
+      
+      // Parse date properly
+      let parsedDate = "2024-12-10";
+      if (rawDate && rawDate !== "") {
+        const dateStr = rawDate.toString().trim();
+        
+        // Try different date formats
+        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          parsedDate = dateStr;
+        } else if (dateStr.includes('/')) {
           const parts = dateStr.split('/');
           if (parts.length === 3) {
-            const day = parts[0].padStart(2, '0');
-            const month = parts[1].padStart(2, '0');
-            const year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
-            normalized.date = `${year}-${month}-${day}`;
+            let day = parts[0].padStart(2, '0');
+            let month = parts[1].padStart(2, '0');
+            let year = parts[2];
+            
+            // Handle different date formats (DD/MM/YYYY or MM/DD/YYYY)
+            if (parts[2].length === 4) {
+              year = parts[2];
+            } else if (parts[2].length === 2) {
+              year = '20' + parts[2];
+            }
+            
+            // Assume DD/MM/YYYY format for Brazil
+            if (parseInt(day) > 12) {
+              parsedDate = `${year}-${month}-${day}`;
+            } else {
+              parsedDate = `${year}-${month}-${day}`;
+            }
           }
-        } else {
-          normalized.date = "2024-12-10"; // fallback
+        } else if (dateStr.includes('-')) {
+          // Already in some ISO format, try to fix
+          parsedDate = dateStr.length >= 10 ? dateStr.substring(0, 10) : "2024-12-10";
         }
       }
       
-      // Ensure type is valid
-      if (!['income', 'expense'].includes(normalized.type)) {
-        normalized.type = normalized.amount >= 0 ? 'income' : 'expense';
+      // Normalize type
+      let normalizedType = rawType.toString().toLowerCase();
+      if (!['income', 'expense'].includes(normalizedType)) {
+        normalizedType = parsedAmount >= 0 ? 'income' : 'expense';
       }
       
+      const normalized = {
+        date: parsedDate,
+        description: rawDescription.toString().trim() || `Transação ${index + 1}`,
+        amount: parsedAmount,
+        type: normalizedType,
+        category: rawCategory.toString().trim() || "Outros"
+      };
+      
+      console.log(`Transaction ${index + 1} normalized:`, normalized);
       return normalized;
     });
     
-    console.log(`Chunk parsed: ${transactions.length} transactions extracted and normalized`);
+    // Filter out invalid transactions
+    transactions = transactions.filter(t => 
+      t.date && 
+      t.date !== "Invalid Date" && 
+      !isNaN(t.amount) && 
+      t.description && 
+      t.description !== ""
+    );
+    
+    console.log(`Chunk parsed: ${transactions.length} valid transactions extracted and normalized`);
     return transactions;
   } catch (parseError) {
     console.error("JSON parse failed for chunk:", parseError);
