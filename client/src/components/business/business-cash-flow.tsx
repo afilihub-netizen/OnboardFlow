@@ -39,19 +39,19 @@ export function BusinessCashFlow() {
           <DollarSign className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-slate-800">Fluxo de Caixa Empresarial</h3>
-          <p className="text-sm text-slate-600">{companyName} • Últimos 7 meses</p>
+          <h3 className="text-2xl font-bold text-slate-800 tracking-tight">Fluxo de Caixa Empresarial</h3>
+          <p className="text-sm text-slate-600 font-medium mt-1">{companyName} • Últimos 7 meses</p>
         </div>
       </div>
 
       {/* Cards de Resumo */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-green-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Entradas</p>
-                <p className="text-2xl font-bold text-green-600">
+        <Card className="border-l-4 border-green-500 shadow-lg">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-sm text-slate-600 font-medium uppercase tracking-wide mb-2">Entradas</p>
+                <p className="text-3xl font-bold text-green-600 tracking-tight">
                   R$ {(currentMonth.entrada / 1000).toFixed(0)}k
                 </p>
               </div>
@@ -60,12 +60,12 @@ export function BusinessCashFlow() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-red-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Saídas</p>
-                <p className="text-2xl font-bold text-red-600">
+        <Card className="border-l-4 border-red-500 shadow-lg">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-sm text-slate-600 font-medium uppercase tracking-wide mb-2">Saídas</p>
+                <p className="text-3xl font-bold text-red-600 tracking-tight">
                   R$ {(currentMonth.saida / 1000).toFixed(0)}k
                 </p>
               </div>
@@ -74,12 +74,12 @@ export function BusinessCashFlow() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-blue-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Saldo Atual</p>
-                <p className="text-2xl font-bold text-blue-600">
+        <Card className="border-l-4 border-blue-500 shadow-lg">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-sm text-slate-600 font-medium uppercase tracking-wide mb-2">Saldo Atual</p>
+                <p className="text-3xl font-bold text-blue-600 tracking-tight">
                   R$ {(currentMonth.saldo / 1000).toFixed(0)}k
                 </p>
               </div>

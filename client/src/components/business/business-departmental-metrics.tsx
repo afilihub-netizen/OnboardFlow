@@ -74,8 +74,8 @@ export function BusinessDepartmentalMetrics() {
           <Building className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-slate-800">Orçamento por Departamento</h3>
-          <p className="text-sm text-slate-600">{companyName} • Janeiro 2025</p>
+          <h3 className="text-2xl font-bold text-slate-800 tracking-tight">Orçamento por Departamento</h3>
+          <p className="text-sm text-slate-600 font-medium mt-1">{companyName} • Janeiro 2025</p>
         </div>
       </div>
 
@@ -100,13 +100,13 @@ export function BusinessDepartmentalMetrics() {
               <CardContent className="space-y-4">
                 {/* Orçamento vs Gasto */}
                 <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-slate-600">Orçamento</span>
-                    <span className="font-medium text-slate-800">{dept.budget}</span>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-sm text-slate-600 font-medium">Orçamento</span>
+                    <span className="text-lg font-bold text-slate-800 tracking-tight">{dept.budget}</span>
                   </div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-slate-600">Gasto</span>
-                    <span className="font-medium text-slate-800">{dept.spent}</span>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-sm text-slate-600 font-medium">Gasto</span>
+                    <span className="text-lg font-bold text-slate-800 tracking-tight">{dept.spent}</span>
                   </div>
                   
                   {/* Progress Bar */}
@@ -120,21 +120,21 @@ export function BusinessDepartmentalMetrics() {
                     ></div>
                   </div>
                   
-                  <div className="text-xs text-slate-500 text-center">
+                  <div className="text-xs text-slate-500 text-center font-medium">
                     {dept.percentage}% do orçamento utilizado
                   </div>
                 </div>
 
                 {/* Métricas do Departamento */}
-                <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                <div className="flex justify-between items-center pt-4 border-t border-gray-100">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm text-slate-600">{dept.employees} funcionários</span>
+                    <span className="text-sm text-slate-600 font-medium">{dept.employees} funcionários</span>
                   </div>
                   
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-green-500" />
-                    <Badge className="bg-green-100 text-green-700 text-xs">
+                    <Badge className="bg-green-100 text-green-700 text-xs font-semibold px-2 py-1">
                       {dept.performance}
                     </Badge>
                   </div>

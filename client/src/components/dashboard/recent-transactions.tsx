@@ -84,10 +84,10 @@ export function RecentTransactions() {
   };
 
   return (
-    <Card className="financial-card">
-      <CardHeader>
+    <Card className="modern-card shadow-lg">
+      <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-3 text-xl font-bold text-gray-900 dark:text-white">
             <Activity className="w-5 h-5 text-green-600" />
             Transações Recentes
           </CardTitle>
@@ -116,34 +116,31 @@ export function RecentTransactions() {
               return (
                 <div 
                   key={transaction.id} 
-                  className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200 border border-transparent hover:border-gray-200 dark:hover:border-gray-600"
                   data-testid={`transaction-item-${index}`}
                 >
                   <div className="flex items-center space-x-4">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getCategoryColor(transaction.type)}`}>
-                      <Icon className="w-5 h-5" />
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${getCategoryColor(transaction.type)}`}>
+                      <Icon className="w-6 h-6" />
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white" data-testid={`transaction-description-${index}`}>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900 dark:text-white leading-tight" data-testid={`transaction-description-${index}`}>
                         {transaction.description}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400" data-testid={`transaction-date-${index}`}>
-                        {formatDate(transaction.date)}
+                      <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1" data-testid={`transaction-date-${index}`}>
+                        {formatDate(transaction.date)} • {getPaymentMethodLabel(transaction.paymentMethod)}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`} data-testid={`transaction-amount-${index}`}>
+                    <p className={`text-lg font-bold tracking-tight ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`} data-testid={`transaction-amount-${index}`}>
                       {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                     </p>
                     {transaction.totalInstallments && transaction.paidInstallments !== undefined && (
-                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                      <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mt-1">
                         {transaction.paidInstallments}/{transaction.totalInstallments} parcelas
                       </p>
                     )}
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {getPaymentMethodLabel(transaction.paymentMethod)}
-                    </p>
                   </div>
                 </div>
               );

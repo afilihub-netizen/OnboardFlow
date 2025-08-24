@@ -80,8 +80,8 @@ export function BusinessSuppliersWidget() {
           <Truck className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-slate-800">Fornecedores Principais</h3>
-          <p className="text-sm text-slate-600">{companyName} • Últimos 30 dias</p>
+          <h3 className="text-2xl font-bold text-slate-800 tracking-tight">Fornecedores Principais</h3>
+          <p className="text-sm text-slate-600 font-medium mt-1">{companyName} • Últimos 30 dias</p>
         </div>
       </div>
 
@@ -115,18 +115,18 @@ export function BusinessSuppliersWidget() {
               <CardContent className="space-y-4">
                 {/* Valor Total */}
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">Valor Total</span>
-                  <span className="text-lg font-bold text-slate-800">{supplier.totalValue}</span>
+                  <span className="text-sm text-slate-600 font-medium">Valor Total</span>
+                  <span className="text-xl font-bold text-slate-800 tracking-tight">{supplier.totalValue}</span>
                 </div>
 
                 {/* Avaliação */}
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Avaliação</span>
+                  <span className="text-sm text-slate-600 font-medium">Avaliação</span>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1">
                       {renderStars(supplier.rating)}
                     </div>
-                    <span className="text-sm font-medium text-slate-700">{supplier.rating}</span>
+                    <span className="text-sm font-semibold text-slate-700">{supplier.rating}</span>
                   </div>
                 </div>
 

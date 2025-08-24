@@ -130,9 +130,9 @@ export function FinancialHealthScore() {
   };
 
   return (
-    <Card className="financial-card">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <Card className="modern-card shadow-lg">
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-3 text-xl font-bold text-gray-900 dark:text-white">
           <Shield className="w-5 h-5 text-blue-600" />
           Score de Saúde Financeira
         </CardTitle>
@@ -140,17 +140,17 @@ export function FinancialHealthScore() {
       <CardContent className="space-y-6">
         {/* Main Score Display */}
         <div className="text-center">
-          <div className="relative inline-flex items-center justify-center">
-            <div className={`text-4xl font-bold ${getScoreColor(healthData.score)}`} data-testid="health-score">
+          <div className="relative inline-flex items-center justify-center mb-4">
+            <div className={`text-5xl font-bold tracking-tight ${getScoreColor(healthData.score)}`} data-testid="health-score">
               {healthData.score}
             </div>
-            <span className="text-lg text-gray-500 dark:text-gray-400 ml-1">/100</span>
+            <span className="text-xl text-gray-500 dark:text-gray-400 ml-2 font-medium">/100</span>
           </div>
-          <div className="flex items-center justify-center gap-2 mt-2 mb-4">
+          <div className="flex items-center justify-center gap-3 mb-6">
             {getLevelIcon(healthData.level)}
             <Badge 
               variant="outline" 
-              className={`${getScoreColor(healthData.score)} border-current`}
+              className={`${getScoreColor(healthData.score)} border-current px-3 py-1 text-sm font-semibold`}
               data-testid="health-level"
             >
               {healthData.level}
@@ -164,8 +164,8 @@ export function FinancialHealthScore() {
         </div>
 
         {/* Metrics Breakdown */}
-        <div className="space-y-4">
-          <h4 className="font-semibold text-gray-900 dark:text-white">Análise Detalhada</h4>
+        <div className="space-y-6">
+          <h4 className="text-lg font-bold text-gray-900 dark:text-white">Análise Detalhada</h4>
           
           {/* Income vs Expenses */}
           <div className="space-y-2">

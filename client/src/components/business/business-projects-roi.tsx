@@ -109,8 +109,8 @@ export function BusinessProjectsROI() {
             <FolderOpen className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-slate-800">ROI por Projeto</h3>
-            <p className="text-sm text-slate-600">{companyName} • Análise de investimentos</p>
+            <h3 className="text-2xl font-bold text-slate-800 tracking-tight">ROI por Projeto</h3>
+            <p className="text-sm text-slate-600 font-medium mt-1">{companyName} • Análise de investimentos</p>
           </div>
         </div>
 
@@ -127,12 +127,12 @@ export function BusinessProjectsROI() {
 
       {/* Resumo Financeiro */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-l-4 border-blue-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Investimento Total</p>
-                <p className="text-2xl font-bold text-slate-800">
+        <Card className="border-l-4 border-blue-500 shadow-lg">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-sm text-slate-600 font-medium uppercase tracking-wide mb-2">Investimento Total</p>
+                <p className="text-3xl font-bold text-slate-800 tracking-tight">
                   R$ {(totalInvestment / 1000).toFixed(0)}k
                 </p>
               </div>
@@ -141,12 +141,12 @@ export function BusinessProjectsROI() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-green-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Retorno Atual</p>
-                <p className="text-2xl font-bold text-green-600">
+        <Card className="border-l-4 border-green-500 shadow-lg">
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-sm text-slate-600 font-medium uppercase tracking-wide mb-2">Retorno Atual</p>
+                <p className="text-3xl font-bold text-green-600 tracking-tight">
                   R$ {(totalReturn / 1000).toFixed(0)}k
                 </p>
               </div>

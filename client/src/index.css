@@ -441,6 +441,43 @@ canvas {
   @apply text-slate-800;
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   min-height: 100vh;
+  font-feature-settings: "cv01", "cv03", "cv04", "cv11";
+}
+
+/* Modern financial card styling */
+.modern-card {
+  @apply border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+}
+
+.modern-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Typography improvements */
+.modern-title {
+  @apply text-2xl font-bold tracking-tight;
+  font-feature-settings: "cv01", "cv03", "cv04", "cv11";
+  line-height: 1.2;
+}
+
+.modern-subtitle {
+  @apply text-sm font-medium;
+  font-feature-settings: "cv01", "cv03", "cv04", "cv11";
+}
+
+.modern-value {
+  @apply text-xl font-bold tracking-tight;
+  font-feature-settings: "tnum", "lnum";
+  line-height: 1.1;
+}
+
+.modern-large-value {
+  @apply text-3xl font-bold tracking-tight;
+  font-feature-settings: "tnum", "lnum";
+  line-height: 1;
 }
 
 .business-theme .financial-card {

@@ -57,85 +57,85 @@ export function FinancialOverview() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {/* Balance Card */}
-      <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
+      <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
         <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-blue-100 text-sm font-medium">Saldo Total</p>
-              <p className="text-2xl font-bold" data-testid="balance-total">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex-1">
+              <p className="text-blue-100 text-sm font-medium uppercase tracking-wide mb-3">Saldo Total</p>
+              <p className="text-3xl font-bold tracking-tight leading-none" data-testid="balance-total">
                 {formatCurrency(balance)}
               </p>
             </div>
-            <div className="bg-blue-400 bg-opacity-30 rounded-lg p-3">
+            <div className="bg-blue-400/30 rounded-xl p-3 backdrop-blur-sm">
               <Wallet className="w-6 h-6" />
             </div>
           </div>
-          <div className="flex items-center text-blue-100 text-sm">
-            <TrendingUp className="w-4 h-4 mr-1" />
-            <span>+{balanceChange}% este mês</span>
+          <div className="flex items-center text-blue-100 text-sm font-medium">
+            <TrendingUp className="w-4 h-4 mr-2" />
+            <span>+{balanceChange.toFixed(1)}% este mês</span>
           </div>
         </CardContent>
       </Card>
 
       {/* Income Card */}
-      <Card className="financial-card">
+      <Card className="modern-card shadow-lg">
         <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Receitas</p>
-              <p className="text-2xl font-bold text-green-600" data-testid="income-total">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex-1">
+              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium uppercase tracking-wide mb-3">Receitas</p>
+              <p className="text-3xl font-bold text-green-600 tracking-tight leading-none" data-testid="income-total">
                 {formatCurrency(totalIncome)}
               </p>
             </div>
-            <div className="bg-green-100 dark:bg-green-900 rounded-lg p-3">
+            <div className="bg-green-100 dark:bg-green-900 rounded-xl p-3">
               <TrendingUp className="w-6 h-6 text-green-600" />
             </div>
           </div>
-          <div className="flex items-center text-green-600 text-sm">
-            <TrendingUp className="w-4 h-4 mr-1" />
-            <span>+{incomeChange}% vs mês anterior</span>
+          <div className="flex items-center text-green-600 text-sm font-medium">
+            <TrendingUp className="w-4 h-4 mr-2" />
+            <span>+{incomeChange.toFixed(1)}% vs mês anterior</span>
           </div>
         </CardContent>
       </Card>
 
       {/* Expenses Card */}
-      <Card className="financial-card">
+      <Card className="modern-card shadow-lg">
         <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Gastos</p>
-              <p className="text-2xl font-bold text-red-600" data-testid="expenses-total">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex-1">
+              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium uppercase tracking-wide mb-3">Gastos</p>
+              <p className="text-3xl font-bold text-red-600 tracking-tight leading-none" data-testid="expenses-total">
                 {formatCurrency(totalExpenses)}
               </p>
             </div>
-            <div className="bg-red-100 dark:bg-red-900 rounded-lg p-3">
+            <div className="bg-red-100 dark:bg-red-900 rounded-xl p-3">
               <TrendingDown className="w-6 h-6 text-red-600" />
             </div>
           </div>
-          <div className="flex items-center text-red-600 text-sm">
-            <TrendingDown className="w-4 h-4 mr-1" />
-            <span>{expenseChange}% vs mês anterior</span>
+          <div className="flex items-center text-red-600 text-sm font-medium">
+            <TrendingDown className="w-4 h-4 mr-2" />
+            <span>{expenseChange.toFixed(1)}% vs mês anterior</span>
           </div>
         </CardContent>
       </Card>
 
       {/* Investments Card */}
-      <Card className="financial-card">
+      <Card className="modern-card shadow-lg">
         <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Investimentos</p>
-              <p className="text-2xl font-bold text-purple-600" data-testid="investments-total">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex-1">
+              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium uppercase tracking-wide mb-3">Investimentos</p>
+              <p className="text-3xl font-bold text-purple-600 tracking-tight leading-none" data-testid="investments-total">
                 {formatCurrency(investmentValue)}
               </p>
             </div>
-            <div className="bg-purple-100 dark:bg-purple-900 rounded-lg p-3">
+            <div className="bg-purple-100 dark:bg-purple-900 rounded-xl p-3">
               <PieChart className="w-6 h-6 text-purple-600" />
             </div>
           </div>
-          <div className="flex items-center text-purple-600 text-sm">
-            <TrendingUp className="w-4 h-4 mr-1" />
-            <span>+{investmentChange}% rendimento</span>
+          <div className="flex items-center text-purple-600 text-sm font-medium">
+            <TrendingUp className="w-4 h-4 mr-2" />
+            <span>+{investmentChange.toFixed(1)}% rendimento</span>
           </div>
         </CardContent>
       </Card>
