@@ -105,12 +105,13 @@ Formato exato da resposta (JSON válido):
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 3000,
+      max_tokens: 2000,
       temperature: 0.1
     });
 
     const content = response.choices[0].message.content || '{"transactions": []}';
-    console.log("OpenAI raw response:", content);
+    console.log("OpenAI raw response length:", content.length);
+    console.log("OpenAI raw response preview:", content.substring(0, 200) + "...");
     
     // Try to clean up the response if it has any formatting issues
     let cleanContent = content.trim();
@@ -122,14 +123,34 @@ Formato exato da resposta (JSON válido):
       cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
     }
     
+    // Try to fix common JSON issues
+    cleanContent = cleanContent
+      .replace(/,\s*]/g, ']')  // Remove trailing commas in arrays
+      .replace(/,\s*}/g, '}')  // Remove trailing commas in objects
+      .replace(/\n/g, ' ')     // Replace newlines with spaces
+      .replace(/\t/g, ' ')     // Replace tabs with spaces
+      .replace(/\s+/g, ' ');   // Normalize whitespace
+    
     try {
       const result = JSON.parse(cleanContent);
       return result;
     } catch (parseError) {
       console.error("JSON parse error:", parseError);
-      console.error("Content that failed to parse:", cleanContent);
+      console.error("Content that failed to parse:", cleanContent.substring(0, 500));
       
-      // Return empty result if parsing fails
+      // Try to extract just the transactions array if possible
+      try {
+        const transactionsMatch = cleanContent.match(/"transactions"\s*:\s*\[(.*?)\]/s);
+        if (transactionsMatch) {
+          const transactionsStr = `{"transactions": [${transactionsMatch[1]}]}`;
+          const result = JSON.parse(transactionsStr);
+          return result;
+        }
+      } catch (secondError) {
+        console.error("Second parsing attempt failed:", secondError);
+      }
+      
+      // Return empty result if all parsing attempts fail
       return { transactions: [] };
     }
   } catch (error) {
