@@ -18,26 +18,19 @@ import Goals from "@/pages/goals";
 import Import from "@/pages/import";
 import Subscription from "@/pages/subscription";
 import Upgrade from "@/pages/upgrade";
-import Onboarding from "@/pages/onboarding";
 
 function Router() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   
   // Initialize business theme
   useBusinessTheme();
-  
-  // Check if user needs onboarding
-  const needsOnboarding = isAuthenticated && user && !user.onboardingCompleted;
 
   return (
     <Switch>
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
-      ) : needsOnboarding ? (
-        <Route path="*" component={Onboarding} />
       ) : (
         <>
-          <Route path="/onboarding" component={Onboarding} />
           <Route path="/" component={Dashboard} />
           <Route path="/transactions" component={Transactions} />
           <Route path="/investments" component={Investments} />
