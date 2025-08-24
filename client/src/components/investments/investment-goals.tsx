@@ -36,11 +36,7 @@ export function InvestmentGoals() {
   // Create goal mutation
   const createGoalMutation = useMutation({
     mutationFn: async (goalData: any) => {
-      return await apiRequest("/api/budget-goals", {
-        method: "POST",
-        body: JSON.stringify(goalData),
-        headers: { "Content-Type": "application/json" },
-      });
+      return await apiRequest('POST', '/api/budget-goals', goalData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/budget-goals"] });
@@ -62,11 +58,7 @@ export function InvestmentGoals() {
   // Update goal mutation
   const updateGoalMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      return await apiRequest(`/api/budget-goals/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
+      return await apiRequest('PUT', `/api/budget-goals/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/budget-goals"] });
@@ -88,9 +80,7 @@ export function InvestmentGoals() {
   // Delete goal mutation
   const deleteGoalMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/budget-goals/${id}`, {
-        method: "DELETE",
-      });
+      return await apiRequest('DELETE', `/api/budget-goals/${id}`, null);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/budget-goals"] });
@@ -113,10 +103,12 @@ export function InvestmentGoals() {
     const formData = new FormData(event.currentTarget);
     
     const goalData = {
-      targetAmount: formData.get("targetAmount"),
+      description: "Meta de Investimento",
+      targetAmount: parseFloat(formData.get("targetAmount") as string),
       month: currentMonth,
       year: currentYear,
-      categoryId: formData.get("categoryId") || null,
+      categoryId: null, // Investment goals don't have specific category
+      isActive: true,
     };
 
     createGoalMutation.mutate(goalData);
@@ -127,7 +119,7 @@ export function InvestmentGoals() {
     const formData = new FormData(event.currentTarget);
     
     const goalData = {
-      targetAmount: formData.get("targetAmount"),
+      targetAmount: parseFloat(formData.get("targetAmount") as string),
     };
 
     updateGoalMutation.mutate({ id: editingGoal.id, data: goalData });
@@ -163,16 +155,20 @@ export function InvestmentGoals() {
             </DialogHeader>
             <form onSubmit={handleCreateGoal} className="space-y-4">
               <div>
-                <Label htmlFor="targetAmount">Valor da Meta</Label>
+                <Label htmlFor="targetAmount">Valor da Meta (R$)</Label>
                 <Input
                   id="targetAmount"
                   name="targetAmount"
                   type="number"
                   step="0.01"
+                  min="0.01"
                   placeholder="1000.00"
                   required
                   data-testid="input-goal-amount"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Digite o valor que deseja investir este mês
+                </p>
               </div>
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={() => setIsNewGoalDialogOpen(false)}>
