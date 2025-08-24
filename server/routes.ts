@@ -542,8 +542,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Limit text size to prevent timeout issues
-      const limitedText = extractText.length > 2000 
-        ? extractText.substring(0, 2000) + "\n[texto truncado...]"
+      const limitedText = extractText.length > 8000 
+        ? extractText.substring(0, 8000) + "\n[texto truncado...]"
         : extractText;
 
       const result = await analyzeExtractWithAI(limitedText, availableCategories || []);

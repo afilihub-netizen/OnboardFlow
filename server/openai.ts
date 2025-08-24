@@ -69,14 +69,14 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
       messages: [
         {
           role: "system",
-          content: `Analise o extrato bancário e extraia as transações. Responda APENAS com JSON válido.
+          content: `Analise o extrato bancário e extraia TODAS as transações encontradas. Responda APENAS com JSON válido.
 
 Regras:
 - Data: YYYY-MM-DD (use 2024 se ano não especificado)
-- Amount: número negativo para despesas, positivo para receitas
+- Amount: número negativo para despesas, positivo para receitas  
 - Type: "expense" ou "income"
-- Category: uma das categorias: Alimentação, Transporte, Casa, Saúde, Outros
-- Máximo 10 transações
+- Category: uma das categorias: Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros
+- Extraia TODAS as transações, sem limite de quantidade
 
 JSON obrigatório:
 {"transactions":[{"date":"2024-12-10","description":"PIX João","amount":-100,"type":"expense","category":"Outros"}]}`
@@ -87,7 +87,7 @@ JSON obrigatório:
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1000,
+      max_tokens: 4000,
       temperature: 0.1
     });
 
