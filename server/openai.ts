@@ -100,28 +100,20 @@ INSTRUÇÕES DETALHADAS:
 3. Extraia informações PRECISAS de origem/destino dos valores
 4. Categorize baseado no estabelecimento/descrição real
 
-FORMATO JSON OBRIGATÓRIO (campos exatos):
-{
-  "transactions": [
-    {
-      "date": "YYYY-MM-DD",
-      "description": "texto completo da transação",
-      "amount": -100.50,
-      "type": "expense",
-      "category": "Alimentação"
-    }
-  ]
-}
+CRITICAL: Use EXACTLY these field names (lowercase): date, description, amount, type, category
 
-REGRAS DOS CAMPOS:
-- "date": sempre minúsculo, formato YYYY-MM-DD (use 2024 se ano ausente)
-- "description": texto COMPLETO (PIX João Silva, COMPRA SUPERMERCADO ABC, etc)
-- "amount": número com decimais, negativo para saídas, positivo para entradas
-- "type": sempre "expense" ou "income" (minúsculo)
-- "category": uma opção: Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros
+JSON FORMAT REQUIRED:
+{"transactions":[{"date":"2024-12-10","description":"complete transaction text","amount":-100.50,"type":"expense","category":"Outros"}]}
 
-EXEMPLO COMPLETO:
-{"transactions":[{"date":"2024-12-10","description":"PIX ENVIADO João Silva","amount":-150.00,"type":"expense","category":"Outros"},{"date":"2024-12-10","description":"SALÁRIO EMPRESA XYZ","amount":3000.00,"type":"income","category":"Outros"}]}`
+FIELD RULES:
+- date: YYYY-MM-DD format (use 2024 if year missing)  
+- description: complete text (PIX João Silva, COMPRA SUPERMERCADO ABC, etc)
+- amount: decimal number (negative for expenses, positive for income)
+- type: "expense" or "income" only
+- category: one of: Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros
+
+MANDATORY EXAMPLE:
+{"transactions":[{"date":"2024-12-10","description":"PIX ENVIADO João Silva","amount":-150.00,"type":"expense","category":"Outros"},{"date":"2024-12-11","description":"SALÁRIO EMPRESA XYZ","amount":3000.00,"type":"income","category":"Outros"}]}`
       },
       {
         role: "user",
@@ -317,12 +309,30 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     
     console.log("Total transactions found:", allTransactions.length);
     
+    // FORÇA normalização final - garantir que todos os campos estejam corretos
+    const finalTransactions = allTransactions.map((t: any, index: number) => {
+      const normalized = {
+        date: t.date || t.Date || t.DATA || "2024-12-10",
+        description: t.description || t.Description || t.DESCRIPTION || `Transação ${index + 1}`,
+        amount: parseFloat(t.amount || t.Amount || t.AMOUNT || 0),
+        type: (t.type || t.Type || t.TYPE || "expense").toLowerCase(),
+        category: t.category || t.Category || t.CATEGORY || "Outros"
+      };
+      
+      // Log apenas primeiras 3 para debug
+      if (index < 3) {
+        console.log(`Final normalization ${index + 1}:`, normalized);
+      }
+      
+      return normalized;
+    });
+    
     if (sessionId) {
-      sendProgressUpdate(sessionId, 100, `Análise concluída! ${allTransactions.length} transações encontradas`);
+      sendProgressUpdate(sessionId, 100, `Análise concluída! ${finalTransactions.length} transações encontradas`);
     }
     
     return {
-      transactions: allTransactions
+      transactions: finalTransactions
     };
     
   } catch (error) {
