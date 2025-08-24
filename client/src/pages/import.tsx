@@ -100,14 +100,14 @@ export default function Import() {
       
       if (file.type === 'application/pdf') {
         toast({
-          title: "PDF detectado",
-          description: "Para arquivos PDF, cole o texto do extrato na área de texto abaixo.",
+          title: "PDF selecionado",
+          description: "Clique em 'Carregar e Analisar Arquivo' para processar o PDF.",
         });
       }
     }
   };
 
-  const handleFileUpload = () => {
+  const handleFileUpload = async () => {
     if (!selectedFile) return;
     
     // For text files, read content directly
@@ -130,6 +130,50 @@ export default function Import() {
         }, 500); // Small delay to ensure state is updated
       };
       reader.readAsText(selectedFile);
+    } 
+    // For PDF files, upload to server for processing
+    else if (selectedFile.type === 'application/pdf') {
+      try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        
+        toast({
+          title: "Processando PDF",
+          description: "Extraindo texto do arquivo PDF...",
+        });
+        
+        const response = await fetch('/api/extract-pdf-text', {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        });
+        
+        if (!response.ok) {
+          throw new Error('Falha ao processar PDF');
+        }
+        
+        const result = await response.json();
+        setExtractText(result.text);
+        
+        toast({
+          title: "PDF processado",
+          description: "Iniciando análise automática do extrato...",
+        });
+        
+        // Automatically analyze the extract after loading
+        setTimeout(() => {
+          if (result.text.trim()) {
+            analyzeExtractWithAI();
+          }
+        }, 500);
+        
+      } catch (error) {
+        toast({
+          title: "Erro ao processar PDF",
+          description: "Não foi possível extrair o texto do PDF. Cole o texto manualmente.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -275,7 +319,7 @@ export default function Import() {
                       </div>
                       <Button
                         onClick={handleFileUpload}
-                        disabled={!selectedFile || (selectedFile.type !== 'text/plain' && selectedFile.type !== 'text/csv')}
+                        disabled={!selectedFile}
                         className="w-full"
                         data-testid="button-upload-file"
                       >

@@ -518,6 +518,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PDF text extraction route
+  app.post("/api/extract-pdf-text", isAuthenticated, async (req: any, res) => {
+    try {
+      const multer = require('multer');
+      const pdfParse = require('pdf-parse');
+      
+      // Configure multer for file upload
+      const upload = multer({ storage: multer.memoryStorage() });
+      
+      upload.single('file')(req, res, async (err: any) => {
+        if (err) {
+          return res.status(400).json({ message: "File upload error" });
+        }
+        
+        if (!req.file || req.file.mimetype !== 'application/pdf') {
+          return res.status(400).json({ message: "PDF file is required" });
+        }
+        
+        try {
+          const data = await pdfParse(req.file.buffer);
+          res.json({ text: data.text });
+        } catch (pdfError) {
+          console.error("Error parsing PDF:", pdfError);
+          res.status(500).json({ message: "Failed to extract text from PDF" });
+        }
+      });
+    } catch (error) {
+      console.error("Error in PDF extraction route:", error);
+      res.status(500).json({ message: "Failed to process PDF" });
+    }
+  });
+
   // Extract analysis route
   app.post("/api/analyze-extract", isAuthenticated, async (req: any, res) => {
     try {
