@@ -18,18 +18,16 @@ interface FutureCommitment {
 }
 
 export function FutureCommitments() {
-  const [expandedCurrentMonth, setExpandedCurrentMonth] = useState(false);
-  const [expandedNextMonth, setExpandedNextMonth] = useState(false);
-  const [expandedThirdMonth, setExpandedThirdMonth] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   const { data: commitments = [], isLoading, refetch } = useQuery({
     queryKey: ['/api/transactions/future-commitments'],
-    queryFn: async () => {
+    queryFn: async (): Promise<FutureCommitment[]> => {
       const response = await fetch('/api/transactions/future-commitments', {
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to fetch future commitments');
-      return response.json() as FutureCommitment[];
+      return await response.json() as FutureCommitment[];
     },
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -184,147 +182,193 @@ export function FutureCommitments() {
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
-        {/* Current Month */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-blue-600" />
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{currentMonthName}</h3>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{currentMonthCommitments.length} compromisso{currentMonthCommitments.length !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <p className="text-lg font-bold text-blue-600">
-                {formatCurrency(currentMonthTotal.toString())}
-              </p>
-              {currentMonthCommitments.length > 4 && (
-                <button 
-                  onClick={() => setExpandedCurrentMonth(!expandedCurrentMonth)}
-                  className="p-1 hover:bg-blue-100 dark:hover:bg-blue-800 rounded"
-                  data-testid="expand-current-month"
-                >
-                  {expandedCurrentMonth ? <ChevronUp className="w-4 h-4 text-blue-600" /> : <ChevronDown className="w-4 h-4 text-blue-600" />}
-                </button>
-              )}
-            </div>
-          </div>
-          
-          <div className="grid gap-2 ml-8">
-            {(expandedCurrentMonth ? currentMonthCommitments : currentMonthCommitments.slice(0, 4)).map((commitment, index) => (
-              <div
-                key={`current-${commitment.type}-${commitment.id}`}
-                className="flex items-center justify-between p-2 rounded border bg-white dark:bg-gray-800 text-sm"
-                data-testid={`current-commitment-${index}`}
-              >
-                <div className="flex items-center gap-2">
-                  {getPaymentMethodIcon(commitment.paymentMethod, commitment.type)}
-                  <span className="text-gray-900 dark:text-white truncate max-w-[180px]">
-                    {commitment.description}
-                  </span>
+      <CardContent className="space-y-6">
+        {!showDetails ? (
+          <>
+            {/* Current Month */}
+            <div className="flex items-center justify-between p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-3">
+                <Calendar className="w-5 h-5 text-blue-600" />
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{currentMonthName}</h3>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{currentMonthCommitments.length} compromisso{currentMonthCommitments.length !== 1 ? 's' : ''}</p>
                 </div>
-                <span className="font-medium text-blue-600">
-                  {formatCurrency(commitment.installmentValue)}
-                </span>
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="text-right">
+                <p className="text-lg font-bold text-blue-600">
+                  {formatCurrency(currentMonthTotal.toString())}
+                </p>
+              </div>
+            </div>
 
-        {/* Next Month */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
-            <div className="flex items-center gap-3">
-              <Clock className="w-5 h-5 text-purple-600" />
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{nextMonthName}</h3>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{nextMonthCommitments.length} compromisso{nextMonthCommitments.length !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <p className="text-lg font-bold text-purple-600">
-                {formatCurrency(nextMonthTotal.toString())}
-              </p>
-              {nextMonthCommitments.length > 4 && (
-                <button 
-                  onClick={() => setExpandedNextMonth(!expandedNextMonth)}
-                  className="p-1 hover:bg-purple-100 dark:hover:bg-purple-800 rounded"
-                  data-testid="expand-next-month"
-                >
-                  {expandedNextMonth ? <ChevronUp className="w-4 h-4 text-purple-600" /> : <ChevronDown className="w-4 h-4 text-purple-600" />}
-                </button>
-              )}
-            </div>
-          </div>
-          
-          <div className="grid gap-2 ml-8">
-            {(expandedNextMonth ? nextMonthCommitments : nextMonthCommitments.slice(0, 4)).map((commitment, index) => (
-              <div
-                key={`next-${commitment.type}-${commitment.id}`}
-                className="flex items-center justify-between p-2 rounded border bg-white dark:bg-gray-800 text-sm"
-                data-testid={`next-commitment-${index}`}
-              >
-                <div className="flex items-center gap-2">
-                  {getPaymentMethodIcon(commitment.paymentMethod, commitment.type)}
-                  <span className="text-gray-900 dark:text-white truncate max-w-[180px]">
-                    {commitment.description}
-                  </span>
+            {/* Next Month */}
+            <div className="flex items-center justify-between p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-purple-600" />
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{nextMonthName}</h3>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{nextMonthCommitments.length} compromisso{nextMonthCommitments.length !== 1 ? 's' : ''}</p>
                 </div>
-                <span className="font-medium text-purple-600">
-                  {formatCurrency(commitment.installmentValue)}
-                </span>
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="text-right">
+                <p className="text-lg font-bold text-purple-600">
+                  {formatCurrency(nextMonthTotal.toString())}
+                </p>
+              </div>
+            </div>
 
-        {/* Third Month */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-            <div className="flex items-center gap-3">
-              <Clock className="w-5 h-5 text-green-600" />
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{thirdMonthName}</h3>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{thirdMonthCommitments.length} compromisso{thirdMonthCommitments.length !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <p className="text-lg font-bold text-green-600">
-                {formatCurrency(thirdMonthTotal.toString())}
-              </p>
-              {thirdMonthCommitments.length > 4 && (
-                <button 
-                  onClick={() => setExpandedThirdMonth(!expandedThirdMonth)}
-                  className="p-1 hover:bg-green-100 dark:hover:bg-green-800 rounded"
-                  data-testid="expand-third-month"
-                >
-                  {expandedThirdMonth ? <ChevronUp className="w-4 h-4 text-green-600" /> : <ChevronDown className="w-4 h-4 text-green-600" />}
-                </button>
-              )}
-            </div>
-          </div>
-          
-          <div className="grid gap-2 ml-8">
-            {(expandedThirdMonth ? thirdMonthCommitments : thirdMonthCommitments.slice(0, 4)).map((commitment, index) => (
-              <div
-                key={`third-${commitment.type}-${commitment.id}`}
-                className="flex items-center justify-between p-2 rounded border bg-white dark:bg-gray-800 text-sm"
-                data-testid={`third-commitment-${index}`}
-              >
-                <div className="flex items-center gap-2">
-                  {getPaymentMethodIcon(commitment.paymentMethod, commitment.type)}
-                  <span className="text-gray-900 dark:text-white truncate max-w-[180px]">
-                    {commitment.description}
-                  </span>
+            {/* Third Month */}
+            <div className="flex items-center justify-between p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-green-600" />
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{thirdMonthName}</h3>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{thirdMonthCommitments.length} compromisso{thirdMonthCommitments.length !== 1 ? 's' : ''}</p>
                 </div>
-                <span className="font-medium text-green-600">
-                  {formatCurrency(commitment.installmentValue)}
-                </span>
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="text-right">
+                <p className="text-lg font-bold text-green-600">
+                  {formatCurrency(thirdMonthTotal.toString())}
+                </p>
+              </div>
+            </div>
+
+            {/* Ver Detalhes Button */}
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowDetails(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                data-testid="show-commitments-details"
+              >
+                <ChevronDown className="w-4 h-4" />
+                Ver Compromissos
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Detailed View */}
+            {/* Current Month Details */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{currentMonthName}</h3>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">{currentMonthCommitments.length} compromisso{currentMonthCommitments.length !== 1 ? 's' : ''}</p>
+                  </div>
+                </div>
+                <p className="text-lg font-bold text-blue-600">
+                  {formatCurrency(currentMonthTotal.toString())}
+                </p>
+              </div>
+              
+              <div className="grid gap-2 ml-8">
+                {currentMonthCommitments.map((commitment, index) => (
+                  <div
+                    key={`current-${commitment.type}-${commitment.id}`}
+                    className="flex items-center justify-between p-2 rounded border bg-white dark:bg-gray-800 text-sm"
+                    data-testid={`current-commitment-${index}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {getPaymentMethodIcon(commitment.paymentMethod, commitment.type)}
+                      <span className="text-gray-900 dark:text-white truncate max-w-[180px]">
+                        {commitment.description}
+                      </span>
+                    </div>
+                    <span className="font-medium text-blue-600">
+                      {formatCurrency(commitment.installmentValue)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Next Month Details */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+                <div className="flex items-center gap-3">
+                  <Clock className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{nextMonthName}</h3>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">{nextMonthCommitments.length} compromisso{nextMonthCommitments.length !== 1 ? 's' : ''}</p>
+                  </div>
+                </div>
+                <p className="text-lg font-bold text-purple-600">
+                  {formatCurrency(nextMonthTotal.toString())}
+                </p>
+              </div>
+              
+              <div className="grid gap-2 ml-8">
+                {nextMonthCommitments.map((commitment, index) => (
+                  <div
+                    key={`next-${commitment.type}-${commitment.id}`}
+                    className="flex items-center justify-between p-2 rounded border bg-white dark:bg-gray-800 text-sm"
+                    data-testid={`next-commitment-${index}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {getPaymentMethodIcon(commitment.paymentMethod, commitment.type)}
+                      <span className="text-gray-900 dark:text-white truncate max-w-[180px]">
+                        {commitment.description}
+                      </span>
+                    </div>
+                    <span className="font-medium text-purple-600">
+                      {formatCurrency(commitment.installmentValue)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Third Month Details */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-3">
+                  <Clock className="w-5 h-5 text-green-600" />
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{thirdMonthName}</h3>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">{thirdMonthCommitments.length} compromisso{thirdMonthCommitments.length !== 1 ? 's' : ''}</p>
+                  </div>
+                </div>
+                <p className="text-lg font-bold text-green-600">
+                  {formatCurrency(thirdMonthTotal.toString())}
+                </p>
+              </div>
+              
+              <div className="grid gap-2 ml-8">
+                {thirdMonthCommitments.map((commitment, index) => (
+                  <div
+                    key={`third-${commitment.type}-${commitment.id}`}
+                    className="flex items-center justify-between p-2 rounded border bg-white dark:bg-gray-800 text-sm"
+                    data-testid={`third-commitment-${index}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {getPaymentMethodIcon(commitment.paymentMethod, commitment.type)}
+                      <span className="text-gray-900 dark:text-white truncate max-w-[180px]">
+                        {commitment.description}
+                      </span>
+                    </div>
+                    <span className="font-medium text-green-600">
+                      {formatCurrency(commitment.installmentValue)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Ocultar Detalhes Button */}
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowDetails(false)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                data-testid="hide-commitments-details"
+              >
+                <ChevronUp className="w-4 h-4" />
+                Ocultar Compromissos
+              </button>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
