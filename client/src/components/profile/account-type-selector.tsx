@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { PlanSelectionModal } from "@/components/upgrade/plan-selection-modal";
 
 interface AccountTypeSelectorProps {
   currentType: string;
@@ -61,6 +62,7 @@ export function AccountTypeSelector({ currentType, currentCompanyData }: Account
     cnpj: currentCompanyData?.cnpj || '',
     industry: currentCompanyData?.industry || ''
   });
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -132,8 +134,8 @@ export function AccountTypeSelector({ currentType, currentCompanyData }: Account
   };
 
   const handleUpgrade = (planType: string) => {
-    // Redirecionar para página de upgrade
-    window.location.href = '/upgrade';
+    // Abrir modal de seleção de planos
+    setShowUpgradeModal(true);
   };
 
   return (
@@ -322,6 +324,13 @@ export function AccountTypeSelector({ currentType, currentCompanyData }: Account
           {updateAccountMutation.isPending ? "Salvando..." : "Salvar Configurações"}
         </Button>
       </div>
+
+      {/* Modal de seleção de planos */}
+      <PlanSelectionModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        currentPlan={subscriptionStatus?.currentPlan}
+      />
     </div>
   );
 }

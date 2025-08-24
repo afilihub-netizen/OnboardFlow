@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -164,6 +164,18 @@ export default function UpgradePage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Verificar se chegou aqui via modal com parâmetros
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const planFromUrl = urlParams.get('plan');
+    const clientSecretFromUrl = urlParams.get('clientSecret');
+    
+    if (planFromUrl && clientSecretFromUrl) {
+      setSelectedPlan(planFromUrl);
+      setClientSecret(clientSecretFromUrl);
+    }
+  }, []);
 
   // Buscar status atual da assinatura
   const { data: subscriptionStatus } = useQuery({
