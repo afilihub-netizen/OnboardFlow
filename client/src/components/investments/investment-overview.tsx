@@ -23,17 +23,25 @@ export function InvestmentOverview() {
 
   // Generate chart data based on actual investments and period
   const generateChartData = () => {
-    if (!investments || investments.length === 0) {
-      return [];
-    }
-
     const now = new Date();
     let months = 12;
     if (period === '2years') months = 24;
     if (period === 'year') months = 12;
 
     const chartData = [];
-    let cumulativeValue = 0;
+
+    // If no investments, create a baseline chart with zeros
+    if (!investments || investments.length === 0) {
+      for (let i = months - 1; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthName = date.toLocaleDateString('pt-BR', { month: 'short' });
+        chartData.push({
+          month: monthName,
+          value: 0
+        });
+      }
+      return chartData;
+    }
 
     for (let i = months - 1; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -47,13 +55,12 @@ export function InvestmentOverview() {
 
       // Calculate total value for this month
       const monthValue = investmentsUpToDate.reduce((total: number, investment: any) => {
-        // For a more realistic chart, we could apply some growth/decline
-        // For now, we'll use the current values proportionally
+        // Use actual values from investments
         const baseValue = parseFloat(investment.initialAmount || '0');
-        const currentValue = parseFloat(investment.currentAmount || '0');
+        const currentValue = parseFloat(investment.currentAmount || investment.initialAmount || '0');
         const growth = currentValue / (baseValue || 1);
         
-        // Apply time-based growth simulation
+        // Apply time-based growth simulation for historical data
         const monthsFromPurchase = Math.max(1, (now.getTime() - new Date(investment.purchaseDate).getTime()) / (1000 * 60 * 60 * 24 * 30));
         const timeGrowth = Math.pow(growth, Math.min(1, monthsFromPurchase / 12));
         
@@ -145,36 +152,61 @@ export function InvestmentOverview() {
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-                  <XAxis 
-                    dataKey="month" 
-                    className="text-gray-600 dark:text-gray-300"
-                  />
-                  <YAxis 
-                    tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
-                    className="text-gray-600 dark:text-gray-300"
-                  />
-                  <Tooltip 
-                    formatter={(value) => [formatCurrency(Number(value)), 'Valor Investido']}
-                    labelStyle={{ color: 'hsl(var(--foreground))' }}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke="hsl(var(--chart-4))" 
-                    strokeWidth={3}
-                    dot={{ fill: 'hsl(var(--chart-4))' }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
+                    <XAxis 
+                      dataKey="month" 
+                      className="text-gray-600 dark:text-gray-300"
+                    />
+                    <YAxis 
+                      tickFormatter={(value) => value === 0 ? 'R$ 0' : `R$ ${(value / 1000).toFixed(0)}k`}
+                      className="text-gray-600 dark:text-gray-300"
+                      domain={[0, 'dataMax']}
+                    />
+                    <Tooltip 
+                      formatter={(value) => [formatCurrency(Number(value)), 'Valor Investido']}
+                      labelStyle={{ color: 'hsl(var(--foreground))' }}
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="value" 
+                      stroke="hsl(var(--chart-4))" 
+                      strokeWidth={3}
+                      dot={{ fill: 'hsl(var(--chart-4))' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-center">
+                  <div className="space-y-4">
+                    <TrendingUp className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-500" />
+                    <div>
+                      <p className="text-lg font-medium text-gray-900 dark:text-white">
+                        Comece a investir
+                      </p>
+                      <p className="text-gray-500 dark:text-gray-400">
+                        Adicione seus primeiros investimentos para acompanhar a evolução do seu portfólio
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+            
+            {(!investments || investments.length === 0) && (
+              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  💡 <strong>Dica:</strong> Vá para a seção "Portfólio" abaixo para adicionar seus primeiros investimentos e começar a acompanhar sua evolução patrimonial.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
