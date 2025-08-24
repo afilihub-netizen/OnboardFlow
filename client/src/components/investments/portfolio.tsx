@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, TrendingUp, TrendingDown, PieChart } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, PieChart, RefreshCw } from "lucide-react";
 import { INVESTMENT_TYPES } from "@/lib/constants";
 
 const investmentSchema = z.object({
@@ -32,6 +32,8 @@ export function Portfolio() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [marketPrices, setMarketPrices] = useState<Record<string, number>>({});
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const form = useForm<InvestmentFormData>({
     resolver: zodResolver(investmentSchema),
@@ -128,6 +130,58 @@ export function Portfolio() {
     return totalValue > 0 ? (parseFloat(investmentValue) / totalValue) * 100 : 0;
   };
 
+  // Simulate market prices for demo (in real app, would use actual API)
+  const generateMarketPrices = () => {
+    const prices: Record<string, number> = {
+      // Cryptocurrencies (USD prices)
+      'BTC': 43250 + Math.random() * 1000 - 500,
+      'ETH': 2580 + Math.random() * 100 - 50,
+      'BNB': 315 + Math.random() * 20 - 10,
+      'ADA': 0.48 + Math.random() * 0.05 - 0.025,
+      'DOGE': 0.085 + Math.random() * 0.01 - 0.005,
+      
+      // Brazilian stocks (BRL prices)
+      'ITSA4': 9.52 + Math.random() * 0.5 - 0.25,
+      'PETR4': 38.45 + Math.random() * 2 - 1,
+      'VALE3': 61.83 + Math.random() * 3 - 1.5,
+      'BBDC4': 13.24 + Math.random() * 0.8 - 0.4,
+      'ABEV3': 12.87 + Math.random() * 0.6 - 0.3,
+      'MGLU3': 4.32 + Math.random() * 0.3 - 0.15,
+      'WEGE3': 39.76 + Math.random() * 2 - 1,
+      'RENT3': 62.18 + Math.random() * 3 - 1.5,
+      
+      // Indices and others
+      'IBOV': 125430 + Math.random() * 2000 - 1000,
+      'IFIX': 2847 + Math.random() * 50 - 25,
+    };
+    return prices;
+  };
+
+  const updateMarketPrices = () => {
+    setMarketPrices(generateMarketPrices());
+    setLastUpdated(new Date());
+  };
+
+  useEffect(() => {
+    // Update prices on component mount and every 30 seconds
+    updateMarketPrices();
+    const interval = setInterval(updateMarketPrices, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getMarketPrice = (investmentName: string, type: string) => {
+    // Extract ticker from investment name (e.g., "Bitcoin (BTC)" -> "BTC")
+    const tickerMatch = investmentName.match(/\(([A-Z0-9]+)\)|\b([A-Z0-9]{3,5})\b/);
+    const ticker = tickerMatch ? (tickerMatch[1] || tickerMatch[2]) : investmentName.toUpperCase();
+    
+    // For crypto and stocks, try to find market price
+    if ((type === 'crypto' || type === 'stocks') && marketPrices[ticker]) {
+      return marketPrices[ticker];
+    }
+    
+    return null;
+  };
+
   if (isLoading) {
     return (
       <Card className="financial-card">
@@ -154,7 +208,19 @@ export function Portfolio() {
         <div className="flex items-center justify-between">
           <CardTitle>Portfólio de Investimentos</CardTitle>
           
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={updateMarketPrices}
+              className="text-xs"
+              data-testid="button-refresh-prices"
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Atualizar Preços
+            </Button>
+            
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button 
                 className="bg-blue-500 hover:bg-blue-600 text-white"
@@ -319,7 +385,14 @@ export function Portfolio() {
               </Form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
+        
+        {lastUpdated && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            Preços atualizados em: {lastUpdated.toLocaleTimeString('pt-BR')}
+          </p>
+        )}
       </CardHeader>
       
       <CardContent>
@@ -342,6 +415,7 @@ export function Portfolio() {
                 investment.currentAmount
               );
               const portfolioPercentage = getPortfolioPercentage(investment.currentAmount);
+              const marketPrice = getMarketPrice(investment.name, investment.type);
               
               return (
                 <div 
@@ -361,6 +435,11 @@ export function Portfolio() {
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           {typeInfo.label}
                         </p>
+                        {marketPrice && (
+                          <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                            Preço: {investment.type === 'crypto' ? `$${marketPrice.toFixed(2)}` : `R$ ${marketPrice.toFixed(2)}`}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">

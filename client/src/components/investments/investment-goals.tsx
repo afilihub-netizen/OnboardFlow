@@ -21,7 +21,8 @@ export function InvestmentGoals() {
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
     align: 'start',
     containScroll: 'trimSnaps',
-    dragFree: true,
+    slidesToScroll: 1,
+    skipSnaps: false,
   });
 
   const currentMonth = new Date().getMonth() + 1;
@@ -224,7 +225,7 @@ export function InvestmentGoals() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white dark:bg-gray-800 shadow-md"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-white dark:bg-gray-800 shadow-lg border-2 hover:bg-gray-50 dark:hover:bg-gray-700"
                   onClick={scrollPrev}
                   data-testid="button-carousel-prev"
                 >
@@ -233,7 +234,7 @@ export function InvestmentGoals() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white dark:bg-gray-800 shadow-md"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-white dark:bg-gray-800 shadow-lg border-2 hover:bg-gray-50 dark:hover:bg-gray-700"
                   onClick={scrollNext}
                   data-testid="button-carousel-next"
                 >
@@ -243,7 +244,7 @@ export function InvestmentGoals() {
             )}
 
             {/* Carousel Container */}
-            <div ref={emblaRef} className="overflow-hidden" data-testid="goals-carousel">
+            <div ref={emblaRef} className="overflow-hidden px-8" data-testid="goals-carousel">
               <div className="flex gap-4">
                 {investmentGoals.map((goal) => {
                   const targetAmount = parseFloat(goal.targetAmount);
@@ -251,7 +252,7 @@ export function InvestmentGoals() {
                   const percentage = Math.min((currentAmount / targetAmount) * 100, 100);
                   
                   return (
-                    <div key={goal.id} className="flex-none w-80 border border-gray-200 dark:border-gray-700 rounded-lg p-4" data-testid={`goal-card-${goal.id}`}>
+                    <div key={goal.id} className="flex-none w-72 min-w-0 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm" data-testid={`goal-card-${goal.id}`}>
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
                           Meta Mensal de Investimento
