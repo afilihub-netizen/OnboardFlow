@@ -11,7 +11,6 @@ import {
   insertFixedExpenseSchema,
   insertInvestmentSchema,
   insertBudgetGoalSchema,
-  insertFamilyMemberSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -407,7 +406,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Family management is only available for family plan subscribers' });
       }
 
-      const familyMembers = await storage.getFamilyMembers(userId);
+      // Family members temporarily disabled
+      const familyMembers = [];
       res.json(familyMembers);
     } catch (error) {
       console.error("Error fetching family members:", error);
@@ -429,11 +429,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Family management is only available for family plan subscribers' });
       }
 
-      const memberData = insertFamilyMemberSchema.parse({
-        ...req.body,
-        familyAccountId: userId,
-      });
-      const member = await storage.createFamilyMember(memberData);
+      // Family member functionality temporarily disabled
+      res.status(501).json({ message: "Family member functionality not yet implemented" });
       res.status(201).json(member);
     } catch (error) {
       console.error("Error creating family member:", error);
@@ -456,8 +453,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Family management is only available for family plan subscribers' });
       }
 
-      const memberData = insertFamilyMemberSchema.partial().parse(req.body);
-      const member = await storage.updateFamilyMember(id, memberData);
+      // Family member functionality temporarily disabled
+      res.status(501).json({ message: "Family member functionality not yet implemented" });
+      return;
       if (!member) {
         return res.status(404).json({ message: "Family member not found" });
       }
@@ -483,7 +481,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Family management is only available for family plan subscribers' });
       }
 
-      const success = await storage.deleteFamilyMember(id);
+      // Family member functionality temporarily disabled
+      const success = false;
       if (!success) {
         return res.status(404).json({ message: "Family member not found" });
       }

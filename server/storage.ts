@@ -6,7 +6,10 @@ import {
   investments,
   investmentHistory,
   budgetGoals,
-  familyMembers,
+  organizations,
+  familyGroups,
+  departments,
+  userPermissions,
   notifications,
   workflowTriggers,
   emailPreferences,
@@ -24,12 +27,18 @@ import {
   type InvestmentHistory,
   type BudgetGoal,
   type InsertBudgetGoal,
-  type FamilyMember,
-  type InsertFamilyMember,
   type Notification,
   type InsertNotification,
   type WorkflowTrigger,
   type InsertWorkflowTrigger,
+  type Organization,
+  type InsertOrganization,
+  type FamilyGroup,
+  type InsertFamilyGroup,
+  type Department,
+  type InsertDepartment,
+  type UserPermissions,
+  type InsertUserPermissions,
   type EmailPreferences,
   type InsertEmailPreferences,
 } from "@shared/schema";
@@ -88,11 +97,13 @@ export interface IStorage {
     categoryBreakdown: Array<{ categoryName: string; total: string; count: number; }>;
   }>;
 
-  // Family member operations
-  getFamilyMembers(familyAccountId: string): Promise<FamilyMember[]>;
-  createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember>;
-  updateFamilyMember(id: string, member: Partial<FamilyMember>): Promise<FamilyMember | undefined>;
-  deleteFamilyMember(id: string): Promise<boolean>;
+  // Organization operations
+  getOrganization(id: string): Promise<Organization | undefined>;
+  createOrganization(organization: InsertOrganization): Promise<Organization>;
+  
+  // Family group operations
+  getFamilyGroup(id: string): Promise<FamilyGroup | undefined>;
+  createFamilyGroup(familyGroup: InsertFamilyGroup): Promise<FamilyGroup>;
   
   // Notification operations
   getNotifications(userId: string, filters?: { isRead?: boolean; limit?: number }): Promise<Notification[]>;
@@ -126,7 +137,10 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          ...userData,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
           updatedAt: new Date(),
         },
       })
@@ -325,7 +339,7 @@ export class DatabaseStorage implements IStorage {
     // 4. Debt Management (20 points) - Based on installments
     const installmentTransactions = transactions.filter(t => t.totalInstallments && t.totalInstallments > 1);
     const totalDebt = installmentTransactions.reduce((sum, t) => {
-      const remaining = (parseFloat(t.totalValue || t.amount) * (t.totalInstallments - (t.paidInstallments || 0))) / t.totalInstallments;
+      const remaining = (parseFloat(t.totalValue || t.amount) * ((t.totalInstallments ?? 0) - (t.paidInstallments ?? 0))) / (t.totalInstallments ?? 1);
       return sum + remaining;
     }, 0);
 
@@ -498,7 +512,7 @@ export class DatabaseStorage implements IStorage {
           eq(transactions.userId, userId),
           isNotNull(transactions.totalInstallments),
           isNotNull(transactions.paidInstallments),
-          gt(transactions.totalInstallments, transactions.paidInstallments || 0)
+          gt(transactions.totalInstallments, sql`COALESCE(${transactions.paidInstallments}, 0)`)
         )
       )
       .orderBy(desc(transactions.date));
@@ -709,35 +723,26 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  // Family member operations
-  async getFamilyMembers(familyAccountId: string): Promise<FamilyMember[]> {
-    return await db
-      .select()
-      .from(familyMembers)
-      .where(and(eq(familyMembers.familyAccountId, familyAccountId), eq(familyMembers.isActive, true)))
-      .orderBy(familyMembers.name);
+  // Organization operations
+  async getOrganization(id: string): Promise<Organization | undefined> {
+    const [organization] = await db.select().from(organizations).where(eq(organizations.id, id));
+    return organization;
   }
 
-  async createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember> {
-    const [newMember] = await db.insert(familyMembers).values(member).returning();
-    return newMember;
+  async createOrganization(organization: InsertOrganization): Promise<Organization> {
+    const [newOrganization] = await db.insert(organizations).values(organization).returning();
+    return newOrganization;
   }
 
-  async updateFamilyMember(id: string, member: Partial<FamilyMember>): Promise<FamilyMember | undefined> {
-    const [updated] = await db
-      .update(familyMembers)
-      .set({ ...member, updatedAt: new Date() })
-      .where(eq(familyMembers.id, id))
-      .returning();
-    return updated;
+  // Family group operations
+  async getFamilyGroup(id: string): Promise<FamilyGroup | undefined> {
+    const [familyGroup] = await db.select().from(familyGroups).where(eq(familyGroups.id, id));
+    return familyGroup;
   }
 
-  async deleteFamilyMember(id: string): Promise<boolean> {
-    const result = await db
-      .update(familyMembers)
-      .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(familyMembers.id, id));
-    return (result.rowCount ?? 0) > 0;
+  async createFamilyGroup(familyGroup: InsertFamilyGroup): Promise<FamilyGroup> {
+    const [newFamilyGroup] = await db.insert(familyGroups).values(familyGroup).returning();
+    return newFamilyGroup;
   }
 
   // Notification operations

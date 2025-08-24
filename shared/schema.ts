@@ -26,6 +26,35 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
+// Account types enum
+export const accountTypeEnum = pgEnum('account_type', ['individual', 'family', 'business']);
+export const subscriptionStatusEnum = pgEnum('subscription_status', ['free', 'individual', 'family', 'business']);
+export const userRoleEnum = pgEnum('user_role', ['owner', 'admin', 'member', 'viewer']);
+
+// Organizations/Companies table
+export const organizations = pgTable("organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 200 }).notNull(),
+  cnpj: varchar("cnpj", { length: 18 }).unique(), // Brazilian company ID
+  industry: varchar("industry", { length: 100 }),
+  description: text("description"),
+  logo: varchar("logo"),
+  ownerId: varchar("owner_id").references(() => users.id).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Family groups table
+export const familyGroups = pgTable("family_groups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 100 }).notNull(),
+  ownerId: varchar("owner_id").references(() => users.id).notNull(),
+  inviteCode: varchar("invite_code", { length: 8 }).unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // User storage table for Replit Auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -33,10 +62,14 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  accountType: varchar("account_type").default("individual"), // individual, family
+  accountType: accountTypeEnum("account_type").default("individual"),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  familyGroupId: varchar("family_group_id").references(() => familyGroups.id),
+  role: userRoleEnum("role").default("owner"),
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
-  subscriptionStatus: varchar("subscription_status").default("free"), // free, individual, family
+  subscriptionStatus: subscriptionStatusEnum("subscription_status").default("free"),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -54,7 +87,10 @@ export const categories = pgTable("categories", {
   icon: varchar("icon", { length: 50 }), // Font Awesome icon class
   color: varchar("color", { length: 7 }), // Hex color
   userId: varchar("user_id").references(() => users.id),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  familyGroupId: varchar("family_group_id").references(() => familyGroups.id),
   isDefault: boolean("is_default").default(false),
+  categoryType: varchar("category_type").default("personal"), // personal, business, family
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -68,12 +104,19 @@ export const transactions = pgTable("transactions", {
   paymentMethod: paymentMethodEnum("payment_method").notNull(),
   date: timestamp("date").notNull(),
   userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  familyGroupId: varchar("family_group_id").references(() => familyGroups.id),
   attachmentUrl: text("attachment_url"),
   isRecurring: boolean("is_recurring").default(false), // Indica se é um lançamento mensal
   dueDay: integer("due_day"), // Dia do mês para vencimento (1-31) - apenas para recorrentes
   totalInstallments: integer("total_installments"), // Total number of installments
   paidInstallments: integer("paid_installments").default(0), // Number of installments paid
   totalValue: decimal("total_value", { precision: 10, scale: 2 }), // Total value of the purchase for installments
+  // Business-specific fields
+  vendor: varchar("vendor", { length: 200 }), // Supplier/client name
+  invoiceNumber: varchar("invoice_number", { length: 100 }), // Invoice reference
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }), // Tax value
+  departmentId: varchar("department_id"), // Department/cost center
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -86,6 +129,8 @@ export const fixedExpenses = pgTable("fixed_expenses", {
   dueDay: integer("due_day").notNull(), // Day of month (1-31)
   categoryId: varchar("category_id").references(() => categories.id),
   userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  familyGroupId: varchar("family_group_id").references(() => familyGroups.id),
   isActive: boolean("is_active").default(true),
   isPaid: boolean("is_paid").default(false),
   lastPaidDate: timestamp("last_paid_date"),
@@ -108,6 +153,8 @@ export const investments = pgTable("investments", {
   initialAmount: decimal("initial_amount", { precision: 12, scale: 2 }).notNull(),
   currentAmount: decimal("current_amount", { precision: 12, scale: 2 }).notNull(),
   userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  familyGroupId: varchar("family_group_id").references(() => familyGroups.id),
   purchaseDate: timestamp("purchase_date").notNull(),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -126,6 +173,8 @@ export const investmentHistory = pgTable("investment_history", {
 export const budgetGoals = pgTable("budget_goals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  familyGroupId: varchar("family_group_id").references(() => familyGroups.id),
   categoryId: varchar("category_id").references(() => categories.id),
   targetAmount: decimal("target_amount", { precision: 10, scale: 2 }).notNull(),
   month: integer("month").notNull(), // 1-12
@@ -133,41 +182,86 @@ export const budgetGoals = pgTable("budget_goals", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Family members for family accounts
-export const familyMembers = pgTable("family_members", {
+// Business departments for organization structure
+export const departments = pgTable("departments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  familyAccountId: varchar("family_account_id").references(() => users.id).notNull(),
   name: varchar("name", { length: 100 }).notNull(),
-  email: varchar("email"),
-  role: varchar("role").default("member"), // admin, member, child
-  inviteStatus: varchar("invite_status").default("pending"), // pending, accepted, declined
-  inviteToken: varchar("invite_token"),
-  canManageTransactions: boolean("can_manage_transactions").default(false),
-  canViewReports: boolean("can_view_reports").default(true),
-  monthlyAllowance: decimal("monthly_allowance", { precision: 10, scale: 2 }),
-  invitedAt: timestamp("invited_at").defaultNow(),
-  joinedAt: timestamp("joined_at"),
+  description: text("description"),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  managerId: varchar("manager_id").references(() => users.id),
+  budgetLimit: decimal("budget_limit", { precision: 12, scale: 2 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// User permissions for organizations
+export const userPermissions = pgTable("user_permissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  familyGroupId: varchar("family_group_id").references(() => familyGroups.id),
+  canManageTransactions: boolean("can_manage_transactions").default(false),
+  canViewReports: boolean("can_view_reports").default(true),
+  canManageUsers: boolean("can_manage_users").default(false),
+  canManageBudgets: boolean("can_manage_budgets").default(false),
+  canManageCategories: boolean("can_manage_categories").default(false),
+  departmentAccess: text("department_access"), // JSON array of department IDs
+  monthlyLimit: decimal("monthly_limit", { precision: 10, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
+  organization: one(organizations, { fields: [users.organizationId], references: [organizations.id] }),
+  familyGroup: one(familyGroups, { fields: [users.familyGroupId], references: [familyGroups.id] }),
   categories: many(categories),
   transactions: many(transactions),
   fixedExpenses: many(fixedExpenses),
   investments: many(investments),
   budgetGoals: many(budgetGoals),
-  familyMembers: many(familyMembers),
+  permissions: many(userPermissions),
 }));
 
-export const familyMembersRelations = relations(familyMembers, ({ one }) => ({
-  familyAccount: one(users, { fields: [familyMembers.familyAccountId], references: [users.id] }),
+// Organizations relations
+export const organizationsRelations = relations(organizations, ({ one, many }) => ({
+  owner: one(users, { fields: [organizations.ownerId], references: [users.id] }),
+  users: many(users),
+  departments: many(departments),
+  categories: many(categories),
+  transactions: many(transactions),
+  investments: many(investments),
+  budgetGoals: many(budgetGoals),
+}));
+
+// Family groups relations
+export const familyGroupsRelations = relations(familyGroups, ({ one, many }) => ({
+  owner: one(users, { fields: [familyGroups.ownerId], references: [users.id] }),
+  members: many(users),
+  categories: many(categories),
+  transactions: many(transactions),
+  investments: many(investments),
+  budgetGoals: many(budgetGoals),
+}));
+
+// Departments relations
+export const departmentsRelations = relations(departments, ({ one }) => ({
+  organization: one(organizations, { fields: [departments.organizationId], references: [organizations.id] }),
+  manager: one(users, { fields: [departments.managerId], references: [users.id] }),
+}));
+
+// User permissions relations
+export const userPermissionsRelations = relations(userPermissions, ({ one }) => ({
+  user: one(users, { fields: [userPermissions.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [userPermissions.organizationId], references: [organizations.id] }),
+  familyGroup: one(familyGroups, { fields: [userPermissions.familyGroupId], references: [familyGroups.id] }),
 }));
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
   user: one(users, { fields: [categories.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [categories.organizationId], references: [organizations.id] }),
+  familyGroup: one(familyGroups, { fields: [categories.familyGroupId], references: [familyGroups.id] }),
   transactions: many(transactions),
   fixedExpenses: many(fixedExpenses),
   budgetGoals: many(budgetGoals),
@@ -175,16 +269,22 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
   user: one(users, { fields: [transactions.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [transactions.organizationId], references: [organizations.id] }),
+  familyGroup: one(familyGroups, { fields: [transactions.familyGroupId], references: [familyGroups.id] }),
   category: one(categories, { fields: [transactions.categoryId], references: [categories.id] }),
 }));
 
 export const fixedExpensesRelations = relations(fixedExpenses, ({ one }) => ({
   user: one(users, { fields: [fixedExpenses.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [fixedExpenses.organizationId], references: [organizations.id] }),
+  familyGroup: one(familyGroups, { fields: [fixedExpenses.familyGroupId], references: [familyGroups.id] }),
   category: one(categories, { fields: [fixedExpenses.categoryId], references: [categories.id] }),
 }));
 
 export const investmentsRelations = relations(investments, ({ one, many }) => ({
   user: one(users, { fields: [investments.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [investments.organizationId], references: [organizations.id] }),
+  familyGroup: one(familyGroups, { fields: [investments.familyGroupId], references: [familyGroups.id] }),
   history: many(investmentHistory),
 }));
 
@@ -194,6 +294,8 @@ export const investmentHistoryRelations = relations(investmentHistory, ({ one })
 
 export const budgetGoalsRelations = relations(budgetGoals, ({ one }) => ({
   user: one(users, { fields: [budgetGoals.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [budgetGoals.organizationId], references: [organizations.id] }),
+  familyGroup: one(familyGroups, { fields: [budgetGoals.familyGroupId], references: [familyGroups.id] }),
   category: one(categories, { fields: [budgetGoals.categoryId], references: [categories.id] }),
 }));
 
@@ -219,8 +321,17 @@ export type InvestmentHistory = typeof investmentHistory.$inferSelect;
 export type InsertBudgetGoal = typeof budgetGoals.$inferInsert;
 export type BudgetGoal = typeof budgetGoals.$inferSelect;
 
-export type InsertFamilyMember = typeof familyMembers.$inferInsert;
-export type FamilyMember = typeof familyMembers.$inferSelect;
+export type InsertOrganization = typeof organizations.$inferInsert;
+export type Organization = typeof organizations.$inferSelect;
+
+export type InsertFamilyGroup = typeof familyGroups.$inferInsert;
+export type FamilyGroup = typeof familyGroups.$inferSelect;
+
+export type InsertDepartment = typeof departments.$inferInsert;
+export type Department = typeof departments.$inferSelect;
+
+export type InsertUserPermissions = typeof userPermissions.$inferInsert;
+export type UserPermissions = typeof userPermissions.$inferSelect;
 
 // Insert schemas
 export const insertCategorySchema = createInsertSchema(categories).omit({
@@ -251,7 +362,25 @@ export const insertBudgetGoalSchema = createInsertSchema(budgetGoals).omit({
   createdAt: true,
 });
 
-export const insertFamilyMemberSchema = createInsertSchema(familyMembers).omit({
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFamilyGroupSchema = createInsertSchema(familyGroups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDepartmentSchema = createInsertSchema(departments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserPermissionsSchema = createInsertSchema(userPermissions).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -334,7 +463,6 @@ export const usersRelationsUpdated = relations(users, ({ many }) => ({
   fixedExpenses: many(fixedExpenses),
   investments: many(investments),
   budgetGoals: many(budgetGoals),
-  familyMembers: many(familyMembers),
   notifications: many(notifications),
   workflowTriggers: many(workflowTriggers),
   emailPreferences: many(emailPreferences),
