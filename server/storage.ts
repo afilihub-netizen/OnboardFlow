@@ -149,6 +149,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserProfile(userId: string, updateData: {
+    firstName?: string;
+    lastName?: string;
+    profileImageUrl?: string;
     accountType?: 'individual' | 'family' | 'business';
     companyName?: string;
     cnpj?: string;

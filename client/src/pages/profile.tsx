@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,8 +20,21 @@ import { AccountTypeSelector } from "@/components/profile/account-type-selector"
 export default function Profile() {
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading } = useAuth();
+  const queryClient = useQueryClient();
   const [isNewMemberDialogOpen, setIsNewMemberDialogOpen] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [profileImageUrl, setProfileImageUrl] = useState('');
+
+  // Update local state when user data changes
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.firstName || '');
+      setLastName(user.lastName || '');
+      setProfileImageUrl(user.profileImageUrl || '');
+    }
+  }, [user]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -50,10 +65,34 @@ export default function Profile() {
     window.location.href = '/api/logout';
   };
 
+  // Mutation to update profile
+  const updateProfileMutation = useMutation({
+    mutationFn: async (profileData: { firstName?: string; lastName?: string; profileImageUrl?: string }) => {
+      const response = await apiRequest("PATCH", "/api/user/profile", profileData);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Perfil atualizado",
+        description: "Suas informações foram atualizadas com sucesso.",
+      });
+      // Invalidate queries to refresh user data everywhere
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar perfil.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSaveProfile = () => {
-    toast({
-      title: "Perfil atualizado",
-      description: "Suas informações foram atualizadas com sucesso.",
+    updateProfileMutation.mutate({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      profileImageUrl,
     });
   };
 
@@ -82,20 +121,18 @@ export default function Profile() {
 
       setPhotoFile(file);
       
-      // Create a temporary URL for preview
-      const previewUrl = URL.createObjectURL(file);
-      
-      // Here you would typically upload to your file storage service
-      // For now, we'll simulate the upload and show the preview
-      setTimeout(() => {
-        toast({
-          title: "Foto atualizada",
-          description: "Sua foto de perfil foi atualizada com sucesso.",
-        });
+      // Convert file to base64 for temporary preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target?.result as string;
+        setProfileImageUrl(base64);
         
-        // Update the user's profile image URL (this would come from the upload response)
-        // In a real app, you'd make an API call to update the user's profile
-      }, 1000);
+        toast({
+          title: "Foto selecionada",
+          description: "Clique em 'Salvar Alterações' para confirmar a nova foto.",
+        });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -133,7 +170,7 @@ export default function Profile() {
               <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6">
                 <div className="flex flex-col items-center space-y-4">
                   <Avatar className="w-24 h-24">
-                    <AvatarImage src={user?.profileImageUrl} alt="Profile" />
+                    <AvatarImage src={profileImageUrl || user?.profileImageUrl} alt="Profile" />
                     <AvatarFallback className="bg-blue-100 text-blue-600 text-2xl">
                       {getUserInitials()}
                     </AvatarFallback>
@@ -159,7 +196,9 @@ export default function Profile() {
                       <Label htmlFor="firstName">Nome</Label>
                       <Input 
                         id="firstName"
-                        defaultValue={user?.firstName || ''}
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="Digite seu nome"
                         data-testid="input-first-name"
                       />
                     </div>
@@ -167,7 +206,9 @@ export default function Profile() {
                       <Label htmlFor="lastName">Sobrenome</Label>
                       <Input 
                         id="lastName"
-                        defaultValue={user?.lastName || ''}
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder="Digite seu sobrenome"
                         data-testid="input-last-name"
                       />
                     </div>
@@ -195,11 +236,12 @@ export default function Profile() {
               <div className="flex justify-end mt-6">
                 <Button 
                   onClick={handleSaveProfile}
+                  disabled={updateProfileMutation.isPending}
                   className="bg-blue-500 hover:bg-blue-600 text-white"
                   data-testid="button-save-profile"
                 >
                   <Settings className="w-4 h-4 mr-2" />
-                  Salvar Alterações
+                  {updateProfileMutation.isPending ? "Salvando..." : "Salvar Alterações"}
                 </Button>
               </div>
             </CardContent>

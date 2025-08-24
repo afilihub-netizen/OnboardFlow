@@ -338,6 +338,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate the update data
       const updateData = z.object({
+        firstName: z.string().optional(),
+        lastName: z.string().optional(),
+        profileImageUrl: z.string().optional(),
         accountType: z.enum(['individual', 'family', 'business']).optional(),
         companyName: z.string().optional(),
         cnpj: z.string().optional(),
