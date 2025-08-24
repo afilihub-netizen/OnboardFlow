@@ -59,49 +59,75 @@ export default function Dashboard() {
           subtitle={isBusinessAccount ? "Controle financeiro empresarial" : "Visão geral das suas finanças"} 
         />
         
-        <div className="p-6 space-y-8">
+        <div className="p-6 space-y-6">
           {/* Business Mode Components - Sistema Empresarial Exclusivo */}
           {isBusinessAccount && (
-            <>
+            <div className="space-y-6 animate-in fade-in-50 duration-700">
               <BusinessDashboardHeader />
               <BusinessMetrics />
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                <BusinessDepartmentalMetrics />
-                <BusinessSuppliersWidget />
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="transform transition-all duration-300 hover:scale-105">
+                  <BusinessDepartmentalMetrics />
+                </div>
+                <div className="transform transition-all duration-300 hover:scale-105">
+                  <BusinessSuppliersWidget />
+                </div>
               </div>
-              <BusinessFinancialHealth />
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                <BusinessCashFlow />
-                <BusinessProjectsROI />
+              <div className="transform transition-all duration-300 hover:scale-[1.02]">
+                <BusinessFinancialHealth />
               </div>
-            </>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="transform transition-all duration-300 hover:scale-105">
+                  <BusinessCashFlow />
+                </div>
+                <div className="transform transition-all duration-300 hover:scale-105">
+                  <BusinessProjectsROI />
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Personal/Family Mode Components - Sistema Pessoal/Familiar */}
           {!isBusinessAccount && (
-            <>
+            <div className="space-y-6 animate-in fade-in-50 duration-700">
               {/* Monthly Goals Notifications */}
-              <MonthlyGoalsNotifications />
+              <div className="transform transition-all duration-300 hover:scale-[1.02]">
+                <MonthlyGoalsNotifications />
+              </div>
               
               {/* Financial Overview Cards */}
-              <FinancialOverview />
+              <div className="transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
+                <FinancialOverview />
+              </div>
               
               {/* Charts Section */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <FutureCommitments />
-                <ExpensesChart />
-                <FinancialHealthScore />
+                <div className="transform transition-all duration-300 hover:scale-105">
+                  <FutureCommitments />
+                </div>
+                <div className="transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
+                  <ExpensesChart />
+                </div>
+                <div className="transform transition-all duration-300 hover:scale-105">
+                  <FinancialHealthScore />
+                </div>
               </div>
               
               {/* Recent Transactions & AI Insights */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <RecentTransactions />
-                <AIInsights />
+                <div className="transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
+                  <RecentTransactions />
+                </div>
+                <div className="transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
+                  <AIInsights />
+                </div>
               </div>
               
               {/* Fixed Expenses */}
-              <FixedExpenses />
-            </>
+              <div className="transform transition-all duration-300 hover:scale-[1.02]">
+                <FixedExpenses />
+              </div>
+            </div>
           )}
         </div>
 
