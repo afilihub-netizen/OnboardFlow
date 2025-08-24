@@ -152,7 +152,7 @@ MANDATORY EXAMPLE:
     const result = JSON.parse(content);
     let transactions = result.transactions || [];
     
-    console.log("Raw transactions before normalization:", JSON.stringify(transactions.slice(0, 2), null, 2));
+    // Raw transactions extracted from AI
     
     // Normalize and validate transaction data
     transactions = transactions.map((t: any, index: number) => {
@@ -222,9 +222,7 @@ MANDATORY EXAMPLE:
         category: rawCategory.toString().trim() || "Outros"
       };
       
-      if (index < 3) { // Log first 3 transactions for debugging
-        console.log(`Transaction ${index + 1} normalized:`, normalized);
-      }
+      // Transaction normalized successfully
       return normalized;
     });
     
@@ -307,13 +305,8 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
       sendProgressUpdate(sessionId, 95, "Finalizando análise...");
     }
     
-    console.log("Total transactions found BEFORE final normalization:", allTransactions.length);
-    console.log("Sample transaction BEFORE normalization:", JSON.stringify(allTransactions[0], null, 2));
-    
-    // FORÇA normalização final - garantir que todos os campos estejam corretos
-    const finalTransactions = allTransactions.map((t: any, index: number) => {
-      console.log(`Processing transaction ${index + 1} for final normalization:`, t);
-      
+    // Força normalização final - garantir que todos os campos estejam corretos
+    const finalTransactions = allTransactions.map((t: any, index: number) => {      
       const normalized = {
         date: t.date || t.Date || t.DATA || "2024-12-10",
         description: t.description || t.Description || t.DESCRIPTION || `Transação ${index + 1}`,
@@ -322,11 +315,8 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
         category: t.category || t.Category || t.CATEGORY || "Outros"
       };
       
-      console.log(`Transaction ${index + 1} AFTER normalization:`, normalized);
       return normalized;
     });
-    
-    console.log("Sample transaction AFTER final normalization:", JSON.stringify(finalTransactions[0], null, 2));
     
     if (sessionId) {
       sendProgressUpdate(sessionId, 100, `Análise concluída! ${finalTransactions.length} transações encontradas`);

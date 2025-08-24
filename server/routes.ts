@@ -14,6 +14,12 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
+import Stripe from "stripe";
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2023-10-16",
+});
 
 // Store SSE connections for progress tracking
 export const extractProgressSessions = new Map<string, any>();
@@ -34,6 +40,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Subscription status endpoint
+  app.get('/api/subscription/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.stripeSubscriptionId) {
+        return res.json({
+          currentPlan: 'free',
+          availablePlans: ['individual'],
+          subscriptionStatus: 'inactive',
+          canUpgrade: true
+        });
+      }
+
+      // Verificar status da assinatura no Stripe
+      const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+      
+      let currentPlan = 'free';
+      let availablePlans = ['individual'];
+      
+      if (subscription.status === 'active') {
+        // Determinar plano baseado no price_id (você deve configurar os price_ids no Stripe)
+        const priceId = subscription.items.data[0]?.price.id;
+        
+        if (priceId === process.env.STRIPE_INDIVIDUAL_PRICE_ID) {
+          currentPlan = 'individual';
+          availablePlans = ['individual', 'family'];
+        } else if (priceId === process.env.STRIPE_FAMILY_PRICE_ID) {
+          currentPlan = 'family';
+          availablePlans = ['individual', 'family', 'business'];
+        } else if (priceId === process.env.STRIPE_BUSINESS_PRICE_ID) {
+          currentPlan = 'business';
+          availablePlans = ['individual', 'family', 'business'];
+        }
+      }
+
+      res.json({
+        currentPlan,
+        availablePlans,
+        subscriptionStatus: subscription.status,
+        canUpgrade: subscription.status === 'active',
+        subscriptionId: user.stripeSubscriptionId,
+        nextBillingDate: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null
+      });
+    } catch (error) {
+      console.error("Error fetching subscription status:", error);
+      res.status(500).json({ message: "Failed to fetch subscription status" });
     }
   });
 
@@ -550,7 +607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Process large texts by splitting into chunks with progress tracking
       const result = await analyzeExtractWithAI(extractText, availableCategories || [], sessionId);
       
-      console.log("Final result being sent to client:", JSON.stringify(result.transactions?.slice(0, 2), null, 2));
+      // Final result processed successfully
       res.json(result);
     } catch (error) {
       console.error("Error analyzing extract:", error);

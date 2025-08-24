@@ -209,8 +209,7 @@ export default function Import() {
       const result = await response.json();
       const analyzedTransactions = result.transactions || [];
       
-      console.log("Raw result from server:", result);
-      console.log("Analyzed transactions received:", analyzedTransactions.slice(0, 3));
+      // Transactions received successfully from AI analysis
       
       setParsedTransactions(analyzedTransactions);
       // Seleciona todas as transações por padrão
@@ -261,22 +260,12 @@ export default function Import() {
       selectedTransactions.has(index)
     );
     
-    console.log("Selected transactions before import:", selectedParsedTransactions.slice(0, 3));
-    
     const transactionsToImport = selectedParsedTransactions.map(transaction => {
       // Ensure we have valid data
       const amount = transaction.amount ? Math.abs(Number(transaction.amount)) : 0;
       const date = transaction.date || "2024-12-10";
       const description = transaction.description || "Transação importada";
       const type = transaction.type || "expense";
-      
-      console.log("Processing transaction:", { 
-        original: transaction, 
-        amount, 
-        date, 
-        description, 
-        type 
-      });
       
       return {
         amount: amount.toString(),
@@ -290,7 +279,6 @@ export default function Import() {
       };
     });
 
-    console.log("Final transactions to import:", transactionsToImport.slice(0, 3));
     importTransactionsMutation.mutate(transactionsToImport);
   };
 

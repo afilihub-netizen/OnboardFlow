@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Building2, Users, User } from "lucide-react";
+import { Building2, Users, User, Crown, Lock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -25,21 +25,27 @@ const accountTypes = [
     title: 'Pessoal',
     description: 'Para controle financeiro pessoal e individual',
     icon: User,
-    features: ['Transações pessoais', 'Metas de orçamento', 'Relatórios básicos']
+    price: 'R$ 19,90/mês',
+    features: ['Transações pessoais', 'Metas de orçamento', 'Relatórios básicos', 'Importação de extratos'],
+    planLevel: 1
   },
   {
     id: 'family',
     title: 'Família',
     description: 'Para famílias que querem gerenciar finanças juntas',
     icon: Users,
-    features: ['Múltiplos usuários', 'Orçamento familiar', 'Controle por membro']
+    price: 'R$ 39,90/mês',
+    features: ['Múltiplos usuários', 'Orçamento familiar', 'Controle por membro', 'Relatórios compartilhados'],
+    planLevel: 2
   },
   {
     id: 'business',
     title: 'Empresarial',
     description: 'Para empresas, freelancers ou controle empresarial',
     icon: Building2,
-    features: ['Departamentos', 'Fornecedores', 'Notas fiscais', 'Relatórios avançados']
+    price: 'R$ 79,90/mês',
+    features: ['Departamentos', 'Fornecedores', 'Notas fiscais', 'Relatórios avançados', 'API personalizada'],
+    planLevel: 3
   }
 ];
 
@@ -57,6 +63,18 @@ export function AccountTypeSelector({ currentType, currentCompanyData }: Account
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Buscar status de assinatura
+  const { data: subscriptionStatus, isLoading } = useQuery({
+    queryKey: ['/api/subscription/status'],
+    queryFn: async () => {
+      const response = await fetch('/api/subscription/status', {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch subscription status');
+      return response.json();
+    },
+  });
 
   const updateAccountMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -79,6 +97,16 @@ export function AccountTypeSelector({ currentType, currentCompanyData }: Account
   });
 
   const handleSave = () => {
+    // Verificar se o plano selecionado está disponível
+    if (!subscriptionStatus?.availablePlans?.includes(selectedType)) {
+      toast({
+        title: "Plano não disponível",
+        description: "Você precisa ter uma assinatura ativa para usar este plano.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const updateData: any = {
       accountType: selectedType
     };
@@ -93,6 +121,24 @@ export function AccountTypeSelector({ currentType, currentCompanyData }: Account
     updateAccountMutation.mutate(updateData);
   };
 
+  const getAccountTypeStatus = (typeId: string) => {
+    if (!subscriptionStatus) return 'loading';
+    
+    if (subscriptionStatus.availablePlans?.includes(typeId)) {
+      return subscriptionStatus.currentPlan === typeId ? 'current' : 'available';
+    }
+    
+    return 'locked';
+  };
+
+  const handleUpgrade = (planType: string) => {
+    // Redirecionar para página de pagamento/upgrade
+    toast({
+      title: "Upgrade de plano",
+      description: "Funcionalidade de upgrade será implementada em breve!",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -102,27 +148,95 @@ export function AccountTypeSelector({ currentType, currentCompanyData }: Account
         </p>
       </div>
 
+      {/* Status da assinatura atual */}
+      {subscriptionStatus && (
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Crown className="h-5 w-5 text-blue-600" />
+                <CardTitle className="text-base">Status do Plano</CardTitle>
+              </div>
+              <Badge variant={subscriptionStatus.subscriptionStatus === 'active' ? 'default' : 'secondary'}>
+                {subscriptionStatus.subscriptionStatus === 'active' ? 'Ativo' : 'Inativo'}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <p className="text-sm">
+                <strong>Plano atual:</strong> {
+                  accountTypes.find(t => t.id === subscriptionStatus.currentPlan)?.title || 'Gratuito'
+                }
+              </p>
+              {subscriptionStatus.nextBillingDate && (
+                <p className="text-sm text-muted-foreground">
+                  Próxima cobrança: {new Date(subscriptionStatus.nextBillingDate).toLocaleDateString('pt-BR')}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4">
         {accountTypes.map((type) => {
           const Icon = type.icon;
           const isSelected = selectedType === type.id;
+          const status = getAccountTypeStatus(type.id);
+          const isLocked = status === 'locked';
+          const isCurrent = status === 'current';
           
           return (
             <Card 
               key={type.id}
-              className={`cursor-pointer transition-all ${
-                isSelected ? 'ring-2 ring-primary border-primary' : 'hover:shadow-md'
+              className={`transition-all ${
+                isSelected && !isLocked 
+                  ? 'ring-2 ring-primary border-primary' 
+                  : isLocked 
+                    ? 'opacity-75 border-gray-200 dark:border-gray-700'
+                    : 'hover:shadow-md cursor-pointer'
               }`}
-              onClick={() => setSelectedType(type.id)}
+              onClick={() => !isLocked && setSelectedType(type.id)}
               data-testid={`account-type-${type.id}`}
             >
               <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  <Icon className={`h-5 w-5 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
-                  <div>
-                    <CardTitle className="text-base">{type.title}</CardTitle>
-                    <CardDescription className="text-sm">{type.description}</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Icon className={`h-5 w-5 ${
+                      isSelected && !isLocked ? 'text-primary' : 
+                      isLocked ? 'text-gray-400' : 'text-muted-foreground'
+                    }`} />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-base">{type.title}</CardTitle>
+                        {isCurrent && (
+                          <Badge variant="outline" className="text-xs">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Atual
+                          </Badge>
+                        )}
+                        {isLocked && (
+                          <Lock className="h-4 w-4 text-gray-400" />
+                        )}
+                      </div>
+                      <CardDescription className="text-sm">{type.description}</CardDescription>
+                      <p className="text-sm font-medium text-green-600 mt-1">{type.price}</p>
+                    </div>
                   </div>
+                  {isLocked && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUpgrade(type.id);
+                      }}
+                      data-testid={`button-upgrade-${type.id}`}
+                    >
+                      Fazer Upgrade
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
@@ -193,10 +307,19 @@ export function AccountTypeSelector({ currentType, currentCompanyData }: Account
         </Card>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-muted-foreground">
+          {isLoading ? (
+            "Verificando planos disponíveis..."
+          ) : getAccountTypeStatus(selectedType) === 'locked' ? (
+            "⚠️ Este plano requer uma assinatura ativa"
+          ) : (
+            "✅ Plano disponível para sua assinatura"
+          )}
+        </div>
         <Button 
           onClick={handleSave}
-          disabled={updateAccountMutation.isPending}
+          disabled={updateAccountMutation.isPending || isLoading || getAccountTypeStatus(selectedType) === 'locked'}
           data-testid="button-save-account-type"
         >
           {updateAccountMutation.isPending ? "Salvando..." : "Salvar Configurações"}
