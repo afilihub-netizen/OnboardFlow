@@ -121,15 +121,18 @@ export function FutureCommitments() {
   
   const currentMonthName = getMonthName(currentMonth, currentYear);
   const nextMonthName = getMonthName(currentMonth + 1, currentMonth === 11 ? currentYear + 1 : currentYear);
+  const thirdMonthName = getMonthName(currentMonth + 2, currentMonth >= 10 ? currentYear + 1 : currentYear);
 
   const currentMonthCommitments: FutureCommitment[] = [];
   const nextMonthCommitments: FutureCommitment[] = [];
+  const thirdMonthCommitments: FutureCommitment[] = [];
 
   commitments.forEach(commitment => {
     if (commitment.type === 'monthly') {
-      // Fixed expenses repeat monthly - add to both periods
+      // Fixed expenses repeat monthly - add to all periods
       currentMonthCommitments.push(commitment);
       nextMonthCommitments.push(commitment);
+      thirdMonthCommitments.push(commitment);
     } else {
       // Installment commitments - check remaining payments
       const remainingInstallments = commitment.totalInstallments! - commitment.paidInstallments!;
@@ -137,6 +140,9 @@ export function FutureCommitments() {
         currentMonthCommitments.push(commitment);
         if (remainingInstallments > 1) {
           nextMonthCommitments.push(commitment);
+          if (remainingInstallments > 2) {
+            thirdMonthCommitments.push(commitment);
+          }
         }
       }
     }
@@ -155,7 +161,8 @@ export function FutureCommitments() {
 
   const currentMonthTotal = calculateMonthTotal(currentMonthCommitments);
   const nextMonthTotal = calculateMonthTotal(nextMonthCommitments);
-  const totalOutstanding = currentMonthTotal + nextMonthTotal;
+  const thirdMonthTotal = calculateMonthTotal(thirdMonthCommitments);
+  const totalOutstanding = currentMonthTotal + nextMonthTotal + thirdMonthTotal;
 
   return (
     <Card className="financial-card">
@@ -174,7 +181,7 @@ export function FutureCommitments() {
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4">
         {/* Current Month */}
         <div className="flex items-center justify-between p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
           <div className="flex items-center gap-3">
@@ -203,6 +210,22 @@ export function FutureCommitments() {
           <div className="text-right">
             <p className="text-lg font-bold text-purple-600">
               {formatCurrency(nextMonthTotal.toString())}
+            </p>
+          </div>
+        </div>
+
+        {/* Third Month */}
+        <div className="flex items-center justify-between p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+          <div className="flex items-center gap-3">
+            <Clock className="w-5 h-5 text-green-600" />
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{thirdMonthName}</h3>
+              <p className="text-xs text-gray-600 dark:text-gray-400">{thirdMonthCommitments.length} compromisso{thirdMonthCommitments.length !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-bold text-green-600">
+              {formatCurrency(thirdMonthTotal.toString())}
             </p>
           </div>
         </div>
