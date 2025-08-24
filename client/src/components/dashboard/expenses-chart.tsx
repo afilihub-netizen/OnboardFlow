@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_COLORS } from "@/lib/constants";
 import { Link } from "wouter";
+import { PieChart as PieChartIcon } from "lucide-react";
 
 export function ExpensesChart() {
   const currentDate = new Date();
@@ -27,7 +28,10 @@ export function ExpensesChart() {
     return (
       <Card className="chart-container">
         <CardHeader>
-          <CardTitle>Gastos por Categoria</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <PieChartIcon className="w-5 h-5 text-purple-600" />
+            Gastos por Categoria
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Skeleton className="h-64 w-full" />
@@ -53,7 +57,10 @@ export function ExpensesChart() {
     <Card className="chart-container">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Gastos por Categoria</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <PieChartIcon className="w-5 h-5 text-purple-600" />
+            Gastos por Categoria
+          </CardTitle>
           <Button 
             variant="outline" 
             size="sm" 
