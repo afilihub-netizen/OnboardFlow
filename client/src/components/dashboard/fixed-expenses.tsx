@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Home, Zap, Wifi, Car, Calendar, Plus, Save, ChevronDown, ChevronUp } from "lucide-react";
+import { Home, Zap, Wifi, Car, Calendar, Plus, Save, ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -61,7 +61,7 @@ export function FixedExpenses() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [showAll, setShowAll] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
 
   const form = useForm<FixedExpenseFormData>({
     resolver: zodResolver(fixedExpenseSchema),
@@ -458,8 +458,39 @@ export function FixedExpenses() {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Navigation Header */}
+            {expenses.length > 4 && (
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                  disabled={currentPage === 0}
+                  className="flex items-center gap-1"
+                  data-testid="previous-page"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {Math.min(currentPage * 4 + 1, expenses.length)} - {Math.min((currentPage + 1) * 4, expenses.length)} de {expenses.length}
+                </span>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(Math.min(Math.ceil(expenses.length / 4) - 1, currentPage + 1))}
+                  disabled={currentPage >= Math.ceil(expenses.length / 4) - 1}
+                  className="flex items-center gap-1"
+                  data-testid="next-page"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {(showAll ? expenses : expenses.slice(0, 4)).map((transaction: any) => {
+              {expenses.slice(currentPage * 4, (currentPage + 1) * 4).map((transaction: any) => {
                 const Icon = getCategoryIcon(transaction.category?.name || '', transaction.description);
                 
                 return (
@@ -498,31 +529,6 @@ export function FixedExpenses() {
                 );
               })}
             </div>
-            
-            {/* Botão Ver Mais/Menos */}
-            {expenses.length > 4 && (
-              <div className="flex justify-center pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAll(!showAll)}
-                  className="flex items-center gap-2"
-                  data-testid="toggle-show-all-expenses"
-                >
-                  {showAll ? (
-                    <>
-                      <ChevronUp className="w-4 h-4" />
-                      Mostrar Menos
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="w-4 h-4" />
-                      Ver Mais ({expenses.length - 4} restantes)
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
           </div>
         )}
       </CardContent>
