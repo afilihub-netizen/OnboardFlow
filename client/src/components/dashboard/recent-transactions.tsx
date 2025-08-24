@@ -95,7 +95,7 @@ export function RecentTransactions() {
             variant="outline" 
             size="sm" 
             asChild 
-            className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 font-medium shadow-sm"
             data-testid="button-view-all-transactions"
           >
             <Link href="/transactions">Ver todas</Link>

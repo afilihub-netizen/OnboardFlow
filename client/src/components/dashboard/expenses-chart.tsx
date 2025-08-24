@@ -4,6 +4,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recha
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_COLORS } from "@/lib/constants";
+import { Link } from "wouter";
 
 export function ExpensesChart() {
   const currentDate = new Date();
@@ -53,8 +54,14 @@ export function ExpensesChart() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Gastos por Categoria</CardTitle>
-          <Button variant="ghost" size="sm" data-testid="button-view-details">
-            Ver detalhes
+          <Button 
+            variant="outline" 
+            size="sm" 
+            asChild
+            className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800 font-medium"
+            data-testid="button-view-details"
+          >
+            <Link href="/reports">Ver detalhes</Link>
           </Button>
         </div>
       </CardHeader>
