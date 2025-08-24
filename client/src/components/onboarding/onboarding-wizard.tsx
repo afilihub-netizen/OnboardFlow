@@ -109,6 +109,10 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
     onSuccess: (recommendations) => {
       setAiRecommendations(recommendations);
       setIsAnalyzing(false);
+      // Automatically advance to next step after analysis is complete
+      setTimeout(() => {
+        setCurrentStep(5); // Move to setup step
+      }, 1500); // Give user time to see the results
     },
     onError: (error: any) => {
       toast({
@@ -117,6 +121,10 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
         variant: "destructive",
       });
       setIsAnalyzing(false);
+      // Even on error, advance to setup with fallback data
+      setTimeout(() => {
+        setCurrentStep(5);
+      }, 1000);
     }
   });
 
@@ -147,6 +155,7 @@ export function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
     if (currentStep === 4) { // AI Analysis step
       setIsAnalyzing(true);
       getAIRecommendations.mutate(onboardingData);
+      return; // Don't advance until AI analysis is complete
     }
     if (currentStep < ONBOARDING_STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
