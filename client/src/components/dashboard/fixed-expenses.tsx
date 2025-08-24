@@ -206,7 +206,10 @@ export function FixedExpenses() {
     <Card className="financial-card">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Contas Fixas do Mês</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-blue-600" />
+            Contas Fixas do Mês
+          </CardTitle>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button 

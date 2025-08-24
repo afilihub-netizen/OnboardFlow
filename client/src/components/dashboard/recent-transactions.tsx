@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShoppingCart, Briefcase, Car, Home, Utensils, HeartHandshake } from "lucide-react";
+import { ShoppingCart, Briefcase, Car, Home, Utensils, HeartHandshake, Activity } from "lucide-react";
 import { Link } from "wouter";
 
 const getCategoryIcon = (categoryName: string) => {
@@ -74,8 +74,17 @@ export function RecentTransactions() {
     <Card className="financial-card">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Transações Recentes</CardTitle>
-          <Button variant="ghost" size="sm" asChild data-testid="button-view-all-transactions">
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="w-5 h-5 text-green-600" />
+            Transações Recentes
+          </CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            asChild 
+            className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+            data-testid="button-view-all-transactions"
+          >
             <Link href="/transactions">Ver todas</Link>
           </Button>
         </div>
