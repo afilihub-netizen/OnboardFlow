@@ -71,30 +71,30 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
           role: "system",
           content: `Você é um assistente especializado em análise de extratos bancários. Analise o extrato fornecido e extraia as transações em formato JSON.
 
+IMPORTANTE: Responda APENAS com JSON válido, sem explicações, sem markdown, sem texto adicional.
+
 Instruções:
-1. Identifique cada transação individual
+1. Identifique cada transação individual no extrato
 2. Para cada transação, determine:
-   - Data (formato YYYY-MM-DD)
-   - Descrição (limpe e simplifique)
-   - Valor (número positivo ou negativo)
-   - Tipo (income para receitas, expense para despesas)
-   - Categoria (baseada na descrição)
-   - Confiança (0-1, baseado na clareza da informação)
+   - Data (formato YYYY-MM-DD, use 2024 se não especificado)
+   - Descrição (simplifique, remova códigos desnecessários)
+   - Valor (número, positivo para receitas, negativo para despesas)
+   - Tipo ("income" para receitas, "expense" para despesas)
+   - Categoria (escolha a mais adequada)
+   - Confiança (0.8 a 1.0)
 
-Categorias disponíveis: ${availableCategories.join(', ')}
+Categorias disponíveis: ${availableCategories.length > 0 ? availableCategories.join(', ') : 'Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros'}
 
-Se uma transação não se encaixar nas categorias disponíveis, sugira uma categoria apropriada.
-
-Formato de resposta obrigatório - responda APENAS com JSON válido:
+Formato exato da resposta (JSON válido):
 {
   "transactions": [
     {
-      "date": "YYYY-MM-DD",
-      "description": "string",
-      "amount": number,
-      "type": "income" | "expense",
-      "category": "string",
-      "confidence": number
+      "date": "2024-01-15",
+      "description": "Descrição da transação",
+      "amount": -50.00,
+      "type": "expense",
+      "category": "Alimentação",
+      "confidence": 0.9
     }
   ]
 }`
@@ -105,12 +105,33 @@ Formato de resposta obrigatório - responda APENAS com JSON válido:
         }
       ],
       response_format: { type: "json_object" },
-      max_tokens: 4000,
+      max_tokens: 3000,
       temperature: 0.1
     });
 
-    const result = JSON.parse(response.choices[0].message.content || '{"transactions": []}');
-    return result;
+    const content = response.choices[0].message.content || '{"transactions": []}';
+    console.log("OpenAI raw response:", content);
+    
+    // Try to clean up the response if it has any formatting issues
+    let cleanContent = content.trim();
+    
+    // Remove any markdown formatting if present
+    if (cleanContent.startsWith('```json')) {
+      cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (cleanContent.startsWith('```')) {
+      cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
+    try {
+      const result = JSON.parse(cleanContent);
+      return result;
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
+      console.error("Content that failed to parse:", cleanContent);
+      
+      // Return empty result if parsing fails
+      return { transactions: [] };
+    }
   } catch (error) {
     console.error("Error analyzing extract with AI:", error);
     throw new Error("Failed to analyze extract with AI");
