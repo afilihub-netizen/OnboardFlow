@@ -5,6 +5,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { FinancialOverview } from "@/components/dashboard/financial-overview";
+import { FinancialHealthScore } from "@/components/dashboard/financial-health-score";
 import { FutureCommitments } from "@/components/dashboard/future-commitments";
 import { ExpensesChart } from "@/components/dashboard/expenses-chart";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
@@ -55,9 +56,10 @@ export default function Dashboard() {
           <FinancialOverview />
           
           {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <FutureCommitments />
             <ExpensesChart />
+            <FinancialHealthScore />
           </div>
           
           {/* Recent Transactions & AI Insights */}

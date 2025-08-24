@@ -163,6 +163,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Financial Health Score
+  app.get("/api/financial-health", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const healthScore = await storage.calculateFinancialHealthScore(userId);
+      res.json(healthScore);
+    } catch (error) {
+      console.error("Error calculating financial health score:", error);
+      res.status(500).json({ message: "Failed to calculate financial health score" });
+    }
+  });
+
   app.put("/api/transactions/:id", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;

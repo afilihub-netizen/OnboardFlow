@@ -223,6 +223,197 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
+  // Financial Health Score calculation
+  async calculateFinancialHealthScore(userId: string) {
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Get financial data for the last 3 months
+    const summary = await this.getFinancialSummary(userId, threeMonthsAgo, now);
+    const transactions = await this.getTransactions(userId, { 
+      startDate: threeMonthsAgo, 
+      endDate: now, 
+      limit: 1000 
+    });
+    const budgetGoals = await this.getBudgetGoals(userId);
+
+    const totalIncome = parseFloat(summary.totalIncome);
+    const totalExpenses = parseFloat(summary.totalExpenses);
+    const balance = parseFloat(summary.balance);
+
+    // Calculate various financial health metrics
+    let score = 0;
+    const maxScore = 100;
+    const recommendations = [];
+
+    // 1. Income vs Expenses Ratio (25 points)
+    const incomeExpenseRatio = totalIncome > 0 ? (totalIncome - totalExpenses) / totalIncome : 0;
+    if (incomeExpenseRatio >= 0.3) {
+      score += 25; // Excellent savings rate
+    } else if (incomeExpenseRatio >= 0.2) {
+      score += 20; // Good savings rate
+      recommendations.push("Tente aumentar sua taxa de poupança para 30% da renda.");
+    } else if (incomeExpenseRatio >= 0.1) {
+      score += 15; // Fair savings rate
+      recommendations.push("Sua taxa de poupança está baixa. Tente reduzir gastos desnecessários.");
+    } else if (incomeExpenseRatio >= 0) {
+      score += 10; // Breaking even
+      recommendations.push("Você está gastando quase toda sua renda. Crie um orçamento para controlar gastos.");
+    } else {
+      score += 0; // Spending more than earning
+      recommendations.push("URGENTE: Você está gastando mais do que ganha. Revise seus gastos imediatamente.");
+    }
+
+    // 2. Spending Consistency (20 points)
+    const monthlyExpenses = [];
+    for (let i = 0; i < 3; i++) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+      const monthTransactions = transactions.filter(t => 
+        t.type === 'expense' && 
+        new Date(t.date) >= monthStart && 
+        new Date(t.date) <= monthEnd
+      );
+      const monthTotal = monthTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      monthlyExpenses.push(monthTotal);
+    }
+
+    if (monthlyExpenses.length >= 2) {
+      const avgExpenses = monthlyExpenses.reduce((sum, exp) => sum + exp, 0) / monthlyExpenses.length;
+      const variance = monthlyExpenses.reduce((sum, exp) => sum + Math.pow(exp - avgExpenses, 2), 0) / monthlyExpenses.length;
+      const consistencyScore = avgExpenses > 0 ? Math.max(0, 20 - (variance / avgExpenses) * 10) : 0;
+      score += Math.min(20, consistencyScore);
+      
+      if (consistencyScore < 10) {
+        recommendations.push("Seus gastos variam muito mensalmente. Crie um orçamento mensal consistente.");
+      }
+    }
+
+    // 3. Budget Goal Adherence (20 points)
+    if (budgetGoals.length > 0) {
+      let budgetScore = 0;
+      let budgetsAnalyzed = 0;
+
+      for (const goal of budgetGoals) {
+        const categoryTransactions = transactions.filter(t => 
+          t.categoryId === goal.categoryId && 
+          t.type === 'expense' &&
+          new Date(t.date) >= currentMonth
+        );
+        const spent = categoryTransactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const target = parseFloat(goal.targetAmount);
+        
+        if (target > 0) {
+          const adherence = Math.max(0, 1 - (spent / target));
+          budgetScore += adherence * 20;
+          budgetsAnalyzed++;
+        }
+      }
+
+      if (budgetsAnalyzed > 0) {
+        score += budgetScore / budgetsAnalyzed;
+      } else {
+        score += 10;
+        recommendations.push("Configure metas de orçamento para melhor controle financeiro.");
+      }
+    } else {
+      recommendations.push("Crie metas de orçamento por categoria para melhor controle dos gastos.");
+    }
+
+    // 4. Debt Management (20 points) - Based on installments
+    const installmentTransactions = transactions.filter(t => t.totalInstallments && t.totalInstallments > 1);
+    const totalDebt = installmentTransactions.reduce((sum, t) => {
+      const remaining = (parseFloat(t.totalValue || t.amount) * (t.totalInstallments - (t.paidInstallments || 0))) / t.totalInstallments;
+      return sum + remaining;
+    }, 0);
+
+    if (totalIncome > 0) {
+      const debtToIncomeRatio = totalDebt / (totalIncome / 3); // 3 months income
+      if (debtToIncomeRatio <= 0.1) {
+        score += 20; // Low debt
+      } else if (debtToIncomeRatio <= 0.3) {
+        score += 15; // Moderate debt
+        recommendations.push("Considere quitar algumas parcelas em aberto para reduzir compromissos.");
+      } else if (debtToIncomeRatio <= 0.5) {
+        score += 10; // High debt
+        recommendations.push("Você tem muitos compromissos parcelados. Evite novas dívidas.");
+      } else {
+        score += 5; // Very high debt
+        recommendations.push("ATENÇÃO: Nível alto de endividamento. Priorize quitar dívidas existentes.");
+      }
+    }
+
+    // 5. Emergency Fund Indicator (15 points) - Based on positive balance
+    const emergencyFundMonths = totalIncome > 0 ? (balance / (totalIncome / 3)) : 0;
+    if (emergencyFundMonths >= 6) {
+      score += 15; // 6+ months emergency fund
+    } else if (emergencyFundMonths >= 3) {
+      score += 12; // 3-6 months emergency fund
+      recommendations.push("Parabéns! Continue construindo sua reserva de emergência.");
+    } else if (emergencyFundMonths >= 1) {
+      score += 8; // 1-3 months emergency fund
+      recommendations.push("Construa uma reserva de emergência equivalente a 6 meses de gastos.");
+    } else if (balance > 0) {
+      score += 5; // Some savings
+      recommendations.push("Comece a construir uma reserva de emergência. Meta: 6 meses de gastos.");
+    } else {
+      recommendations.push("PRIORITÁRIO: Crie uma reserva de emergência mesmo que pequena.");
+    }
+
+    // Calculate final score and level
+    const finalScore = Math.min(maxScore, Math.max(0, Math.round(score)));
+    let level = 'Crítico';
+    let color = 'red';
+    
+    if (finalScore >= 80) {
+      level = 'Excelente';
+      color = 'green';
+    } else if (finalScore >= 65) {
+      level = 'Bom';
+      color = 'blue';
+    } else if (finalScore >= 45) {
+      level = 'Regular';
+      color = 'yellow';
+    } else if (finalScore >= 25) {
+      level = 'Baixo';
+      color = 'orange';
+    }
+
+    // Add level-specific recommendations
+    if (finalScore >= 80) {
+      recommendations.unshift("Parabéns! Você tem uma saúde financeira excelente. Continue assim!");
+    } else if (finalScore >= 65) {
+      recommendations.unshift("Sua saúde financeira está boa, mas há espaço para melhorar.");
+    } else if (finalScore >= 45) {
+      recommendations.unshift("Sua situação financeira precisa de atenção. Foque nas recomendações abaixo.");
+    } else {
+      recommendations.unshift("Sua saúde financeira precisa de melhorias urgentes.");
+    }
+
+    return {
+      score: finalScore,
+      level,
+      color,
+      recommendations: recommendations.slice(0, 5), // Top 5 recommendations
+      metrics: {
+        incomeVsExpenses: {
+          ratio: incomeExpenseRatio,
+          score: Math.round((incomeExpenseRatio >= 0.3 ? 25 : incomeExpenseRatio >= 0.2 ? 20 : incomeExpenseRatio >= 0.1 ? 15 : incomeExpenseRatio >= 0 ? 10 : 0))
+        },
+        emergencyFund: {
+          months: emergencyFundMonths,
+          score: Math.round(emergencyFundMonths >= 6 ? 15 : emergencyFundMonths >= 3 ? 12 : emergencyFundMonths >= 1 ? 8 : balance > 0 ? 5 : 0)
+        },
+        debtLevel: {
+          ratio: totalIncome > 0 ? totalDebt / (totalIncome / 3) : 0,
+          score: Math.round(totalIncome > 0 ? (totalDebt / (totalIncome / 3) <= 0.1 ? 20 : totalDebt / (totalIncome / 3) <= 0.3 ? 15 : totalDebt / (totalIncome / 3) <= 0.5 ? 10 : 5) : 0)
+        }
+      }
+    };
+  }
+
   // Get recurring transactions for dashboard
   async getRecurringTransactions(userId: string): Promise<any[]> {
     // Get recurring transactions
