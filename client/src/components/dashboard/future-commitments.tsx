@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, CreditCard, FileText, Calendar, RefreshCw } from "lucide-react";
+import { Clock, CreditCard, FileText, Calendar, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
 
 interface FutureCommitment {
   id: string;
@@ -17,6 +18,9 @@ interface FutureCommitment {
 }
 
 export function FutureCommitments() {
+  const [expandedCurrentMonth, setExpandedCurrentMonth] = useState(false);
+  const [expandedNextMonth, setExpandedNextMonth] = useState(false);
+
   const { data: commitments, isLoading } = useQuery({
     queryKey: ['/api/transactions/future-commitments'],
     queryFn: async () => {
@@ -105,48 +109,53 @@ export function FutureCommitments() {
     );
   }
 
-  // Separate commitments by time period
+  // Get current month and next months dynamically  
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
-  const endOfCurrentMonth = new Date(currentYear, currentMonth + 1, 0);
-  const endOfNextTwoMonths = new Date(currentYear, currentMonth + 3, 0);
+  
+  // Get month names in Portuguese
+  const getMonthName = (month: number, year: number) => {
+    return new Date(year, month).toLocaleDateString('pt-BR', { month: 'long' });
+  };
+  
+  const currentMonthName = getMonthName(currentMonth, currentYear);
+  const nextMonthName = getMonthName(currentMonth + 1, currentMonth === 11 ? currentYear + 1 : currentYear);
 
-  const thisMonthCommitments: FutureCommitment[] = [];
-  const nextTwoMonthsCommitments: FutureCommitment[] = [];
+  const currentMonthCommitments: FutureCommitment[] = [];
+  const nextMonthCommitments: FutureCommitment[] = [];
 
   commitments.forEach(commitment => {
     if (commitment.type === 'monthly') {
       // Fixed expenses repeat monthly - add to both periods
-      thisMonthCommitments.push(commitment);
-      nextTwoMonthsCommitments.push(commitment);
+      currentMonthCommitments.push(commitment);
+      nextMonthCommitments.push(commitment);
     } else {
       // Installment commitments - check remaining payments
       const remainingInstallments = commitment.totalInstallments! - commitment.paidInstallments!;
       if (remainingInstallments > 0) {
-        thisMonthCommitments.push(commitment);
+        currentMonthCommitments.push(commitment);
         if (remainingInstallments > 1) {
-          nextTwoMonthsCommitments.push(commitment);
+          nextMonthCommitments.push(commitment);
         }
       }
     }
   });
 
-  const calculateTotal = (commitmentList: FutureCommitment[], monthsMultiplier: number = 1) => {
+  const calculateMonthTotal = (commitmentList: FutureCommitment[]) => {
     return commitmentList.reduce((total, commitment) => {
       if (commitment.type === 'monthly') {
-        return total + (parseFloat(commitment.installmentValue) * monthsMultiplier);
+        return total + parseFloat(commitment.installmentValue);
       } else {
-        const remainingInstallments = commitment.totalInstallments! - commitment.paidInstallments!;
-        const installmentsToCount = Math.min(remainingInstallments, monthsMultiplier);
-        return total + (installmentsToCount * parseFloat(commitment.installmentValue));
+        // Only count 1 installment per month
+        return total + parseFloat(commitment.installmentValue);
       }
     }, 0);
   };
 
-  const thisMonthTotal = calculateTotal(thisMonthCommitments, 1);
-  const nextTwoMonthsTotal = calculateTotal(nextTwoMonthsCommitments, 2);
-  const totalOutstanding = thisMonthTotal + nextTwoMonthsTotal;
+  const currentMonthTotal = calculateMonthTotal(currentMonthCommitments);
+  const nextMonthTotal = calculateMonthTotal(nextMonthCommitments);
+  const totalOutstanding = currentMonthTotal + nextMonthTotal;
 
   return (
     <Card className="financial-card">
@@ -165,120 +174,90 @@ export function FutureCommitments() {
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-6">
-        {/* This Month Section */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Calendar className="w-4 h-4 text-blue-600" />
-            <h3 className="font-semibold text-gray-900 dark:text-white">Este Mês</h3>
-            <span className="text-sm font-medium text-blue-600">
-              {formatCurrency(thisMonthTotal.toString())}
-            </span>
+      <CardContent className="space-y-4">
+        {/* Current Month Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-blue-600" />
+              <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{currentMonthName}</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-blue-600">
+                {formatCurrency(currentMonthTotal.toString())}
+              </span>
+              {currentMonthCommitments.length > 4 && (
+                <button 
+                  onClick={() => setExpandedCurrentMonth(!expandedCurrentMonth)}
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                >
+                  {expandedCurrentMonth ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+              )}
+            </div>
           </div>
           
-          <div className="space-y-3" data-testid="this-month-commitments">
-            {thisMonthCommitments.map((commitment, index) => {
-              const isMonthly = commitment.type === 'monthly';
-              const remainingInstallments = isMonthly ? null : commitment.totalInstallments! - commitment.paidInstallments!;
-              const progressPercent = isMonthly ? 100 : (commitment.paidInstallments! / commitment.totalInstallments!) * 100;
-
-              return (
-                <div
-                  key={`${commitment.type}-${commitment.id}`}
-                  className="p-3 rounded-lg border bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                  data-testid={`commitment-${index}`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      {getPaymentMethodIcon(commitment.paymentMethod, commitment.type)}
-                      <span className="font-medium text-gray-900 dark:text-white text-sm">
-                        {commitment.description}
-                      </span>
-                    </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {getPaymentMethodLabel(commitment.paymentMethod, commitment.type)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-600 dark:text-gray-400">
-                      {commitment.categoryName || 'Sem categoria'}
-                    </span>
-                    <span className="text-sm font-medium text-orange-600">
-                      {formatCurrency(commitment.installmentValue)}
-                    </span>
-                  </div>
-
-                  {!isMonthly && (
-                    <div className="mt-2">
-                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        <span>{commitment.paidInstallments} de {commitment.totalInstallments} pagas</span>
-                        <span>{remainingInstallments} restantes</span>
-                      </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
-                        <div 
-                          className="bg-blue-600 h-1 rounded-full transition-all duration-300"
-                          style={{ width: `${Math.max(progressPercent, 5)}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
+          <div className="grid gap-2">
+            {(expandedCurrentMonth ? currentMonthCommitments : currentMonthCommitments.slice(0, 4)).map((commitment, index) => (
+              <div
+                key={`current-${commitment.type}-${commitment.id}`}
+                className="flex items-center justify-between p-2 rounded border bg-gray-50 dark:bg-gray-800"
+                data-testid={`current-commitment-${index}`}
+              >
+                <div className="flex items-center gap-2">
+                  {getPaymentMethodIcon(commitment.paymentMethod, commitment.type)}
+                  <span className="text-sm text-gray-900 dark:text-white truncate max-w-[200px]">
+                    {commitment.description}
+                  </span>
                 </div>
-              );
-            })}
+                <span className="text-sm font-medium text-blue-600">
+                  {formatCurrency(commitment.installmentValue)}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Next Two Months Section */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Clock className="w-4 h-4 text-purple-600" />
-            <h3 className="font-semibold text-gray-900 dark:text-white">Próximos 2 Meses</h3>
-            <span className="text-sm font-medium text-purple-600">
-              {formatCurrency(nextTwoMonthsTotal.toString())}
-            </span>
+        {/* Next Month Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-purple-600" />
+              <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{nextMonthName}</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-purple-600">
+                {formatCurrency(nextMonthTotal.toString())}
+              </span>
+              {nextMonthCommitments.length > 4 && (
+                <button 
+                  onClick={() => setExpandedNextMonth(!expandedNextMonth)}
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                >
+                  {expandedNextMonth ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+              )}
+            </div>
           </div>
           
-          <div className="space-y-3" data-testid="next-months-commitments">
-            {nextTwoMonthsCommitments.map((commitment, index) => {
-              const isMonthly = commitment.type === 'monthly';
-              const remainingInstallments = isMonthly ? null : commitment.totalInstallments! - commitment.paidInstallments!;
-
-              return (
-                <div
-                  key={`future-${commitment.type}-${commitment.id}`}
-                  className="p-3 rounded-lg border bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                  data-testid={`future-commitment-${index}`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      {getPaymentMethodIcon(commitment.paymentMethod, commitment.type)}
-                      <span className="font-medium text-gray-900 dark:text-white text-sm">
-                        {commitment.description}
-                      </span>
-                    </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {getPaymentMethodLabel(commitment.paymentMethod, commitment.type)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-600 dark:text-gray-400">
-                      {isMonthly 
-                        ? `${formatCurrency(commitment.installmentValue)} x 2 meses`
-                        : `${Math.min(remainingInstallments!, 2)} parcela${Math.min(remainingInstallments!, 2) > 1 ? 's' : ''} de ${formatCurrency(commitment.installmentValue)}`
-                      }
-                    </span>
-                    <span className="text-sm font-medium text-purple-600">
-                      {isMonthly 
-                        ? formatCurrency((parseFloat(commitment.installmentValue) * 2).toString())
-                        : formatCurrency((Math.min(remainingInstallments!, 2) * parseFloat(commitment.installmentValue)).toString())
-                      }
-                    </span>
-                  </div>
+          <div className="grid gap-2">
+            {(expandedNextMonth ? nextMonthCommitments : nextMonthCommitments.slice(0, 4)).map((commitment, index) => (
+              <div
+                key={`next-${commitment.type}-${commitment.id}`}
+                className="flex items-center justify-between p-2 rounded border bg-gray-50 dark:bg-gray-800"
+                data-testid={`next-commitment-${index}`}
+              >
+                <div className="flex items-center gap-2">
+                  {getPaymentMethodIcon(commitment.paymentMethod, commitment.type)}
+                  <span className="text-sm text-gray-900 dark:text-white truncate max-w-[200px]">
+                    {commitment.description}
+                  </span>
                 </div>
-              );
-            })}
+                <span className="text-sm font-medium text-purple-600">
+                  {formatCurrency(commitment.installmentValue)}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </CardContent>
