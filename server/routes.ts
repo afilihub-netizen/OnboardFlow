@@ -260,60 +260,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { accountType, monthlyIncome, mainGoals, currentSituation, priorities, familySize, businessType } = req.body;
       
-      // Create a comprehensive prompt for OpenAI
-      const prompt = `Você é um consultor financeiro especializado em ajudar pessoas a organizar suas finanças pessoais.
-
-Perfil do usuário:
-- Tipo de conta: ${accountType}
-- Renda mensal: R$ ${monthlyIncome || 'não informado'}
-- Objetivos principais: ${mainGoals.join(', ')}
-- Prioridades: ${priorities.join(', ')}
-- Situação atual: ${currentSituation}
-${familySize ? `- Tamanho da família: ${familySize} pessoas` : ''}
-${businessType ? `- Tipo de negócio: ${businessType}` : ''}
-
-Com base nessas informações, crie recomendações personalizadas em formato JSON com:
-
-1. "categories": Array de 6-8 categorias de gastos com nome, ícone (emoji), orçamento sugerido e descrição
-2. "goals": Array de 3-4 metas financeiras com título, valor alvo, prazo e descrição
-3. "tips": Array de 5-6 dicas práticas e personalizadas
-4. "nextSteps": Array de 3-4 próximos passos recomendados
-
-Considere a renda mensal para sugerir orçamentos realistas. Seja específico e prático.`;
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            {
-              role: 'system',
-              content: 'Você é um consultor financeiro experiente. Responda sempre em JSON válido em português brasileiro.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.7
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Falha na análise da IA');
-      }
-
-      const aiResponse = await response.json();
-      const recommendations = JSON.parse(aiResponse.choices[0].message.content);
+      console.log('Análise de onboarding iniciada para:', { accountType, monthlyIncome, mainGoals, priorities });
       
-      res.json(recommendations);
+      // Fallback recommendations if AI fails
+      const fallbackRecommendations = {
+        categories: [
+          { name: "Alimentação", icon: "🍔", budget: Math.round((monthlyIncome || 3000) * 0.25), description: "Gastos com supermercado e refeições" },
+          { name: "Transporte", icon: "🚗", budget: Math.round((monthlyIncome || 3000) * 0.15), description: "Combustível, transporte público e manutenção" },
+          { name: "Moradia", icon: "🏠", budget: Math.round((monthlyIncome || 3000) * 0.30), description: "Aluguel, financiamento e contas da casa" },
+          { name: "Lazer", icon: "🎯", budget: Math.round((monthlyIncome || 3000) * 0.10), description: "Entretenimento e atividades de lazer" },
+          { name: "Saúde", icon: "⚕️", budget: Math.round((monthlyIncome || 3000) * 0.10), description: "Plano de saúde e medicamentos" },
+          { name: "Educação", icon: "📚", budget: Math.round((monthlyIncome || 3000) * 0.10), description: "Cursos, livros e desenvolvimento pessoal" }
+        ],
+        goals: [
+          { title: "Reserva de Emergência", target: (monthlyIncome || 3000) * 6, timeframe: "12 meses", description: "Criar uma reserva para imprevistos" },
+          { title: "Viagem dos Sonhos", target: 8000, timeframe: "18 meses", description: "Economizar para aquela viagem especial" },
+          { title: "Investimentos", target: (monthlyIncome || 3000) * 2, timeframe: "6 meses", description: "Começar a investir regularmente" }
+        ],
+        tips: [
+          "Comece com pequenas economias diárias - R$ 5 por dia resultam em R$ 1.800 por ano",
+          "Use a regra 50-30-20: 50% necessidades, 30% desejos, 20% poupança",
+          "Automatize sua poupança - programe transferências automáticas",
+          "Revise seus gastos mensalmente para identificar onde pode economizar",
+          "Invista em conhecimento financeiro - é o melhor investimento que você pode fazer"
+        ],
+        nextSteps: [
+          "Configure suas categorias de gastos no FinanceFlow",
+          "Cadastre suas primeiras transações",
+          "Defina suas metas financeiras",
+          "Comece a acompanhar seus gastos diariamente"
+        ]
+      };
+
+      // Try AI analysis first
+      try {
+        const prompt = `Você é um consultor financeiro especializado. Baseado no perfil abaixo, crie recomendações personalizadas em JSON:
+
+Perfil: ${accountType}, Renda: R$ ${monthlyIncome || 'não informado'}, Objetivos: ${mainGoals.join(', ')}, Prioridades: ${priorities.join(', ')}, Situação: ${currentSituation}${familySize ? `, Família: ${familySize} pessoas` : ''}${businessType ? `, Negócio: ${businessType}` : ''}
+
+Responda APENAS com JSON válido contendo:
+{
+  "categories": [{"name": "string", "icon": "emoji", "budget": number, "description": "string"}],
+  "goals": [{"title": "string", "target": number, "timeframe": "string", "description": "string"}],
+  "tips": ["string"],
+  "nextSteps": ["string"]
+}`;
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            messages: [
+              {
+                role: 'system',
+                content: 'Você é um consultor financeiro. Responda apenas com JSON válido.'
+              },
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.7,
+            max_tokens: 2000
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('OpenAI API error:', response.status, errorText);
+          throw new Error(`OpenAI API error: ${response.status}`);
+        }
+
+        const aiResponse = await response.json();
+        console.log('OpenAI response received:', aiResponse.choices?.[0]?.message?.content ? 'Success' : 'No content');
+        
+        if (!aiResponse.choices?.[0]?.message?.content) {
+          throw new Error('No content from OpenAI');
+        }
+
+        const recommendations = JSON.parse(aiResponse.choices[0].message.content);
+        console.log('Recomendações da IA geradas com sucesso');
+        
+        res.json(recommendations);
+      } catch (aiError) {
+        console.error('Erro na IA, usando fallback:', aiError);
+        console.log('Usando recomendações padrão personalizadas');
+        res.json(fallbackRecommendations);
+      }
     } catch (error) {
-      console.error('Erro na análise de onboarding:', error);
+      console.error('Erro geral na análise de onboarding:', error);
       res.status(500).json({ message: 'Erro ao gerar recomendações personalizadas' });
     }
   });
