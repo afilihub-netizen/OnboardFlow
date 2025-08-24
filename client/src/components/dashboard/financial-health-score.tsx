@@ -1,9 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, Shield, AlertTriangle, CheckCircle, Target } from "lucide-react";
+import { TrendingUp, Shield, AlertTriangle, CheckCircle, Target, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
 
 interface FinancialHealthData {
   score: number;
@@ -58,6 +60,8 @@ const getLevelIcon = (level: string) => {
 };
 
 export function FinancialHealthScore() {
+  const [currentRecommendation, setCurrentRecommendation] = useState(0);
+
   const { data: healthData, isLoading } = useQuery<FinancialHealthData>({
     queryKey: ['/api/financial-health'],
     queryFn: async () => {
@@ -209,22 +213,74 @@ export function FinancialHealthScore() {
           </div>
         </div>
 
-        {/* Recommendations */}
+        {/* Recommendations Carousel */}
         {healthData.recommendations.length > 0 && (
           <div className="space-y-3">
             <h4 className="font-semibold text-gray-900 dark:text-white">Recomendações Personalizadas</h4>
-            <div className="space-y-3">
-              {healthData.recommendations.map((recommendation, index) => (
-                <div 
-                  key={index}
-                  className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
-                  data-testid={`recommendation-${index}`}
-                >
-                  <p className="text-sm text-blue-900 dark:text-blue-100 leading-relaxed">
-                    {recommendation}
-                  </p>
+            <div className="relative">
+              {/* Current Recommendation */}
+              <div 
+                className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 min-h-[80px] flex items-center"
+                data-testid={`recommendation-${currentRecommendation}`}
+              >
+                <p className="text-sm text-blue-900 dark:text-blue-100 leading-relaxed text-center w-full">
+                  {healthData.recommendations[currentRecommendation]}
+                </p>
+              </div>
+
+              {/* Navigation Controls - Only show if more than 1 recommendation */}
+              {healthData.recommendations.length > 1 && (
+                <div className="flex items-center justify-between mt-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentRecommendation(prev => 
+                      prev === 0 ? healthData.recommendations.length - 1 : prev - 1
+                    )}
+                    className="h-8 w-8 p-0"
+                    data-testid="recommendation-prev"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+
+                  {/* Dots Indicator */}
+                  <div className="flex space-x-1">
+                    {healthData.recommendations.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentRecommendation(index)}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          index === currentRecommendation 
+                            ? 'bg-blue-600 dark:bg-blue-400' 
+                            : 'bg-gray-300 dark:bg-gray-600'
+                        }`}
+                        data-testid={`recommendation-dot-${index}`}
+                      />
+                    ))}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentRecommendation(prev => 
+                      prev === healthData.recommendations.length - 1 ? 0 : prev + 1
+                    )}
+                    className="h-8 w-8 p-0"
+                    data-testid="recommendation-next"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
                 </div>
-              ))}
+              )}
+
+              {/* Counter */}
+              {healthData.recommendations.length > 1 && (
+                <div className="text-center mt-2">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {currentRecommendation + 1} de {healthData.recommendations.length}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}
