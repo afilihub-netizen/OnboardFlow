@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/ui/theme-provider";
 import { useBusinessTheme } from "@/hooks/useBusinessTheme";
 import { useQuery } from "@tanstack/react-query";
-import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload, Crown, Building2, Users, Receipt, Package } from "lucide-react";
+import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload, Crown, Building2, Users, Receipt, Package, Briefcase } from "lucide-react";
 
 const getNavigation = (isBusinessAccount: boolean) => {
   const baseNavigation = [
@@ -36,7 +36,7 @@ const getNavigation = (isBusinessAccount: boolean) => {
 export function Sidebar() {
   const [location] = useLocation();
   const { theme, setTheme } = useTheme();
-  const { isBusinessAccount } = useBusinessTheme();
+  const { isBusinessAccount, isBusinessThemeActive, manualBusinessMode, toggleBusinessMode } = useBusinessTheme();
   const [isOpen, setIsOpen] = useState(false);
   
   const navigation = getNavigation(isBusinessAccount);
@@ -209,6 +209,20 @@ export function Sidebar() {
               >
                 {theme === "dark" ? <Sun className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300" /> : <Moon className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300" />}
                 <span>{theme === "dark" ? "Modo Claro" : "Modo Escuro"}</span>
+              </button>
+
+              <button
+                onClick={toggleBusinessMode}
+                className="sidebar-item w-full text-left"
+                data-testid="button-business-mode-toggle"
+              >
+                <Briefcase className={cn(
+                  "w-5 h-5 sidebar-icon",
+                  isBusinessThemeActive ? "text-blue-600 dark:text-blue-400" : "text-gray-600 dark:text-gray-300"
+                )} />
+                <span className={isBusinessThemeActive ? "text-blue-600 dark:text-blue-400 font-medium" : ""}>
+                  Modo Empresarial
+                </span>
               </button>
             </div>
           </div>

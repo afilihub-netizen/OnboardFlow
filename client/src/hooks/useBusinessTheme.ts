@@ -1,15 +1,23 @@
 import { useAuth } from "./useAuth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export function useBusinessTheme() {
   const { user } = useAuth();
   const isBusinessAccount = user?.accountType === 'business';
+  
+  // Manual business theme toggle - persisted in localStorage
+  const [manualBusinessMode, setManualBusinessMode] = useState(() => {
+    return localStorage.getItem('manual-business-mode') === 'true';
+  });
+  
+  // Business theme is active if either account type is business OR manual mode is enabled
+  const isBusinessThemeActive = isBusinessAccount || manualBusinessMode;
 
   useEffect(() => {
     const root = document.documentElement;
     const body = document.body;
     
-    if (isBusinessAccount) {
+    if (isBusinessThemeActive) {
       // Tema empresarial - cores escuras profissionais
       root.style.setProperty('--primary', '215 28% 17%'); // Azul muito escuro
       root.style.setProperty('--primary-foreground', '0 0% 98%');
@@ -45,10 +53,19 @@ export function useBusinessTheme() {
       body.classList.remove('business-theme');
       body.style.backgroundColor = 'rgb(249, 250, 251)'; // gray-50
     }
-  }, [isBusinessAccount]);
+  }, [isBusinessThemeActive]);
+
+  const toggleBusinessMode = () => {
+    const newMode = !manualBusinessMode;
+    setManualBusinessMode(newMode);
+    localStorage.setItem('manual-business-mode', newMode.toString());
+  };
 
   return {
     isBusinessAccount,
+    isBusinessThemeActive,
+    manualBusinessMode,
+    toggleBusinessMode,
     companyName: user?.companyName,
     industry: user?.industry,
     cnpj: user?.cnpj
