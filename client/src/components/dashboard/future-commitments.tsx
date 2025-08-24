@@ -189,7 +189,7 @@ export function FutureCommitments() {
         <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Calendar className="w-4 h-4 text-blue-600" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white capitalize">{currentMonthName}</h3>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white capitalize">{currentMonthName}</h3>
           </div>
           <p className="text-lg font-bold text-blue-600 mb-1">
             {formatCurrency(currentMonthTotal.toString())}
@@ -201,7 +201,7 @@ export function FutureCommitments() {
         <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Clock className="w-4 h-4 text-purple-600" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white capitalize">{nextMonthName}</h3>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white capitalize">{nextMonthName}</h3>
           </div>
           <p className="text-lg font-bold text-purple-600 mb-1">
             {formatCurrency(nextMonthTotal.toString())}
@@ -213,7 +213,7 @@ export function FutureCommitments() {
         <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Clock className="w-4 h-4 text-green-600" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white capitalize">{thirdMonthName}</h3>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white capitalize">{thirdMonthName}</h3>
           </div>
           <p className="text-lg font-bold text-green-600 mb-1">
             {formatCurrency(thirdMonthTotal.toString())}
