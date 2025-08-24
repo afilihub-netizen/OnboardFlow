@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Home, Zap, Wifi, Car, Calendar, Plus, Save } from "lucide-react";
+import { Home, Zap, Wifi, Car, Calendar, Plus, Save, ChevronDown, ChevronUp } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,7 @@ export function FixedExpenses() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   const form = useForm<FixedExpenseFormData>({
     resolver: zodResolver(fixedExpenseSchema),
@@ -71,7 +72,7 @@ export function FixedExpenses() {
     },
   });
 
-  const { data: expenses, isLoading } = useQuery({
+  const { data: expenses = [], isLoading } = useQuery({
     queryKey: ['/api/transactions/recurring'],
     queryFn: async () => {
       const response = await fetch('/api/transactions/recurring', {
@@ -80,6 +81,8 @@ export function FixedExpenses() {
       if (!response.ok) throw new Error('Failed to fetch recurring transactions');
       return response.json();
     },
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const { data: categories } = useQuery({
@@ -449,45 +452,72 @@ export function FixedExpenses() {
             <p className="text-sm">Adicione suas contas mensais para melhor controle.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {expenses.map((transaction: any) => {
-              const Icon = getCategoryIcon(transaction.category?.name || '', transaction.description);
-              
-              return (
-                <div 
-                  key={transaction.id}
-                  className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
-                  data-testid={`fixed-expense-${transaction.id}`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getCategoryColor(transaction.description)}`}>
-                        <Icon className="w-4 h-4" />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {(showAll ? expenses : expenses.slice(0, 4)).map((transaction: any) => {
+                const Icon = getCategoryIcon(transaction.category?.name || '', transaction.description);
+                
+                return (
+                  <div 
+                    key={transaction.id}
+                    className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
+                    data-testid={`fixed-expense-${transaction.id}`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getCategoryColor(transaction.description)}`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <span className="font-medium text-gray-900 dark:text-white text-sm" data-testid={`expense-name-${transaction.id}`}>
+                          {transaction.description}
+                        </span>
                       </div>
-                      <span className="font-medium text-gray-900 dark:text-white text-sm" data-testid={`expense-name-${transaction.id}`}>
-                        {transaction.description}
-                      </span>
+                      <span 
+                        className={`w-2 h-2 bg-blue-500 rounded-full`} 
+                        title="Lançamento Mensal"
+                        data-testid={`expense-status-${transaction.id}`}
+                      ></span>
                     </div>
-                    <span 
-                      className={`w-2 h-2 bg-blue-500 rounded-full`} 
-                      title="Lançamento Mensal"
-                      data-testid={`expense-status-${transaction.id}`}
-                    ></span>
-                  </div>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white" data-testid={`expense-amount-${transaction.id}`}>
-                    {formatCurrency(transaction.amount)}
-                  </p>
-                  {transaction.totalInstallments && transaction.paidInstallments !== undefined && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">
-                      📊 {transaction.paidInstallments}/{transaction.totalInstallments} parcelas
+                    <p className="text-lg font-bold text-gray-900 dark:text-white" data-testid={`expense-amount-${transaction.id}`}>
+                      {formatCurrency(transaction.amount)}
                     </p>
+                    {transaction.totalInstallments && transaction.paidInstallments !== undefined && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">
+                        📊 {transaction.paidInstallments}/{transaction.totalInstallments} parcelas
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500 dark:text-gray-400" data-testid={`expense-due-date-${transaction.id}`}>
+                      {transaction.dueDay ? formatDueDate(transaction.dueDay) : 'Data não definida'}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* Botão Ver Mais/Menos */}
+            {expenses.length > 4 && (
+              <div className="flex justify-center pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAll(!showAll)}
+                  className="flex items-center gap-2"
+                  data-testid="toggle-show-all-expenses"
+                >
+                  {showAll ? (
+                    <>
+                      <ChevronUp className="w-4 h-4" />
+                      Mostrar Menos
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-4 h-4" />
+                      Ver Mais ({expenses.length - 4} restantes)
+                    </>
                   )}
-                  <p className="text-xs text-gray-500 dark:text-gray-400" data-testid={`expense-due-date-${transaction.id}`}>
-                    {transaction.dueDay ? formatDueDate(transaction.dueDay) : 'Data não definida'}
-                  </p>
-                </div>
-              );
-            })}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
