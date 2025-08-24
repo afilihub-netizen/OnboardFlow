@@ -100,20 +100,28 @@ INSTRUÇÕES DETALHADAS:
 3. Extraia informações PRECISAS de origem/destino dos valores
 4. Categorize baseado no estabelecimento/descrição real
 
-FORMATO OBRIGATÓRIO para cada transação:
-- Date: YYYY-MM-DD (use 2024 se ano ausente)
-- Description: texto COMPLETO da transação (inclua estabelecimento, referência)
-- Amount: valor numérico (negativo para saídas, positivo para entradas)
-- Type: "expense" ou "income"
-- Category: baseado no estabelecimento real (Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros)
+FORMATO JSON OBRIGATÓRIO (campos exatos):
+{
+  "transactions": [
+    {
+      "date": "YYYY-MM-DD",
+      "description": "texto completo da transação",
+      "amount": -100.50,
+      "type": "expense",
+      "category": "Alimentação"
+    }
+  ]
+}
 
-EXEMPLOS de descrições CORRETAS:
-- "PIX ENVIADO - João Silva - Churrasco"
-- "TED RECEBIDO - Empresa XYZ - Salário" 
-- "COMPRA DÉBITO - SUPERMERCADO ABC"
-- "SAQUE ENVELOPE - AG 1234"
+REGRAS DOS CAMPOS:
+- "date": sempre minúsculo, formato YYYY-MM-DD (use 2024 se ano ausente)
+- "description": texto COMPLETO (PIX João Silva, COMPRA SUPERMERCADO ABC, etc)
+- "amount": número com decimais, negativo para saídas, positivo para entradas
+- "type": sempre "expense" ou "income" (minúsculo)
+- "category": uma opção: Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros
 
-Responda APENAS JSON: {"transactions":[...TODAS as transações...]}`
+EXEMPLO COMPLETO:
+{"transactions":[{"date":"2024-12-10","description":"PIX ENVIADO João Silva","amount":-150.00,"type":"expense","category":"Outros"},{"date":"2024-12-10","description":"SALÁRIO EMPRESA XYZ","amount":3000.00,"type":"income","category":"Outros"}]}`
       },
       {
         role: "user",
@@ -150,11 +158,49 @@ Responda APENAS JSON: {"transactions":[...TODAS as transações...]}`
   
   try {
     const result = JSON.parse(content);
-    const transactions = result.transactions || [];
-    console.log(`Chunk parsed: ${transactions.length} transactions extracted`);
+    let transactions = result.transactions || [];
+    
+    // Normalize and validate transaction data
+    transactions = transactions.map((t: any) => {
+      // Normalize field names (handle case variations)
+      const normalized: any = {
+        date: t.date || t.Date || t.DATA || "2024-01-01",
+        description: t.description || t.Description || t.DESCRIPTION || "Transação sem descrição",
+        amount: parseFloat(t.amount || t.Amount || t.AMOUNT || t.valor || t.VALOR || 0),
+        type: (t.type || t.Type || t.TYPE || "expense").toLowerCase(),
+        category: t.category || t.Category || t.CATEGORY || "Outros"
+      };
+      
+      // Validate and fix date format
+      if (!normalized.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // Try to parse common date formats
+        const dateStr = normalized.date.toString();
+        if (dateStr.includes('/')) {
+          const parts = dateStr.split('/');
+          if (parts.length === 3) {
+            const day = parts[0].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');
+            const year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+            normalized.date = `${year}-${month}-${day}`;
+          }
+        } else {
+          normalized.date = "2024-12-10"; // fallback
+        }
+      }
+      
+      // Ensure type is valid
+      if (!['income', 'expense'].includes(normalized.type)) {
+        normalized.type = normalized.amount >= 0 ? 'income' : 'expense';
+      }
+      
+      return normalized;
+    });
+    
+    console.log(`Chunk parsed: ${transactions.length} transactions extracted and normalized`);
     return transactions;
   } catch (parseError) {
     console.error("JSON parse failed for chunk:", parseError);
+    console.error("Content that failed:", content.substring(0, 500));
     return [];
   }
 }
