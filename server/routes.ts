@@ -68,13 +68,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Determinar plano baseado no price_id (você deve configurar os price_ids no Stripe)
         const priceId = subscription.items.data[0]?.price.id;
         
-        if (priceId === process.env.STRIPE_INDIVIDUAL_PRICE_ID) {
+        // Determinar plano baseado no valor do preço
+        const price = await stripe.prices.retrieve(priceId);
+        const amount = price.unit_amount || 0;
+        
+        if (amount <= 2000) { // Até R$ 20,00
           currentPlan = 'individual';
-          availablePlans = ['individual', 'family'];
-        } else if (priceId === process.env.STRIPE_FAMILY_PRICE_ID) {
+          availablePlans = ['individual'];
+        } else if (amount <= 4000) { // Até R$ 40,00
           currentPlan = 'family';
-          availablePlans = ['individual', 'family', 'business'];
-        } else if (priceId === process.env.STRIPE_BUSINESS_PRICE_ID) {
+          availablePlans = ['individual', 'family'];
+        } else { // Acima de R$ 40,00
           currentPlan = 'business';
           availablePlans = ['individual', 'family', 'business'];
         }
@@ -105,16 +109,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'User email not found' });
       }
 
-      // Mapear planos para price IDs (você deve configurar estes no Stripe Dashboard)
-      const planPrices = {
-        individual: process.env.STRIPE_INDIVIDUAL_PRICE_ID || 'price_individual_test',
-        family: process.env.STRIPE_FAMILY_PRICE_ID || 'price_family_test', 
-        business: process.env.STRIPE_BUSINESS_PRICE_ID || 'price_business_test'
-      };
+      // Criar produtos e preços dinamicamente se não existirem as variáveis de ambiente
+      let planPrices: { [key: string]: string } = {};
+      
+      if (process.env.STRIPE_INDIVIDUAL_PRICE_ID && process.env.STRIPE_FAMILY_PRICE_ID && process.env.STRIPE_BUSINESS_PRICE_ID) {
+        // Usar price IDs configurados
+        planPrices = {
+          individual: process.env.STRIPE_INDIVIDUAL_PRICE_ID,
+          family: process.env.STRIPE_FAMILY_PRICE_ID,
+          business: process.env.STRIPE_BUSINESS_PRICE_ID
+        };
+      } else {
+        // Criar produtos e preços dinamicamente
+        try {
+          // Criar produto Individual se não existir
+          const individualProduct = await stripe.products.create({
+            name: 'FinanceFlow Individual',
+            description: 'Plano individual para controle financeiro pessoal'
+          });
+          
+          const individualPrice = await stripe.prices.create({
+            product: individualProduct.id,
+            unit_amount: 1990, // R$ 19,90
+            currency: 'brl',
+            recurring: { interval: 'month' }
+          });
+          
+          // Criar produto Família
+          const familyProduct = await stripe.products.create({
+            name: 'FinanceFlow Família',
+            description: 'Plano familiar para controle financeiro compartilhado'
+          });
+          
+          const familyPrice = await stripe.prices.create({
+            product: familyProduct.id,
+            unit_amount: 3990, // R$ 39,90
+            currency: 'brl',
+            recurring: { interval: 'month' }
+          });
+          
+          // Criar produto Empresarial
+          const businessProduct = await stripe.products.create({
+            name: 'FinanceFlow Empresarial',
+            description: 'Plano empresarial para controle financeiro avançado'
+          });
+          
+          const businessPrice = await stripe.prices.create({
+            product: businessProduct.id,
+            unit_amount: 7990, // R$ 79,90
+            currency: 'brl',
+            recurring: { interval: 'month' }
+          });
+          
+          planPrices = {
+            individual: individualPrice.id,
+            family: familyPrice.id,
+            business: businessPrice.id
+          };
+          
+          console.log('Produtos criados no Stripe:', planPrices);
+          
+        } catch (stripeError) {
+          console.error('Erro ao criar produtos no Stripe:', stripeError);
+          return res.status(500).json({ 
+            message: 'Erro interno do servidor. Os produtos do Stripe precisam ser configurados.' 
+          });
+        }
+      }
 
-      const priceId = planPrices[planId as keyof typeof planPrices];
+      const priceId = planPrices[planId];
       if (!priceId) {
-        return res.status(400).json({ message: 'Invalid plan selected' });
+        return res.status(400).json({ message: 'Plano inválido selecionado' });
       }
 
       let customerId = user.stripeCustomerId;
@@ -218,10 +283,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const priceId = subscription.items.data[0]?.price.id;
               let accountType = 'individual';
               
-              if (priceId === process.env.STRIPE_FAMILY_PRICE_ID) {
-                accountType = 'family';
-              } else if (priceId === process.env.STRIPE_BUSINESS_PRICE_ID) {
-                accountType = 'business';
+              if (priceId) {
+                try {
+                  const price = await stripe.prices.retrieve(priceId);
+                  const amount = price.unit_amount || 0;
+                  
+                  if (amount <= 2000) { // Até R$ 20,00
+                    accountType = 'individual';
+                  } else if (amount <= 4000) { // Até R$ 40,00
+                    accountType = 'family';
+                  } else { // Acima de R$ 40,00
+                    accountType = 'business';
+                  }
+                } catch (error) {
+                  console.error('Error retrieving price:', error);
+                }
               }
               
               await storage.updateUserProfile(userId, { accountType });

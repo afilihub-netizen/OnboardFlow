@@ -196,10 +196,11 @@ export default function UpgradePage() {
 
       const data = await response.json();
       setClientSecret(data.clientSecret);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error creating subscription:', error);
       toast({
-        title: "Erro",
-        description: "Não foi possível iniciar o pagamento. Tente novamente.",
+        title: "Erro no pagamento",
+        description: error.message || "Não foi possível iniciar o pagamento. Verifique suas configurações.",
         variant: "destructive",
       });
       setSelectedPlan(null);
