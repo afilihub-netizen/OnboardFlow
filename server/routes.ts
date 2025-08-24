@@ -255,6 +255,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI-powered onboarding analysis
+  app.post('/api/ai/onboarding-analysis', isAuthenticated, async (req: any, res) => {
+    try {
+      const { accountType, monthlyIncome, mainGoals, currentSituation, priorities, familySize, businessType } = req.body;
+      
+      // Create a comprehensive prompt for OpenAI
+      const prompt = `Você é um consultor financeiro especializado em ajudar pessoas a organizar suas finanças pessoais.
+
+Perfil do usuário:
+- Tipo de conta: ${accountType}
+- Renda mensal: R$ ${monthlyIncome || 'não informado'}
+- Objetivos principais: ${mainGoals.join(', ')}
+- Prioridades: ${priorities.join(', ')}
+- Situação atual: ${currentSituation}
+${familySize ? `- Tamanho da família: ${familySize} pessoas` : ''}
+${businessType ? `- Tipo de negócio: ${businessType}` : ''}
+
+Com base nessas informações, crie recomendações personalizadas em formato JSON com:
+
+1. "categories": Array de 6-8 categorias de gastos com nome, ícone (emoji), orçamento sugerido e descrição
+2. "goals": Array de 3-4 metas financeiras com título, valor alvo, prazo e descrição
+3. "tips": Array de 5-6 dicas práticas e personalizadas
+4. "nextSteps": Array de 3-4 próximos passos recomendados
+
+Considere a renda mensal para sugerir orçamentos realistas. Seja específico e prático.`;
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: 'Você é um consultor financeiro experiente. Responda sempre em JSON válido em português brasileiro.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha na análise da IA');
+      }
+
+      const aiResponse = await response.json();
+      const recommendations = JSON.parse(aiResponse.choices[0].message.content);
+      
+      res.json(recommendations);
+    } catch (error) {
+      console.error('Erro na análise de onboarding:', error);
+      res.status(500).json({ message: 'Erro ao gerar recomendações personalizadas' });
+    }
+  });
+
+  // Complete user onboarding
+  app.post('/api/user/complete-onboarding', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { onboardingData, recommendations } = req.body;
+
+      // Update user profile with onboarding data
+      await storage.updateUserProfile(userId, {
+        accountType: onboardingData.accountType,
+        companyName: onboardingData.businessType,
+        onboardingCompleted: true
+      });
+
+      // Create recommended categories
+      for (const category of recommendations.categories) {
+        await storage.createCategory({
+          id: crypto.randomUUID(),
+          name: category.name,
+          type: 'expense',
+          color: '#3B82F6',
+          icon: category.icon,
+          userId,
+          budgetLimit: category.budget
+        });
+      }
+
+      // Create recommended goals
+      for (const goal of recommendations.goals) {
+        await storage.createBudgetGoal({
+          id: crypto.randomUUID(),
+          title: goal.title,
+          targetAmount: goal.target,
+          currentAmount: 0,
+          targetDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+          description: goal.description,
+          userId
+        });
+      }
+
+      res.json({ success: true, message: 'Onboarding concluído com sucesso' });
+    } catch (error) {
+      console.error('Erro ao concluir onboarding:', error);
+      res.status(500).json({ message: 'Erro ao finalizar configuração' });
+    }
+  });
+
   // Webhook para confirmar pagamentos
   app.post('/api/stripe/webhook', async (req, res) => {
     const sig = req.headers['stripe-signature'];

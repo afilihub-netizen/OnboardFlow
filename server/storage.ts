@@ -156,6 +156,7 @@ export class DatabaseStorage implements IStorage {
     companyName?: string;
     cnpj?: string;
     industry?: string;
+    onboardingCompleted?: boolean;
   }): Promise<User | undefined> {
     const [updatedUser] = await db
       .update(users)
