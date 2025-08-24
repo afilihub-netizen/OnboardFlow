@@ -103,12 +103,10 @@ export function InvestmentGoals() {
     const formData = new FormData(event.currentTarget);
     
     const goalData = {
-      description: "Meta de Investimento",
-      targetAmount: parseFloat(formData.get("targetAmount") as string),
+      targetAmount: formData.get("targetAmount") as string, // Keep as string for decimal field
       month: currentMonth,
       year: currentYear,
       categoryId: null, // Investment goals don't have specific category
-      isActive: true,
     };
 
     createGoalMutation.mutate(goalData);
@@ -119,7 +117,7 @@ export function InvestmentGoals() {
     const formData = new FormData(event.currentTarget);
     
     const goalData = {
-      targetAmount: parseFloat(formData.get("targetAmount") as string),
+      targetAmount: formData.get("targetAmount") as string, // Keep as string for decimal field
     };
 
     updateGoalMutation.mutate({ id: editingGoal.id, data: goalData });
