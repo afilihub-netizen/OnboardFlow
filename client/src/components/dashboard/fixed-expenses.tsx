@@ -124,18 +124,23 @@ export function FixedExpenses() {
         });
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
-        title: "Sucesso",
+        title: "✅ Sucesso",
         description: "Conta fixa criada com sucesso!",
       });
       form.reset();
       setIsDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['/api/transactions/recurring'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/fixed-expenses'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/transactions/future-commitments'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/financial-summary'] });
+      
+      // Force clear cache and refetch
+      queryClient.removeQueries({ queryKey: ['/api/transactions/recurring'] });
+      queryClient.removeQueries({ queryKey: ['/api/fixed-expenses'] });
+      queryClient.removeQueries({ queryKey: ['/api/transactions'] });
+      queryClient.removeQueries({ queryKey: ['/api/transactions/future-commitments'] });
+      queryClient.removeQueries({ queryKey: ['/api/financial-summary'] });
+      
+      // Force refetch immediately
+      await queryClient.refetchQueries({ queryKey: ['/api/transactions/recurring'] });
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
