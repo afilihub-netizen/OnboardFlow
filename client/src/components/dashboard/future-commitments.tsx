@@ -21,7 +21,7 @@ export function FutureCommitments() {
   const [expandedCurrentMonth, setExpandedCurrentMonth] = useState(false);
   const [expandedNextMonth, setExpandedNextMonth] = useState(false);
 
-  const { data: commitments, isLoading } = useQuery({
+  const { data: commitments = [], isLoading } = useQuery({
     queryKey: ['/api/transactions/future-commitments'],
     queryFn: async () => {
       const response = await fetch('/api/transactions/future-commitments', {
@@ -174,90 +174,36 @@ export function FutureCommitments() {
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
-        {/* Current Month Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-blue-600" />
+      <CardContent className="space-y-6">
+        {/* Current Month */}
+        <div className="flex items-center justify-between p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center gap-3">
+            <Calendar className="w-5 h-5 text-blue-600" />
+            <div>
               <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{currentMonthName}</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-blue-600">
-                {formatCurrency(currentMonthTotal.toString())}
-              </span>
-              {currentMonthCommitments.length > 4 && (
-                <button 
-                  onClick={() => setExpandedCurrentMonth(!expandedCurrentMonth)}
-                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                >
-                  {expandedCurrentMonth ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-              )}
+              <p className="text-xs text-gray-600 dark:text-gray-400">{currentMonthCommitments.length} compromisso{currentMonthCommitments.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
-          
-          <div className="grid gap-2">
-            {(expandedCurrentMonth ? currentMonthCommitments : currentMonthCommitments.slice(0, 4)).map((commitment, index) => (
-              <div
-                key={`current-${commitment.type}-${commitment.id}`}
-                className="flex items-center justify-between p-2 rounded border bg-gray-50 dark:bg-gray-800"
-                data-testid={`current-commitment-${index}`}
-              >
-                <div className="flex items-center gap-2">
-                  {getPaymentMethodIcon(commitment.paymentMethod, commitment.type)}
-                  <span className="text-sm text-gray-900 dark:text-white truncate max-w-[200px]">
-                    {commitment.description}
-                  </span>
-                </div>
-                <span className="text-sm font-medium text-blue-600">
-                  {formatCurrency(commitment.installmentValue)}
-                </span>
-              </div>
-            ))}
+          <div className="text-right">
+            <p className="text-lg font-bold text-blue-600">
+              {formatCurrency(currentMonthTotal.toString())}
+            </p>
           </div>
         </div>
 
-        {/* Next Month Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-purple-600" />
+        {/* Next Month */}
+        <div className="flex items-center justify-between p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+          <div className="flex items-center gap-3">
+            <Clock className="w-5 h-5 text-purple-600" />
+            <div>
               <h3 className="font-semibold text-gray-900 dark:text-white capitalize">{nextMonthName}</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-purple-600">
-                {formatCurrency(nextMonthTotal.toString())}
-              </span>
-              {nextMonthCommitments.length > 4 && (
-                <button 
-                  onClick={() => setExpandedNextMonth(!expandedNextMonth)}
-                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                >
-                  {expandedNextMonth ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-              )}
+              <p className="text-xs text-gray-600 dark:text-gray-400">{nextMonthCommitments.length} compromisso{nextMonthCommitments.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
-          
-          <div className="grid gap-2">
-            {(expandedNextMonth ? nextMonthCommitments : nextMonthCommitments.slice(0, 4)).map((commitment, index) => (
-              <div
-                key={`next-${commitment.type}-${commitment.id}`}
-                className="flex items-center justify-between p-2 rounded border bg-gray-50 dark:bg-gray-800"
-                data-testid={`next-commitment-${index}`}
-              >
-                <div className="flex items-center gap-2">
-                  {getPaymentMethodIcon(commitment.paymentMethod, commitment.type)}
-                  <span className="text-sm text-gray-900 dark:text-white truncate max-w-[200px]">
-                    {commitment.description}
-                  </span>
-                </div>
-                <span className="text-sm font-medium text-purple-600">
-                  {formatCurrency(commitment.installmentValue)}
-                </span>
-              </div>
-            ))}
+          <div className="text-right">
+            <p className="text-lg font-bold text-purple-600">
+              {formatCurrency(nextMonthTotal.toString())}
+            </p>
           </div>
         </div>
       </CardContent>
