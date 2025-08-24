@@ -62,7 +62,7 @@ Responda APENAS com JSON válido no formato:
 }
 
 // Function to split text into chunks
-function splitTextIntoChunks(text: string, maxChunkSize: number = 7000): string[] {
+function splitTextIntoChunks(text: string, maxChunkSize: number = 6000): string[] {
   const chunks: string[] = [];
   const lines = text.split('\n');
   let currentChunk = '';
@@ -92,17 +92,21 @@ async function processChunk(extractText: string, availableCategories: string[] =
     messages: [
       {
         role: "system",
-        content: `Analise o extrato bancário e extraia TODAS as transações encontradas. Responda APENAS com JSON válido.
+        content: `CRÍTICO: Extraia TODAS as transações do extrato, sem exceção. Não pare em 10 ou qualquer outro número.
 
-Regras:
+Analise LINHA POR LINHA e encontre CADA transação individual. Responda APENAS com JSON válido.
+
+REGRAS OBRIGATÓRIAS:
+- Processar TODO o texto fornecido
+- Extrair TODAS as transações, podem ser 5, 50, 100 ou mais
 - Data: YYYY-MM-DD (use 2024 se ano não especificado)
-- Amount: número negativo para despesas, positivo para receitas  
-- Type: "expense" ou "income"
-- Category: uma das categorias: Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros
-- Extraia TODAS as transações do texto fornecido
+- Amount: número negativo para despesas, positivo para receitas
+- Type: "expense" ou "income" 
+- Category: Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros
 
-JSON obrigatório:
-{"transactions":[{"date":"2024-12-10","description":"PIX João","amount":-100,"type":"expense","category":"Outros"}]}`
+EXEMPLO: Se há 50 transações no texto, retorne 50 transações no JSON.
+
+JSON: {"transactions":[...TODAS as transações encontradas...]}`
       },
       {
         role: "user",
@@ -110,7 +114,7 @@ JSON obrigatório:
       }
     ],
     response_format: { type: "json_object" },
-    max_tokens: 4000,
+    max_tokens: 8000,
     temperature: 0.1
   });
 
@@ -139,9 +143,11 @@ JSON obrigatório:
   
   try {
     const result = JSON.parse(content);
-    return result.transactions || [];
+    const transactions = result.transactions || [];
+    console.log(`Chunk parsed: ${transactions.length} transactions extracted`);
+    return transactions;
   } catch (parseError) {
-    console.error("JSON parse failed for chunk");
+    console.error("JSON parse failed for chunk:", parseError);
     return [];
   }
 }
@@ -151,7 +157,7 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     console.log("Processing extract with length:", extractText.length);
     
     // Split large texts into chunks
-    const chunks = splitTextIntoChunks(extractText, 7000);
+    const chunks = splitTextIntoChunks(extractText, 6000);
     console.log("Split into", chunks.length, "chunks");
     
     const allTransactions: any[] = [];
