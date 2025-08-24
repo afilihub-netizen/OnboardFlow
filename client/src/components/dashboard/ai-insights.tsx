@@ -38,6 +38,8 @@ const getInsightColor = (type: string) => {
 };
 
 export function AIInsights() {
+  const [currentInsight, setCurrentInsight] = useState(0);
+
   // Fetch AI-generated insights
   const { data: aiInsights, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['/api/ai-insights'],
@@ -53,6 +55,17 @@ export function AIInsights() {
   });
 
   const insights: Insight[] = aiInsights?.insights || [];
+
+  // Auto-rotation effect
+  useEffect(() => {
+    if (insights.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentInsight(prev => (prev + 1) % insights.length);
+    }, 4000); // Change every 4 seconds
+
+    return () => clearInterval(interval);
+  }, [insights.length]);
 
   // Show skeleton while loading
   if (isLoading) {
@@ -116,32 +129,62 @@ export function AIInsights() {
               </p>
             </div>
           ) : (
-            insights.map((insight, index) => {
-              const Icon = getInsightIcon(insight.type);
-              const color = getInsightColor(insight.type);
-              
-              return (
-                <div 
-                  key={index} 
-                  className="bg-white bg-opacity-10 rounded-lg p-4"
-                  data-testid={`ai-insight-${index}`}
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className={`w-6 h-6 ${color} rounded-full flex items-center justify-center flex-shrink-0 mt-0.5`}>
-                      <Icon className="w-3 h-3 text-black" />
+            <div className="relative">
+              {/* Current Insight */}
+              <div 
+                className="bg-white bg-opacity-10 rounded-lg p-4 min-h-[100px] flex items-center transition-all duration-300"
+                data-testid={`ai-insight-${currentInsight}`}
+              >
+                {(() => {
+                  const insight = insights[currentInsight];
+                  const Icon = getInsightIcon(insight.type);
+                  const color = getInsightColor(insight.type);
+                  
+                  return (
+                    <div className="flex items-start space-x-3 w-full">
+                      <div className={`w-6 h-6 ${color} rounded-full flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                        <Icon className="w-3 h-3 text-black" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium mb-1" data-testid={`insight-title-${currentInsight}`}>
+                          {insight.title}
+                        </p>
+                        <p className="text-xs text-purple-100" data-testid={`insight-message-${currentInsight}`}>
+                          {insight.message}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium mb-1" data-testid={`insight-title-${index}`}>
-                        {insight.title}
-                      </p>
-                      <p className="text-xs text-purple-100" data-testid={`insight-message-${index}`}>
-                        {insight.message}
-                      </p>
-                    </div>
-                  </div>
+                  );
+                })()}
+              </div>
+
+              {/* Progress Indicators - Only show if more than 1 insight */}
+              {insights.length > 1 && (
+                <div className="flex justify-center mt-3 space-x-1">
+                  {insights.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentInsight(index)}
+                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                        index === currentInsight 
+                          ? 'bg-white' 
+                          : 'bg-white bg-opacity-40'
+                      }`}
+                      data-testid={`insight-dot-${index}`}
+                    />
+                  ))}
                 </div>
-              );
-            })
+              )}
+
+              {/* Counter */}
+              {insights.length > 1 && (
+                <div className="text-center mt-2">
+                  <span className="text-xs text-purple-200">
+                    {currentInsight + 1} de {insights.length}
+                  </span>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </CardContent>
