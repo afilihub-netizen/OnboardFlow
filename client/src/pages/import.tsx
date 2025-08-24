@@ -82,7 +82,7 @@ export default function Import() {
     },
   });
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       // Validate file type
@@ -98,33 +98,38 @@ export default function Import() {
 
       setSelectedFile(file);
       
-      // For text files, read content directly
-      if (file.type === 'text/plain' || file.type === 'text/csv') {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const content = e.target?.result as string;
-          setExtractText(content);
-          
-          toast({
-            title: "Arquivo carregado",
-            description: "Iniciando análise automática do extrato...",
-          });
-          
-          // Automatically analyze the extract after loading
-          setTimeout(() => {
-            if (content.trim()) {
-              analyzeExtractWithAI();
-            }
-          }, 500); // Small delay to ensure state is updated
-        };
-        reader.readAsText(file);
-      } else {
-        // For PDF files, you would typically use a PDF parsing library
+      if (file.type === 'application/pdf') {
         toast({
           title: "PDF detectado",
           description: "Para arquivos PDF, cole o texto do extrato na área de texto abaixo.",
         });
       }
+    }
+  };
+
+  const handleFileUpload = () => {
+    if (!selectedFile) return;
+    
+    // For text files, read content directly
+    if (selectedFile.type === 'text/plain' || selectedFile.type === 'text/csv') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        setExtractText(content);
+        
+        toast({
+          title: "Arquivo carregado",
+          description: "Iniciando análise automática do extrato...",
+        });
+        
+        // Automatically analyze the extract after loading
+        setTimeout(() => {
+          if (content.trim()) {
+            analyzeExtractWithAI();
+          }
+        }, 500); // Small delay to ensure state is updated
+      };
+      reader.readAsText(selectedFile);
     }
   };
 
@@ -254,7 +259,7 @@ export default function Import() {
                       id="file-upload"
                       type="file"
                       accept=".pdf,.txt,.csv"
-                      onChange={handleFileUpload}
+                      onChange={handleFileSelect}
                       data-testid="input-file-upload"
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -263,9 +268,20 @@ export default function Import() {
                   </div>
                   
                   {selectedFile && (
-                    <div className="flex items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <FileText className="w-5 h-5 text-blue-600 mr-2" />
-                      <span className="text-sm font-medium">{selectedFile.name}</span>
+                    <div className="space-y-3">
+                      <div className="flex items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <FileText className="w-5 h-5 text-blue-600 mr-2" />
+                        <span className="text-sm font-medium">{selectedFile.name}</span>
+                      </div>
+                      <Button
+                        onClick={handleFileUpload}
+                        disabled={!selectedFile || (selectedFile.type !== 'text/plain' && selectedFile.type !== 'text/csv')}
+                        className="w-full"
+                        data-testid="button-upload-file"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Carregar e Analisar Arquivo
+                      </Button>
                     </div>
                   )}
                 </CardContent>
