@@ -162,7 +162,9 @@
 
 @layer components {
   .sidebar-item {
-    @apply flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-lg transition-all duration-200 cursor-pointer relative;
+    @apply flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-lg transition-all duration-200 cursor-pointer relative min-h-[48px];
+    display: flex;
+    align-items: center;
   }
   
   .sidebar-item.active {
@@ -176,7 +178,13 @@
   }
   
   .sidebar-icon {
-    @apply flex-shrink-0 w-5 h-5 mr-3;
+    @apply flex-shrink-0 w-5 h-5;
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .sidebar-icon-active {
@@ -185,6 +193,9 @@
   
   .sidebar-item span {
     @apply text-sm font-medium flex-1;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
   }
 
   .financial-card {
