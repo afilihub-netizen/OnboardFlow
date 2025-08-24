@@ -180,6 +180,14 @@
 }
 
 @layer components {
+  /* Modern Card Component */
+  .modern-card {
+    @apply bg-card rounded-xl border border-border shadow-lg;
+    background-color: hsl(var(--card));
+    border-color: hsl(var(--border));
+    color: hsl(var(--card-foreground));
+  }
+
   .sidebar-item {
     @apply flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white rounded-lg transition-all duration-200 cursor-pointer relative min-h-[48px];
     display: flex;
@@ -237,6 +245,26 @@
 }
 
 @layer utilities {
+  /* Skeleton improvements for dark mode */
+  .dark .skeleton {
+    @apply bg-gray-700;
+  }
+
+  /* Progress bar improvements */
+  .dark .progress-background {
+    @apply bg-gray-700;
+  }
+
+  /* Badge improvements */
+  .dark [data-testid*="badge"] {
+    @apply border-gray-600;
+  }
+
+  /* Better text contrast */
+  .dark .text-muted {
+    @apply text-gray-300;
+  }
+
   .text-success {
     color: hsl(var(--success));
   }

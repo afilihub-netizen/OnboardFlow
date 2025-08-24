@@ -47,15 +47,15 @@ const getProgressColor = (score: number) => {
 const getLevelIcon = (level: string) => {
   switch (level) {
     case 'Excelente':
-      return <CheckCircle className="w-5 h-5 text-green-600" />;
+      return <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />;
     case 'Bom':
-      return <TrendingUp className="w-5 h-5 text-blue-600" />;
+      return <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
     case 'Regular':
-      return <Target className="w-5 h-5 text-yellow-600" />;
+      return <Target className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />;
     case 'Baixo':
-      return <AlertTriangle className="w-5 h-5 text-orange-600" />;
+      return <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400" />;
     default:
-      return <AlertTriangle className="w-5 h-5 text-red-600" />;
+      return <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />;
   }
 };
 
@@ -133,7 +133,7 @@ export function FinancialHealthScore() {
     <Card className="modern-card shadow-lg">
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-3 text-xl font-bold text-gray-900 dark:text-white">
-          <Shield className="w-5 h-5 text-blue-600" />
+          <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           Score de Saúde Financeira
         </CardTitle>
       </CardHeader>
@@ -144,7 +144,7 @@ export function FinancialHealthScore() {
             <div className={`text-5xl font-bold tracking-tight ${getScoreColor(healthData.score)}`} data-testid="health-score">
               {healthData.score}
             </div>
-            <span className="text-xl text-gray-500 dark:text-gray-400 ml-2 font-medium">/100</span>
+            <span className="text-xl text-gray-500 dark:text-gray-300 ml-2 font-medium">/100</span>
           </div>
           <div className="flex items-center justify-center gap-3 mb-6">
             {getLevelIcon(healthData.level)}
@@ -170,8 +170,8 @@ export function FinancialHealthScore() {
           {/* Income vs Expenses */}
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Taxa de Poupança</span>
-              <span className="text-sm font-medium" data-testid="savings-rate">
+              <span className="text-sm text-gray-600 dark:text-gray-300">Taxa de Poupança</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100" data-testid="savings-rate">
                 {formatPercentage(healthData.metrics.incomeVsExpenses.ratio)}
               </span>
             </div>
@@ -185,8 +185,8 @@ export function FinancialHealthScore() {
           {/* Emergency Fund */}
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Reserva de Emergência</span>
-              <span className="text-sm font-medium" data-testid="emergency-fund">
+              <span className="text-sm text-gray-600 dark:text-gray-300">Reserva de Emergência</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100" data-testid="emergency-fund">
                 {formatMonths(healthData.metrics.emergencyFund.months)}
               </span>
             </div>
@@ -200,8 +200,8 @@ export function FinancialHealthScore() {
           {/* Debt Level */}
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Nível de Endividamento</span>
-              <span className="text-sm font-medium" data-testid="debt-level">
+              <span className="text-sm text-gray-600 dark:text-gray-300">Nível de Endividamento</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100" data-testid="debt-level">
                 {formatPercentage(healthData.metrics.debtLevel.ratio)}
               </span>
             </div>

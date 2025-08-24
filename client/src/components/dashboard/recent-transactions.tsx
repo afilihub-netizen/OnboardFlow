@@ -17,7 +17,7 @@ const getCategoryIcon = (categoryName: string) => {
 };
 
 const getCategoryColor = (type: string) => {
-  return type === 'income' ? 'text-green-600 bg-green-100 dark:bg-green-900' : 'text-red-600 bg-red-100 dark:bg-red-900';
+  return type === 'income' ? 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30' : 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30';
 };
 
 // Função para traduzir tipos de transação
@@ -88,7 +88,7 @@ export function RecentTransactions() {
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-3 text-xl font-bold text-gray-900 dark:text-white">
-            <Activity className="w-5 h-5 text-green-600" />
+            <Activity className="w-5 h-5 text-green-600 dark:text-green-400" />
             Transações Recentes
           </CardTitle>
           <Button 
@@ -116,7 +116,7 @@ export function RecentTransactions() {
               return (
                 <div 
                   key={transaction.id} 
-                  className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200 border border-transparent hover:border-gray-200 dark:hover:border-gray-600"
+                  className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-xl transition-all duration-200 border border-transparent hover:border-gray-200 dark:hover:border-gray-600"
                   data-testid={`transaction-item-${index}`}
                 >
                   <div className="flex items-center space-x-4">
@@ -133,7 +133,7 @@ export function RecentTransactions() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`text-lg font-bold tracking-tight ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`} data-testid={`transaction-amount-${index}`}>
+                    <p className={`text-lg font-bold tracking-tight ${transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} data-testid={`transaction-amount-${index}`}>
                       {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                     </p>
                     {transaction.totalInstallments && transaction.paidInstallments !== undefined && (
