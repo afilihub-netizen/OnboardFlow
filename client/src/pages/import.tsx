@@ -131,49 +131,13 @@ export default function Import() {
       };
       reader.readAsText(selectedFile);
     } 
-    // For PDF files, upload to server for processing
+    // For PDF files, show message to paste text manually
     else if (selectedFile.type === 'application/pdf') {
-      try {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        
-        toast({
-          title: "Processando PDF",
-          description: "Extraindo texto do arquivo PDF...",
-        });
-        
-        const response = await fetch('/api/extract-pdf-text', {
-          method: 'POST',
-          credentials: 'include',
-          body: formData
-        });
-        
-        if (!response.ok) {
-          throw new Error('Falha ao processar PDF');
-        }
-        
-        const result = await response.json();
-        setExtractText(result.text);
-        
-        toast({
-          title: "PDF processado",
-          description: "Iniciando análise automática do extrato...",
-        });
-        
-        // Automatically analyze the extract after loading
-        setTimeout(() => {
-          if (result.text.trim()) {
-            analyzeExtractWithAI();
-          }
-        }, 500);
-        
-      } catch (error) {
-        toast({
-          title: "Erro ao processar PDF",
-          description: "Não foi possível extrair o texto do PDF. Cole o texto manualmente.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "PDF selecionado",
+        description: "Para arquivos PDF, copie o texto do extrato e cole na área de texto ao lado.",
+        variant: "default",
+      });
     }
   };
 
@@ -319,12 +283,15 @@ export default function Import() {
                       </div>
                       <Button
                         onClick={handleFileUpload}
-                        disabled={!selectedFile}
+                        disabled={!selectedFile || selectedFile.type === 'application/pdf'}
                         className="w-full"
                         data-testid="button-upload-file"
                       >
                         <Upload className="w-4 h-4 mr-2" />
-                        Carregar e Analisar Arquivo
+                        {selectedFile?.type === 'application/pdf' 
+                          ? 'Para PDF, cole o texto manualmente' 
+                          : 'Carregar e Analisar Arquivo'
+                        }
                       </Button>
                     </div>
                   )}
