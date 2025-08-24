@@ -35,14 +35,33 @@ const transactionSchema = z.object({
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
-export function TransactionForm() {
+interface TransactionFormProps {
+  editingTransaction?: any;
+  onSuccess?: () => void;
+}
+
+export function TransactionForm({ editingTransaction, onSuccess }: TransactionFormProps = {}) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const isEditing = !!editingTransaction;
 
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
-    defaultValues: {
+    defaultValues: editingTransaction ? {
+      description: editingTransaction.description || "",
+      amount: editingTransaction.amount?.toString() || "",
+      type: editingTransaction.type || "expense",
+      categoryId: editingTransaction.categoryId || "",
+      paymentMethod: editingTransaction.paymentMethod || "pix",
+      date: editingTransaction.date ? editingTransaction.date.split('T')[0] : new Date().toISOString().split('T')[0],
+      isRecurring: editingTransaction.isRecurring || false,
+      dueDay: editingTransaction.dueDay?.toString() || "",
+      isInstallment: editingTransaction.isInstallment || false,
+      totalValue: editingTransaction.totalValue?.toString() || "",
+      installmentCount: editingTransaction.totalInstallments?.toString() || "",
+      installmentValue: editingTransaction.amount?.toString() || "",
+    } : {
       type: "expense",
       date: new Date().toISOString().split('T')[0],
       paymentMethod: "pix",
@@ -80,9 +99,12 @@ export function TransactionForm() {
     },
   });
 
-  const createTransactionMutation = useMutation({
+  const saveTransactionMutation = useMutation({
     mutationFn: async (data: TransactionFormData) => {
-      await apiRequest('POST', '/api/transactions', {
+      const endpoint = isEditing ? `/api/transactions/${editingTransaction.id}` : '/api/transactions';
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      await apiRequest(method, endpoint, {
         ...data,
         amount: data.amount,
         date: data.date,
@@ -91,19 +113,22 @@ export function TransactionForm() {
         // Installment data
         totalValue: data.isInstallment && data.totalValue ? parseFloat(data.totalValue) : undefined,
         totalInstallments: data.isInstallment && data.installmentCount ? parseInt(data.installmentCount) : undefined,
-        paidInstallments: data.isInstallment ? 1 : undefined, // First installment is being paid
+        paidInstallments: data.isInstallment ? (editingTransaction?.paidInstallments || 1) : undefined,
       });
     },
     onSuccess: () => {
       toast({
         title: "Sucesso",
-        description: "Transação criada com sucesso!",
+        description: isEditing ? "Transação atualizada com sucesso!" : "Transação criada com sucesso!",
       });
-      form.reset();
-      setSelectedFile(null);
+      if (!isEditing) {
+        form.reset();
+        setSelectedFile(null);
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
       queryClient.invalidateQueries({ queryKey: ['/api/transactions/future-commitments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/financial-summary'] });
+      onSuccess?.();
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -119,14 +144,14 @@ export function TransactionForm() {
       }
       toast({
         title: "Erro",
-        description: "Falha ao criar transação. Tente novamente.",
+        description: isEditing ? "Falha ao atualizar transação. Tente novamente." : "Falha ao criar transação. Tente novamente.",
         variant: "destructive",
       });
     },
   });
 
   const onSubmit = (data: TransactionFormData) => {
-    createTransactionMutation.mutate(data);
+    saveTransactionMutation.mutate(data);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,10 +160,12 @@ export function TransactionForm() {
   };
 
   return (
-    <Card className="financial-card">
-      <CardHeader>
-        <CardTitle>Nova Transação</CardTitle>
-      </CardHeader>
+    <Card className={isEditing ? "" : "financial-card"}>
+      {!isEditing && (
+        <CardHeader>
+          <CardTitle>Nova Transação</CardTitle>
+        </CardHeader>
+      )}
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -503,15 +530,16 @@ export function TransactionForm() {
               </Button>
               <Button 
                 type="submit" 
-                disabled={createTransactionMutation.isPending}
+                disabled={saveTransactionMutation.isPending}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
                 data-testid="button-save-transaction"
               >
-                {createTransactionMutation.isPending ? (
-                  "Salvando..."
+                {saveTransactionMutation.isPending ? (
+                  isEditing ? "Atualizando..." : "Salvando..."
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Salvar Transação
+                    {isEditing ? "Atualizar Transação" : "Salvar Transação"}
                   </>
                 )}
               </Button>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Edit, Trash2, Download, Filter } from "lucide-react";
@@ -9,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { PAYMENT_METHODS } from "@/lib/constants";
+import { TransactionForm } from "./transaction-form";
 
 export function TransactionHistory() {
   const { toast } = useToast();
@@ -16,6 +18,8 @@ export function TransactionHistory() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("current-month");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const { data: categories } = useQuery({
     queryKey: ['/api/categories'],
@@ -117,6 +121,16 @@ export function TransactionHistory() {
     if (confirm("Tem certeza que deseja excluir esta transação?")) {
       deleteTransactionMutation.mutate(id);
     }
+  };
+
+  const handleEdit = (transaction: any) => {
+    setEditingTransaction(transaction);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditClose = () => {
+    setEditingTransaction(null);
+    setIsEditDialogOpen(false);
   };
 
   const handleExport = () => {
@@ -277,6 +291,7 @@ export function TransactionHistory() {
                         <Button
                           size="sm"
                           variant="ghost"
+                          onClick={() => handleEdit(transaction)}
                           data-testid={`button-edit-transaction-${index}`}
                         >
                           <Edit className="w-4 h-4 text-blue-600" />
@@ -299,6 +314,24 @@ export function TransactionHistory() {
           </div>
         )}
       </CardContent>
+
+      {/* Edit Transaction Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Transação</DialogTitle>
+            <DialogDescription>
+              Modifique os dados da transação abaixo.
+            </DialogDescription>
+          </DialogHeader>
+          {editingTransaction && (
+            <TransactionForm 
+              editingTransaction={editingTransaction}
+              onSuccess={handleEditClose}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
