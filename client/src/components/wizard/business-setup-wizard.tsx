@@ -113,8 +113,8 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   // Tela 1 - Boas-vindas
   if (currentStep === 1) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-2xl">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
+        <Card className="w-full max-w-2xl shadow-2xl border-2 border-white/20">
           <CardHeader className="text-center pb-6">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Rocket className="w-8 h-8 text-blue-600" />
@@ -148,8 +148,8 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   // Tela 2 - Setor da Empresa
   if (currentStep === 2) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-3xl">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
+        <Card className="w-full max-w-3xl shadow-2xl border-2 border-white/20">
           <CardHeader className="text-center">
             <CardTitle className="text-xl mb-4">Qual é o setor principal da sua empresa?</CardTitle>
             <Progress value={progress} className="h-2" />
@@ -203,8 +203,8 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   // Tela 3 - Prioridades de Gestão
   if (currentStep === 3) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-4xl">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
+        <Card className="w-full max-w-4xl shadow-2xl border-2 border-white/20">
           <CardHeader className="text-center">
             <CardTitle className="text-xl mb-2">O que é mais importante para você acompanhar de perto?</CardTitle>
             <p className="text-sm text-slate-600 mb-4">Escolha até 2 prioridades</p>
@@ -268,8 +268,8 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   // Tela 4 - Nível de Detalhamento
   if (currentStep === 4) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-2xl">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
+        <Card className="w-full max-w-2xl shadow-2xl border-2 border-white/20">
           <CardHeader className="text-center">
             <CardTitle className="text-xl mb-4">Como você prefere visualizar suas informações?</CardTitle>
             <Progress value={progress} className="h-2" />
@@ -347,8 +347,8 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   // Tela 5 - Gamificação
   if (currentStep === 5) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-2xl">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
+        <Card className="w-full max-w-2xl shadow-2xl border-2 border-white/20">
           <CardHeader className="text-center">
             <CardTitle className="text-xl mb-4">Gostaria de ativar os desafios e conquistas mensais?</CardTitle>
             <Progress value={progress} className="h-2" />
@@ -427,8 +427,8 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
     const selectedSector = sectors.find(s => s.id === wizardData.sector);
     
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-2xl">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
+        <Card className="w-full max-w-2xl shadow-2xl border-2 border-white/20">
           <CardHeader className="text-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-8 h-8 text-green-600" />
