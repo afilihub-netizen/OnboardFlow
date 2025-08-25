@@ -331,5 +331,3 @@ export class ScenarioSimulator {
 }
 
 export const scenarioSimulator = new ScenarioSimulator();
-
-export const scenarioSimulator = new ScenarioSimulator();
