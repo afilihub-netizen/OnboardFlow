@@ -5,6 +5,10 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Eye, EyeOff, BarChart3, TrendingUp, DollarSign, Rocket, Building, Users } from "lucide-react";
 import { FinancialOverview } from "@/components/dashboard/financial-overview";
 import { FinancialHealthScore } from "@/components/dashboard/financial-health-score";
 import { FutureCommitments } from "@/components/dashboard/future-commitments";
@@ -21,12 +25,15 @@ import { BusinessSuppliersWidget } from "@/components/business/business-supplier
 import { BusinessFinancialHealth } from "@/components/business/business-financial-health";
 import { BusinessCashFlow } from "@/components/business/business-cash-flow";
 import { BusinessProjectsROI } from "@/components/business/business-projects-roi";
+import { BusinessGamification } from "@/components/business/business-gamification";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const { isBusinessAccount, companyName } = useBusinessTheme();
   const [isAIMinimized, setIsAIMinimized] = useState(true);
+  const [viewMode, setViewMode] = useState<'executive' | 'complete'>('executive');
+  const [activeTab, setActiveTab] = useState('financeiro');
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -64,33 +71,137 @@ export default function Dashboard() {
               {/* Header Empresarial */}
               <BusinessDashboardHeader />
               
-              {/* KPIs Compactos no Topo - Painel Executivo */}
+              {/* Toggle de Visualização - Modo Executivo vs Completo */}
+              <div className="flex items-center justify-between bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <BarChart3 className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-slate-800">Nível de Visualização</h3>
+                    <p className="text-sm text-slate-600">
+                      {viewMode === 'executive' ? 'Mostrando indicadores principais' : 'Visão completa e detalhada'}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <Badge className={`px-3 py-1 ${viewMode === 'executive' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                    {viewMode === 'executive' ? 'Modo Executivo' : 'Modo Completo'}
+                  </Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setViewMode(viewMode === 'executive' ? 'complete' : 'executive')}
+                    className="flex items-center gap-2"
+                    data-testid="toggle-view-mode"
+                  >
+                    {viewMode === 'executive' ? (
+                      <>
+                        <Eye className="w-4 h-4" />
+                        Ver Completo
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff className="w-4 h-4" />
+                        Modo Executivo
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              
+              {/* KPIs Compactos no Topo - Sempre Visível */}
               <BusinessMetrics />
               
-              {/* Bloco 1: Fluxo de Caixa */}
-              <div className="transform transition-all duration-300 hover:scale-[1.01]">
-                <BusinessCashFlow />
-              </div>
+              {/* Sistema de Abas Contextuais */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-4 bg-white border border-slate-200 h-14 p-1">
+                  <TabsTrigger 
+                    value="financeiro" 
+                    className="flex items-center gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white"
+                    data-testid="tab-financeiro"
+                  >
+                    <DollarSign className="w-4 h-4" />
+                    Financeiro
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="projetos" 
+                    className="flex items-center gap-2 data-[state=active]:bg-purple-500 data-[state=active]:text-white"
+                    data-testid="tab-projetos"
+                  >
+                    <Rocket className="w-4 h-4" />
+                    Projetos
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="departamentos" 
+                    className="flex items-center gap-2 data-[state=active]:bg-green-500 data-[state=active]:text-white"
+                    data-testid="tab-departamentos"
+                  >
+                    <Building className="w-4 h-4" />
+                    Departamentos
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="fornecedores" 
+                    className="flex items-center gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white"
+                    data-testid="tab-fornecedores"
+                  >
+                    <Users className="w-4 h-4" />
+                    Fornecedores
+                  </TabsTrigger>
+                </TabsList>
+                
+                {/* Conteúdo da Aba Financeiro */}
+                <TabsContent value="financeiro" className="mt-6 space-y-6">
+                  <div className="transform transition-all duration-300 hover:scale-[1.01]">
+                    <BusinessCashFlow />
+                  </div>
+                  {viewMode === 'complete' && (
+                    <>
+                      <div className="transform transition-all duration-300 hover:scale-[1.01] animate-in fade-in-50 duration-500">
+                        <BusinessFinancialHealth />
+                      </div>
+                      <div className="transform transition-all duration-300 hover:scale-[1.01] animate-in fade-in-50 duration-700">
+                        <BusinessGamification />
+                      </div>
+                    </>
+                  )}
+                </TabsContent>
+                
+                {/* Conteúdo da Aba Projetos */}
+                <TabsContent value="projetos" className="mt-6 space-y-6">
+                  <div className="transform transition-all duration-300 hover:scale-[1.01]">
+                    <BusinessProjectsROI />
+                  </div>
+                </TabsContent>
+                
+                {/* Conteúdo da Aba Departamentos */}
+                <TabsContent value="departamentos" className="mt-6 space-y-6">
+                  <div className="transform transition-all duration-300 hover:scale-[1.01]">
+                    <BusinessDepartmentalMetrics />
+                  </div>
+                </TabsContent>
+                
+                {/* Conteúdo da Aba Fornecedores */}
+                <TabsContent value="fornecedores" className="mt-6 space-y-6">
+                  <div className="transform transition-all duration-300 hover:scale-[1.01]">
+                    <BusinessSuppliersWidget />
+                  </div>
+                </TabsContent>
+              </Tabs>
               
-              {/* Bloco 2 & 3: Performance de Projetos + Departamentos */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <div className="transform transition-all duration-300 hover:scale-[1.01]">
-                  <BusinessProjectsROI />
+              {/* Indicador do Modo Executivo */}
+              {viewMode === 'executive' && (
+                <div className="text-center py-6">
+                  <div className="inline-flex items-center gap-3 bg-green-50 text-green-700 px-4 py-3 rounded-lg border border-green-200">
+                    <TrendingUp className="w-5 h-5" />
+                    <div>
+                      <p className="font-semibold">Modo Executivo Ativo</p>
+                      <p className="text-sm">Focando apenas nos indicadores essenciais por aba</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="transform transition-all duration-300 hover:scale-[1.01]">
-                  <BusinessDepartmentalMetrics />
-                </div>
-              </div>
-              
-              {/* Bloco 4 & 5: Fornecedores + Saúde Financeira */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <div className="transform transition-all duration-300 hover:scale-[1.01]">
-                  <BusinessSuppliersWidget />
-                </div>
-                <div className="transform transition-all duration-300 hover:scale-[1.01]">
-                  <BusinessFinancialHealth />
-                </div>
-              </div>
+              )}
             </div>
           )}
 
