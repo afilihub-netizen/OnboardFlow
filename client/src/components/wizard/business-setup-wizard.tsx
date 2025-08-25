@@ -114,8 +114,8 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   if (currentStep === 1) {
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
-        <Card className="w-full max-w-2xl shadow-2xl bg-white border-2 border-slate-300">
-          <CardHeader className="text-center pb-6 bg-white">
+        <Card className="w-full max-w-2xl shadow-2xl bg-white border-2 border-slate-300 rounded-2xl">
+          <CardHeader className="text-center pb-6 bg-white rounded-t-2xl">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Rocket className="w-8 h-8 text-blue-600" />
             </div>
@@ -127,7 +127,7 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
               Em menos de 3 minutos, sua dashboard estará pronta e feita sob medida para você. 🚀
             </p>
           </CardHeader>
-          <CardContent className="text-center space-y-6 bg-white">
+          <CardContent className="text-center space-y-6 bg-white rounded-b-2xl">
             <Progress value={progress} className="h-3" />
             <div className="flex justify-between items-center">
               <Button variant="outline" onClick={onSkip} className="flex items-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-50">
@@ -149,12 +149,12 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   if (currentStep === 2) {
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
-        <Card className="w-full max-w-3xl shadow-2xl bg-white border-2 border-slate-300">
-          <CardHeader className="text-center bg-white">
+        <Card className="w-full max-w-3xl shadow-2xl bg-white border-2 border-slate-300 rounded-2xl">
+          <CardHeader className="text-center bg-white rounded-t-2xl">
             <CardTitle className="text-xl mb-4 text-slate-900 font-bold">Qual é o setor principal da sua empresa?</CardTitle>
             <Progress value={progress} className="h-3" />
           </CardHeader>
-          <CardContent className="space-y-6 bg-white">
+          <CardContent className="space-y-6 bg-white rounded-b-2xl">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sectors.map((sector) => (
                 <div
@@ -204,8 +204,8 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   if (currentStep === 3) {
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
-        <Card className="w-full max-w-4xl shadow-2xl bg-white border-2 border-slate-300">
-          <CardHeader className="text-center bg-white">
+        <Card className="w-full max-w-4xl shadow-2xl bg-white border-2 border-slate-300 rounded-2xl">
+          <CardHeader className="text-center bg-white rounded-t-2xl">
             <CardTitle className="text-xl mb-2 text-slate-900 font-bold">O que é mais importante para você acompanhar de perto?</CardTitle>
             <p className="text-sm text-slate-700 mb-4 font-medium">Escolha até 2 prioridades</p>
             <Progress value={progress} className="h-3" />
@@ -269,12 +269,12 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   if (currentStep === 4) {
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
-        <Card className="w-full max-w-2xl shadow-2xl bg-white border-2 border-slate-300">
-          <CardHeader className="text-center bg-white">
+        <Card className="w-full max-w-2xl shadow-2xl bg-white border-2 border-slate-300 rounded-2xl">
+          <CardHeader className="text-center bg-white rounded-t-2xl">
             <CardTitle className="text-xl mb-4 text-slate-900 font-bold">Como você prefere visualizar suas informações?</CardTitle>
             <Progress value={progress} className="h-3" />
           </CardHeader>
-          <CardContent className="space-y-6 bg-white">
+          <CardContent className="space-y-6 bg-white rounded-b-2xl">
             <div className="space-y-4">
               <div
                 onClick={() => setWizardData(prev => ({ ...prev, viewMode: 'executive' }))}
@@ -348,12 +348,12 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   if (currentStep === 5) {
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
-        <Card className="w-full max-w-2xl shadow-2xl bg-white border-2 border-slate-300">
-          <CardHeader className="text-center bg-white">
+        <Card className="w-full max-w-2xl shadow-2xl bg-white border-2 border-slate-300 rounded-2xl">
+          <CardHeader className="text-center bg-white rounded-t-2xl">
             <CardTitle className="text-xl mb-4 text-slate-900 font-bold">Gostaria de ativar os desafios e conquistas mensais?</CardTitle>
             <Progress value={progress} className="h-3" />
           </CardHeader>
-          <CardContent className="space-y-6 bg-white">
+          <CardContent className="space-y-6 bg-white rounded-b-2xl">
             <div className="space-y-4">
               <div
                 onClick={() => setWizardData(prev => ({ ...prev, gamification: true }))}
@@ -428,8 +428,8 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
     
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
-        <Card className="w-full max-w-2xl shadow-2xl bg-white border-2 border-slate-300">
-          <CardHeader className="text-center bg-white">
+        <Card className="w-full max-w-2xl shadow-2xl bg-white border-2 border-slate-300 rounded-2xl">
+          <CardHeader className="text-center bg-white rounded-t-2xl">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
@@ -439,7 +439,7 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
             </p>
             <Progress value={100} className="h-3 mt-4" />
           </CardHeader>
-          <CardContent className="space-y-6 bg-white">
+          <CardContent className="space-y-6 bg-white rounded-b-2xl">
             <div className="bg-slate-50 rounded-lg p-4 space-y-3">
               <h3 className="font-semibold text-center mb-4 text-slate-800">Configurações Aplicadas:</h3>
               
