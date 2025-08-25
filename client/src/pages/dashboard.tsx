@@ -62,26 +62,35 @@ export default function Dashboard() {
         <div className="p-6 space-y-6">
           {/* Business Mode Components - Sistema Empresarial Exclusivo */}
           {isBusinessAccount && (
-            <div className="space-y-6 animate-in fade-in-50 duration-700">
+            <div className="space-y-8 animate-in fade-in-50 duration-700">
+              {/* Header Empresarial */}
               <BusinessDashboardHeader />
+              
+              {/* KPIs Compactos no Topo - Painel Executivo */}
               <BusinessMetrics />
+              
+              {/* Bloco 1: Fluxo de Caixa */}
+              <div className="transform transition-all duration-300 hover:scale-[1.01]">
+                <BusinessCashFlow />
+              </div>
+              
+              {/* Bloco 2 & 3: Performance de Projetos + Departamentos */}
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <div className="transform transition-all duration-300 hover:scale-105">
+                <div className="transform transition-all duration-300 hover:scale-[1.01]">
+                  <BusinessProjectsROI />
+                </div>
+                <div className="transform transition-all duration-300 hover:scale-[1.01]">
                   <BusinessDepartmentalMetrics />
                 </div>
-                <div className="transform transition-all duration-300 hover:scale-105">
+              </div>
+              
+              {/* Bloco 4 & 5: Fornecedores + Saúde Financeira */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="transform transition-all duration-300 hover:scale-[1.01]">
                   <BusinessSuppliersWidget />
                 </div>
-              </div>
-              <div className="transform transition-all duration-300 hover:scale-[1.02]">
-                <BusinessFinancialHealth />
-              </div>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <div className="transform transition-all duration-300 hover:scale-105">
-                  <BusinessCashFlow />
-                </div>
-                <div className="transform transition-all duration-300 hover:scale-105">
-                  <BusinessProjectsROI />
+                <div className="transform transition-all duration-300 hover:scale-[1.01]">
+                  <BusinessFinancialHealth />
                 </div>
               </div>
             </div>
