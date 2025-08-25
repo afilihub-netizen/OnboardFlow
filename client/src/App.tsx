@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusinessTheme } from "@/hooks/useBusinessTheme";
+import { AIChatButton } from "@/components/ai/ai-chat-assistant";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
@@ -26,25 +27,30 @@ function Router() {
   useBusinessTheme();
 
   return (
-    <Switch>
-      {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
-      ) : (
-        <>
-          <Route path="/" component={Dashboard} />
-          <Route path="/transactions" component={Transactions} />
-          <Route path="/investments" component={Investments} />
-          <Route path="/goals" component={Goals} />
-          <Route path="/import" component={Import} />
-          <Route path="/reports" component={Reports} />
-          <Route path="/categories" component={Categories} />
-          <Route path="/subscription" component={Subscription} />
-          <Route path="/upgrade" component={Upgrade} />
-          <Route path="/profile" component={Profile} />
-        </>
-      )}
-      <Route component={NotFound} />
-    </Switch>
+    <>
+      <Switch>
+        {isLoading || !isAuthenticated ? (
+          <Route path="/" component={Landing} />
+        ) : (
+          <>
+            <Route path="/" component={Dashboard} />
+            <Route path="/transactions" component={Transactions} />
+            <Route path="/investments" component={Investments} />
+            <Route path="/goals" component={Goals} />
+            <Route path="/import" component={Import} />
+            <Route path="/reports" component={Reports} />
+            <Route path="/categories" component={Categories} />
+            <Route path="/subscription" component={Subscription} />
+            <Route path="/upgrade" component={Upgrade} />
+            <Route path="/profile" component={Profile} />
+          </>
+        )}
+        <Route component={NotFound} />
+      </Switch>
+      
+      {/* AI Chat Assistant - disponível quando logado */}
+      {isAuthenticated && !isLoading && <AIChatButton />}
+    </>
   );
 }
 

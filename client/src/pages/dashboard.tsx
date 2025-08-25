@@ -18,6 +18,7 @@ import { AIInsights } from "@/components/dashboard/ai-insights";
 import { FixedExpenses } from "@/components/dashboard/fixed-expenses";
 import { MonthlyGoalsNotifications } from "@/components/dashboard/monthly-goals-notifications";
 import { AIAssistant } from "@/components/ai/ai-assistant";
+import { AIDashboard } from "@/components/ai/ai-dashboard";
 import { BusinessMetrics } from "@/components/business/business-metrics";
 import { BusinessDashboardHeader } from "@/components/business/business-dashboard-header";
 import { BusinessDepartmentalMetrics } from "@/components/business/business-departmental-metrics";
@@ -321,38 +322,76 @@ export default function Dashboard() {
                 <MonthlyGoalsNotifications />
               </div>
               
-              {/* Financial Overview Cards */}
-              <div className="transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
-                <FinancialOverview />
-              </div>
-              
-              {/* Charts Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="transform transition-all duration-300 hover:scale-105">
-                  <FutureCommitments />
-                </div>
-                <div className="transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
-                  <ExpensesChart />
-                </div>
-                <div className="transform transition-all duration-300 hover:scale-105">
-                  <FinancialHealthScore />
-                </div>
-              </div>
-              
-              {/* Recent Transactions & AI Insights */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
-                  <RecentTransactions />
-                </div>
-                <div className="transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
-                  <AIInsights />
-                </div>
-              </div>
-              
-              {/* Fixed Expenses */}
-              <div className="transform transition-all duration-300 hover:scale-[1.02]">
-                <FixedExpenses />
-              </div>
+              {/* Tabs para conta pessoal/familiar */}
+              <Tabs defaultValue="overview" className="space-y-6">
+                <TabsList className="grid w-full grid-cols-3 bg-white border border-slate-200 h-14 p-1">
+                  <TabsTrigger 
+                    value="overview" 
+                    className="flex items-center gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white"
+                    data-testid="tab-overview"
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    Visão Geral
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="ai" 
+                    className="flex items-center gap-2 data-[state=active]:bg-purple-500 data-[state=active]:text-white"
+                    data-testid="tab-ai"
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    IA Financeira
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="fixed" 
+                    className="flex items-center gap-2 data-[state=active]:bg-green-500 data-[state=active]:text-white"
+                    data-testid="tab-fixed"
+                  >
+                    <DollarSign className="w-4 h-4" />
+                    Gastos Fixos
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="space-y-6">
+                  {/* Financial Overview Cards */}
+                  <div className="transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
+                    <FinancialOverview />
+                  </div>
+                  
+                  {/* Charts Section */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="transform transition-all duration-300 hover:scale-105">
+                      <FutureCommitments />
+                    </div>
+                    <div className="transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
+                      <ExpensesChart />
+                    </div>
+                    <div className="transform transition-all duration-300 hover:scale-105">
+                      <FinancialHealthScore />
+                    </div>
+                  </div>
+                  
+                  {/* Recent Transactions & AI Insights */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
+                      <RecentTransactions />
+                    </div>
+                    <div className="transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
+                      <AIInsights />
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="ai" className="space-y-6">
+                  <AIDashboard />
+                </TabsContent>
+
+                <TabsContent value="fixed" className="space-y-6">
+                  {/* Fixed Expenses */}
+                  <div className="transform transition-all duration-300 hover:scale-[1.02]">
+                    <FixedExpenses />
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           )}
         </div>

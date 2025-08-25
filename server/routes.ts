@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { notificationService } from "./notificationService";
+import { financialAssistant, type FinancialData, type ChatMessage } from "./ai-assistant";
 import { insertNotificationSchema, insertWorkflowTriggerSchema, insertEmailPreferencesSchema } from "@shared/schema";
 import { analyzeExtractWithAI, generateFinancialInsights, setProgressSessions } from "./openai";
 import {
@@ -517,6 +518,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error calculating financial health score:", error);
       res.status(500).json({ message: "Failed to calculate financial health score" });
+    }
+  });
+
+  // AI Assistant routes
+  app.post("/api/ai/chat", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { question } = req.body;
+
+      if (!question) {
+        return res.status(400).json({ message: "Question is required" });
+      }
+
+      // Obter dados financeiros do usuário para contexto
+      const transactions = await storage.getTransactions(userId, {});
+      const categories = await storage.getCategories(userId);
+      
+      // Calcular totais
+      const totalIncome = transactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      
+      const totalExpenses = transactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+
+      // Agrupar gastos por categoria
+      const categoryTotals = transactions
+        .filter(t => t.type === 'expense')
+        .reduce((acc, t) => {
+          const categoryName = categories.find(c => c.id === t.categoryId)?.name || 'Outros';
+          acc[categoryName] = (acc[categoryName] || 0) + Number(t.amount);
+          return acc;
+        }, {} as { [key: string]: number });
+
+      const financialData: FinancialData = {
+        transactions,
+        totalIncome,
+        totalExpenses,
+        categories: categoryTotals
+      };
+
+      const response = await financialAssistant.analyzeFinancialQuestion(
+        question,
+        financialData,
+        userId
+      );
+
+      res.json({ response, timestamp: new Date() });
+    } catch (error) {
+      console.error("Error processing AI chat:", error);
+      res.status(500).json({ message: "Failed to process question" });
+    }
+  });
+
+  // Auto-categorize transaction
+  app.post("/api/ai/categorize", isAuthenticated, async (req: any, res) => {
+    try {
+      const { description, amount } = req.body;
+
+      if (!description || amount === undefined) {
+        return res.status(400).json({ message: "Description and amount are required" });
+      }
+
+      const result = await financialAssistant.categorizeTransaction(description, amount);
+      res.json(result);
+    } catch (error) {
+      console.error("Error categorizing transaction:", error);
+      res.status(500).json({ message: "Failed to categorize transaction" });
+    }
+  });
+
+  // Enhanced Financial Health Score with AI
+  app.get("/api/ai/financial-health", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Obter dados financeiros
+      const transactions = await storage.getTransactions(userId, {});
+      const categories = await storage.getCategories(userId);
+      
+      const totalIncome = transactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      
+      const totalExpenses = transactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+
+      const categoryTotals = transactions
+        .filter(t => t.type === 'expense')
+        .reduce((acc, t) => {
+          const categoryName = categories.find(c => c.id === t.categoryId)?.name || 'Outros';
+          acc[categoryName] = (acc[categoryName] || 0) + Number(t.amount);
+          return acc;
+        }, {} as { [key: string]: number });
+
+      const financialData: FinancialData = {
+        transactions,
+        totalIncome,
+        totalExpenses,
+        categories: categoryTotals
+      };
+
+      const healthScore = financialAssistant.calculateFinancialHealthScore(financialData);
+      res.json(healthScore);
+    } catch (error) {
+      console.error("Error calculating enhanced financial health:", error);
+      res.status(500).json({ message: "Failed to calculate financial health" });
+    }
+  });
+
+  // Analyze spending patterns
+  app.get("/api/ai/spending-patterns", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const transactions = await storage.getTransactions(userId, {});
+      
+      const patterns = await financialAssistant.analyzeSpendingPatterns(transactions);
+      res.json(patterns);
+    } catch (error) {
+      console.error("Error analyzing spending patterns:", error);
+      res.status(500).json({ message: "Failed to analyze spending patterns" });
     }
   });
 
