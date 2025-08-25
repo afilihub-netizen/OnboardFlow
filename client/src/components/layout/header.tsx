@@ -47,18 +47,54 @@ export function Header({ title, subtitle }: HeaderProps) {
     }
   };
 
-  return (
-    <header className="bg-slate-800 shadow-lg border-b border-slate-700 sticky top-0 z-40">
-      <div className="px-6 py-4 ml-0 md:ml-0 pl-16 md:pl-6">
-        <div className="flex items-center justify-between">
-          {/* Badge do Modo Empresarial - Lado Esquerdo */}
-          <div>
-            {isBusinessAccount && (
+  // Layout diferente para modo empresarial vs pessoal
+  if (isBusinessAccount) {
+    // Layout empresarial (como estava)
+    return (
+      <header className="bg-slate-800 shadow-lg border-b border-slate-700 sticky top-0 z-40">
+        <div className="px-6 py-4 ml-0 md:ml-0 pl-16 md:pl-6">
+          <div className="flex items-center justify-between">
+            {/* Badge do Modo Empresarial - Lado Esquerdo */}
+            <div>
               <Badge className="bg-white/20 text-white border-white/30 text-sm px-3 py-1 backdrop-blur">
                 <Building2 className="w-4 h-4 mr-2" />
                 MODO EMPRESARIAL
               </Badge>
-            )}
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              {/* Notifications */}
+              <NotificationPanel />
+              
+              {/* User Profile */}
+              <div className="flex items-center gap-3 p-2 rounded-lg bg-white/10 border border-white/20 backdrop-blur">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.profileImageUrl || undefined} alt="Profile" />
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold">
+                    {getUserInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                
+                <span className="text-sm font-medium text-white">
+                  {user?.firstName || "Usuário"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  // Layout pessoal (original, como era antes)
+  return (
+    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+      <div className="px-6 py-4 ml-0 md:ml-0 pl-16 md:pl-6">
+        <div className="flex items-center justify-between">
+          {/* Título e Subtítulo - Lado Esquerdo */}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+            <p className="text-sm text-gray-600">{subtitle}</p>
           </div>
           
           <div className="flex items-center space-x-4">
@@ -66,17 +102,20 @@ export function Header({ title, subtitle }: HeaderProps) {
             <NotificationPanel />
             
             {/* User Profile */}
-            <div className="flex items-center gap-3 p-2 rounded-lg bg-white/10 border border-white/20 backdrop-blur">
-              <Avatar className="h-8 w-8">
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden md:block">
+                <p className="text-sm font-medium text-gray-900">
+                  {user?.firstName ? `${user.firstName} ${user.lastName || ''}` : user?.email || 'Usuário'}
+                </p>
+                <p className="text-xs text-gray-500">Conta Individual</p>
+              </div>
+              
+              <Avatar className="h-9 w-9">
                 <AvatarImage src={user?.profileImageUrl || undefined} alt="Profile" />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold">
                   {getUserInitials()}
                 </AvatarFallback>
               </Avatar>
-              
-              <span className="text-sm font-medium text-white">
-                {user?.firstName || "Usuário"}
-              </span>
             </div>
           </div>
         </div>
