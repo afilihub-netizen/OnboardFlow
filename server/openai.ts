@@ -1,24 +1,19 @@
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error("OPENAI_API_KEY is required");
+if (!process.env.GEMINI_API_KEY) {
+  throw new Error("GEMINI_API_KEY is required");
 }
 
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY 
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function generateFinancialInsights(financialData: any) {
   try {
     const { transactions, summary, categories } = financialData;
     
-    // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-    const response = await openai.chat.completions.create({
-      model: "gpt-5",
-      messages: [
-        {
-          role: "system",
-          content: `Você é um consultor financeiro especializado. Analise os dados financeiros fornecidos e gere insights personalizados em português brasileiro.
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-pro",
+      config: {
+        systemInstruction: `Você é um consultor financeiro especializado. Analise os dados financeiros fornecidos e gere insights personalizados em português brasileiro.
 
 Instruções:
 1. Analise as transações, resumo financeiro e categorias
@@ -41,17 +36,31 @@ Responda APENAS com JSON válido no formato:
       "message": "Mensagem detalhada com valores específicos"
     }
   ]
-}`
-        },
-        {
-          role: "user",
-          content: `Analise estes dados financeiros e gere insights personalizados:\n\nResumo: ${JSON.stringify(summary)}\nTransações recentes: ${JSON.stringify(transactions?.slice(-20) || [])}\nCategorias: ${JSON.stringify(categories)}`
+}`,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "object",
+          properties: {
+            insights: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  type: { type: "string" },
+                  title: { type: "string" },
+                  message: { type: "string" }
+                },
+                required: ["type", "title", "message"]
+              }
+            }
+          },
+          required: ["insights"]
         }
-      ],
-      max_completion_tokens: 1000,
+      },
+      contents: `Analise estes dados financeiros e gere insights personalizados:\n\nResumo: ${JSON.stringify(summary)}\nTransações recentes: ${JSON.stringify(transactions?.slice(-20) || [])}\nCategorias: ${JSON.stringify(categories)}`,
     });
 
-    const content = response.choices[0].message.content || '{"insights": []}';
+    const content = response.text || '{"insights": []}';
     // Extrair JSON do texto se necessário
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{"insights": []}');
@@ -88,12 +97,10 @@ function splitTextIntoChunks(text: string, maxChunkSize: number = 6000): string[
 
 // Function to process a single chunk
 async function processChunk(extractText: string, availableCategories: string[] = []) {
-  const response = await openai.chat.completions.create({
-    model: "gpt-5",
-    messages: [
-      {
-        role: "system",
-        content: `CRÍTICO: Extraia TODAS as transações do extrato bancário, sem limites ou exceções.
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-pro",
+    config: {
+      systemInstruction: `CRÍTICO: Extraia TODAS as transações do extrato bancário, sem limites ou exceções.
 
 INSTRUÇÕES DETALHADAS:
 1. Processe LINHA POR LINHA do texto completo
@@ -114,17 +121,33 @@ FIELD RULES:
 - category: one of: Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros
 
 MANDATORY EXAMPLE:
-{"transactions":[{"date":"2024-12-10","description":"PIX ENVIADO João Silva","amount":-150.00,"type":"expense","category":"Outros"},{"date":"2024-12-11","description":"SALÁRIO EMPRESA XYZ","amount":3000.00,"type":"income","category":"Outros"}]}`
-      },
-      {
-        role: "user",
-        content: `Analise este extrato bancário e extraia as transações:\n\n${extractText}`
+{"transactions":[{"date":"2024-12-10","description":"PIX ENVIADO João Silva","amount":-150.00,"type":"expense","category":"Outros"},{"date":"2024-12-11","description":"SALÁRIO EMPRESA XYZ","amount":3000.00,"type":"income","category":"Outros"}]}`,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "object",
+        properties: {
+          transactions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                date: { type: "string" },
+                description: { type: "string" },
+                amount: { type: "number" },
+                type: { type: "string" },
+                category: { type: "string" }
+              },
+              required: ["date", "description", "amount", "type", "category"]
+            }
+          }
+        },
+        required: ["transactions"]
       }
-    ],
-    max_completion_tokens: 8000,
+    },
+    contents: `Analise este extrato bancário e extraia as transações:\n\n${extractText}`,
   });
 
-  let content = response.choices[0].message.content || '{"transactions": []}';
+  let content = response.text || '{"transactions": []}';
   
   // Clean up the response
   content = content.trim();

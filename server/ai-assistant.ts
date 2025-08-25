@@ -1,12 +1,10 @@
-import OpenAI from 'openai';
+import { GoogleGenAI } from "@google/genai";
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('OPENAI_API_KEY environment variable must be set');
+if (!process.env.GEMINI_API_KEY) {
+  throw new Error('GEMINI_API_KEY environment variable must be set');
 }
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export interface FinancialData {
   transactions: any[];
@@ -33,22 +31,15 @@ export class FinancialAssistant {
     try {
       const systemPrompt = this.buildSystemPrompt(financialData);
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-4", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user", 
-            content: question
-          }
-        ],
-        max_completion_tokens: 500,
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-pro",
+        config: {
+          systemInstruction: systemPrompt,
+        },
+        contents: question,
       });
 
-      return response.choices[0].message.content || "Desculpe, não consegui processar sua pergunta.";
+      return response.text || "Desculpe, não consegui processar sua pergunta.";
     } catch (error) {
       console.error('Erro ao processar pergunta financeira:', error);
       throw new Error('Erro interno do assistente financeiro');
@@ -90,12 +81,10 @@ EXEMPLOS DE RESPOSTAS ESPERADAS:
     subcategory?: string;
   }> {
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: `Você é um especialista em categorização de transações financeiras brasileiras.
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-pro",
+        config: {
+          systemInstruction: `Você é um especialista em categorização de transações financeiras brasileiras.
 
 CATEGORIAS DISPONÍVEIS:
 - Alimentação (restaurantes, delivery, supermercado, lanches)
@@ -118,17 +107,22 @@ Analise a descrição e retorne um JSON com:
   "subcategory": "subcategoria_opcional"
 }
 
-Seja preciso e use seu conhecimento sobre o mercado brasileiro.`
-          },
-          {
-            role: "user",
-            content: `Descrição: "${description}", Valor: R$ ${amount.toFixed(2)}`
+Seja preciso e use seu conhecimento sobre o mercado brasileiro.`,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              category: { type: "string" },
+              confidence: { type: "number" },
+              subcategory: { type: "string" }
+            },
+            required: ["category", "confidence"]
           }
-        ],
-        max_completion_tokens: 150,
+        },
+        contents: `Descrição: "${description}", Valor: R$ ${amount.toFixed(2)}`,
       });
 
-      const content = response.choices[0].message.content || '{}';
+      const content = response.text || '{}';
       // Extrair JSON do texto se necessário
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
@@ -154,12 +148,10 @@ Seja preciso e use seu conhecimento sobre o mercado brasileiro.`
     try {
       const monthlyData = this.groupTransactionsByMonth(transactions);
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: `Você é um analista financeiro expert. Analise os padrões de gastos e retorne insights em JSON.
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-pro",
+        config: {
+          systemInstruction: `Você é um analista financeiro expert. Analise os padrões de gastos e retorne insights em JSON.
 
 Retorne APENAS um JSON válido com:
 {
@@ -173,17 +165,22 @@ Foque em:
 - Crescimento/redução de categorias
 - Gastos anômalos
 - Oportunidades de economia
-- Tendências preocupantes`
-          },
-          {
-            role: "user",
-            content: `Dados mensais: ${JSON.stringify(monthlyData.slice(0, 6))}`
+- Tendências preocupantes`,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              insights: { type: "array", items: { type: "string" } },
+              warnings: { type: "array", items: { type: "string" } },
+              suggestions: { type: "array", items: { type: "string" } }
+            },
+            required: ["insights", "warnings", "suggestions"]
           }
-        ],
-        max_completion_tokens: 400,
+        },
+        contents: `Dados mensais: ${JSON.stringify(monthlyData.slice(0, 6))}`,
       });
 
-      const content = response.choices[0].message.content || '{"insights":[],"warnings":[],"suggestions":[]}';
+      const content = response.text || '{"insights":[],"warnings":[],"suggestions":[]}';
       // Extrair JSON do texto se necessário
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       return JSON.parse(jsonMatch ? jsonMatch[0] : '{"insights":[],"warnings":[],"suggestions":[]}');
