@@ -50,7 +50,17 @@ export function Header({ title, subtitle }: HeaderProps) {
   return (
     <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
       <div className="px-6 py-4 ml-0 md:ml-0 pl-16 md:pl-6">
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-between">
+          {/* Badge do Modo Empresarial - Lado Esquerdo */}
+          <div>
+            {isBusinessAccount && (
+              <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-sm px-3 py-1">
+                <Building2 className="w-4 h-4 mr-2" />
+                MODO EMPRESARIAL
+              </Badge>
+            )}
+          </div>
+          
           <div className="flex items-center space-x-4">
             {/* Notifications */}
             <NotificationPanel />
@@ -58,7 +68,7 @@ export function Header({ title, subtitle }: HeaderProps) {
             {/* User Profile */}
             <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.profileImageUrl} alt="Profile" />
+                <AvatarImage src={user?.profileImageUrl || undefined} alt="Profile" />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold">
                   {getUserInitials()}
                 </AvatarFallback>
@@ -67,13 +77,6 @@ export function Header({ title, subtitle }: HeaderProps) {
               <span className="text-sm font-medium text-gray-900 dark:text-white">
                 {user?.firstName || "Usuário"}
               </span>
-              
-              {isBusinessAccount && (
-                <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-xs">
-                  <Building2 className="w-3 h-3 mr-1" />
-                  MODO EMPRESARIAL
-                </Badge>
-              )}
             </div>
           </div>
         </div>
