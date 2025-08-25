@@ -126,11 +126,13 @@ Seja preciso e use seu conhecimento sobre o mercado brasileiro.`
             content: `Descrição: "${description}", Valor: R$ ${amount.toFixed(2)}`
           }
         ],
-        response_format: { type: "json_object" },
         max_tokens: 150,
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{}');
+      const content = response.choices[0].message.content || '{}';
+      // Extrair JSON do texto se necessário
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
       return {
         category: result.category || 'Outros',
         confidence: result.confidence || 0.5,
@@ -154,13 +156,13 @@ Seja preciso e use seu conhecimento sobre o mercado brasileiro.`
       const monthlyData = this.groupTransactionsByMonth(transactions);
       
       const response = await openai.chat.completions.create({
-        model: "gpt-4", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
         messages: [
           {
             role: "system",
             content: `Você é um analista financeiro expert. Analise os padrões de gastos e retorne insights em JSON.
 
-Retorne um JSON com:
+Retorne APENAS um JSON válido com:
 {
   "insights": ["insight1", "insight2", ...],
   "warnings": ["aviso1", "aviso2", ...], 
@@ -179,11 +181,13 @@ Foque em:
             content: `Dados mensais: ${JSON.stringify(monthlyData.slice(0, 6))}`
           }
         ],
-        response_format: { type: "json_object" },
         max_tokens: 400,
       });
 
-      return JSON.parse(response.choices[0].message.content || '{"insights":[],"warnings":[],"suggestions":[]}');
+      const content = response.choices[0].message.content || '{"insights":[],"warnings":[],"suggestions":[]}';
+      // Extrair JSON do texto se necessário
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      return JSON.parse(jsonMatch ? jsonMatch[0] : '{"insights":[],"warnings":[],"suggestions":[]}');
     } catch (error) {
       console.error('Erro na análise de padrões:', error);
       return {
