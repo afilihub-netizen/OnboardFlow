@@ -91,7 +91,7 @@ export function SpendingPatterns() {
   return (
     <div className="space-y-6">
       {/* Insights */}
-      {patternsData.insights.length > 0 && (
+      {patternsData.insights && patternsData.insights.length > 0 && (
         <Card data-testid="spending-insights">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -102,7 +102,7 @@ export function SpendingPatterns() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {patternsData.insights.map((insight, index) => (
+              {patternsData.insights && patternsData.insights.map((insight, index) => (
                 <div 
                   key={index}
                   className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400"
@@ -117,7 +117,7 @@ export function SpendingPatterns() {
       )}
 
       {/* Avisos */}
-      {patternsData.warnings.length > 0 && (
+      {patternsData.warnings && patternsData.warnings.length > 0 && (
         <Card data-testid="spending-warnings">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -128,7 +128,7 @@ export function SpendingPatterns() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {patternsData.warnings.map((warning, index) => (
+              {patternsData.warnings && patternsData.warnings.map((warning, index) => (
                 <div 
                   key={index}
                   className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg border-l-4 border-orange-400"
@@ -143,7 +143,7 @@ export function SpendingPatterns() {
       )}
 
       {/* Sugestões */}
-      {patternsData.suggestions.length > 0 && (
+      {patternsData.suggestions && patternsData.suggestions.length > 0 && (
         <Card data-testid="spending-suggestions">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -154,7 +154,7 @@ export function SpendingPatterns() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {patternsData.suggestions.map((suggestion, index) => (
+              {patternsData.suggestions && patternsData.suggestions.map((suggestion, index) => (
                 <div 
                   key={index}
                   className="flex items-start gap-3 p-3 bg-green-50 rounded-lg border-l-4 border-green-400"
@@ -169,9 +169,9 @@ export function SpendingPatterns() {
       )}
 
       {/* Estado vazio */}
-      {patternsData.insights.length === 0 && 
-       patternsData.warnings.length === 0 && 
-       patternsData.suggestions.length === 0 && (
+      {(!patternsData.insights || patternsData.insights.length === 0) && 
+       (!patternsData.warnings || patternsData.warnings.length === 0) && 
+       (!patternsData.suggestions || patternsData.suggestions.length === 0) && (
         <Card data-testid="spending-patterns-empty">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

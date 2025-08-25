@@ -194,26 +194,32 @@ export function FinancialHealthScore() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {healthData.factors.map((factor, index) => (
-              <div key={index} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {getFactorIcon(factor.name)}
-                    <span className="font-medium text-sm">{factor.name}</span>
+            {healthData.factors && healthData.factors.length > 0 ? (
+              healthData.factors.map((factor, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {getFactorIcon(factor.name)}
+                      <span className="font-medium text-sm">{factor.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-bold ${getScoreColor(factor.score)}`}>
+                        {factor.score}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        (peso: {Math.round(factor.weight * 100)}%)
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`font-bold ${getScoreColor(factor.score)}`}>
-                      {factor.score}
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      (peso: {Math.round(factor.weight * 100)}%)
-                    </span>
-                  </div>
+                  <Progress value={factor.score} className="h-2" />
+                  <p className="text-xs text-slate-600">{factor.description}</p>
                 </div>
-                <Progress value={factor.score} className="h-2" />
-                <p className="text-xs text-slate-600">{factor.description}</p>
+              ))
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-slate-600">Carregando fatores de avaliação...</p>
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>
@@ -228,17 +234,19 @@ export function FinancialHealthScore() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {healthData.recommendations.map((recommendation, index) => (
-              <div 
-                key={index} 
-                className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400"
-              >
-                <Lightbulb className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-blue-900">{recommendation}</p>
-              </div>
-            ))}
+            {healthData.recommendations && healthData.recommendations.length > 0 ? (
+              healthData.recommendations.map((recommendation, index) => (
+                <div 
+                  key={index} 
+                  className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400"
+                >
+                  <Lightbulb className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-blue-900">{recommendation}</p>
+                </div>
+              ))
+            ) : null}
 
-            {healthData.recommendations.length === 0 && (
+            {(!healthData.recommendations || healthData.recommendations.length === 0) && (
               <div className="text-center py-4">
                 <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
                 <p className="text-sm text-slate-600">
