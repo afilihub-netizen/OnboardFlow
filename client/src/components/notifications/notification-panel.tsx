@@ -111,16 +111,16 @@ export default function NotificationPanel() {
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
-          className="relative"
+          className="relative bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur text-white hover:text-white transition-all duration-200"
           data-testid="button-notifications"
         >
-          <Bell className="h-4 w-4" />
+          <Bell className={`h-4 w-4 transition-all duration-300 ${unreadCount > 0 ? 'animate-bounce text-yellow-300' : 'text-white/80'}`} />
           {unreadCount > 0 && (
             <Badge 
               variant="destructive" 
-              className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+              className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center bg-red-500 text-white animate-pulse shadow-lg"
               data-testid="badge-unread-count"
             >
               {unreadCount > 99 ? '99+' : unreadCount}
