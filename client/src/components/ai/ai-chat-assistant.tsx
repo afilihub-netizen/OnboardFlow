@@ -178,10 +178,9 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
                       {message.role === 'user' ? (
                         <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                       ) : (
-                        <div className="text-sm">
+                        <div className="text-sm prose prose-sm max-w-none">
                           <ReactMarkdown 
                             remarkPlugins={[remarkGfm]}
-                            className="prose prose-sm max-w-none prose-p:m-1 prose-headings:m-1 prose-headings:font-semibold prose-strong:font-semibold prose-ul:m-1 prose-ol:m-1 prose-li:m-0"
                             components={{
                               h1: ({children}) => <h1 className="text-lg font-bold text-gray-800 mb-2">{children}</h1>,
                               h2: ({children}) => <h2 className="text-base font-semibold text-gray-800 mb-1">{children}</h2>,
