@@ -139,9 +139,9 @@ export function AIDashboard() {
         </CardContent>
       </Card>
 
-      {/* Tabs com análises detalhadas */}
+      {/* Análises de IA */}
       <Tabs defaultValue="health" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="health" className="flex items-center gap-2">
             <Heart className="w-4 h-4" />
             Score de Saúde
@@ -149,6 +149,14 @@ export function AIDashboard() {
           <TabsTrigger value="patterns" className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4" />
             Padrões de Gastos
+          </TabsTrigger>
+          <TabsTrigger value="predictor" className="flex items-center gap-2">
+            <Target className="w-4 h-4" />
+            Fluxo Preditivo
+          </TabsTrigger>
+          <TabsTrigger value="simulator" className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4" />
+            Simulador
           </TabsTrigger>
         </TabsList>
 
@@ -159,56 +167,13 @@ export function AIDashboard() {
         <TabsContent value="patterns" id="spending-patterns">
           <SpendingPatterns />
         </TabsContent>
-      </Tabs>
 
-      {/* Funcionalidades Avançadas */}
-      <Tabs defaultValue="advanced" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="advanced" className="flex items-center gap-2">
-            <Target className="w-4 h-4" />
-            Cenários e Previsões
-          </TabsTrigger>
-          <TabsTrigger value="optimizer" className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4" />
-            Otimizador
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="advanced" className="space-y-6">
-          <Tabs defaultValue="predictor" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="predictor">Fluxo de Caixa Preditivo</TabsTrigger>
-              <TabsTrigger value="simulator">Simulador de Cenários</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="predictor">
-              <CashFlowPredictor />
-            </TabsContent>
-
-            <TabsContent value="simulator">
-              <ScenarioSimulator />
-            </TabsContent>
-          </Tabs>
+        <TabsContent value="predictor">
+          <CashFlowPredictor />
         </TabsContent>
 
-        <TabsContent value="optimizer" className="space-y-6">
-          <Card className="border-dashed border-2 border-slate-200">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-600">
-                <Sparkles className="w-5 h-5" />
-                Otimizador de Gastos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-600 mb-2">Em desenvolvimento</p>
-                <p className="text-sm text-slate-500">
-                  Sugestões automáticas para otimizar seus gastos baseadas em IA
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="simulator">
+          <ScenarioSimulator />
         </TabsContent>
       </Tabs>
 
