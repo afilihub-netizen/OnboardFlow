@@ -1,0 +1,140 @@
+Com certeza. Com o acesso Pro, vamos mergulhar na arquitetura do produto. Este não é um simples brainstorm, é o roteiro mestre de funcionalidades da plataforma Kairos.
+
+Este documento servirá como um guia para a equipe de desenvolvimento e produto, detalhando cada componente do sistema, desde a experiência do usuário gratuito até as capacidades avançadas do assinante Pro.
+
+Roteiro de Funcionalidades do Sistema Kairos
+Módulos Fundamentais (Core)
+(Disponível para todos os usuários)
+
+1.0 Onboarding e Gestão de Conta
+
+1.1 Cadastro Simplificado: Opções de cadastro com E-mail/Senha, ou via contas Google/Apple para agilidade.
+
+1.2 Perfil do Usuário: Gestão de nome, foto, e-mail e senha.
+
+1.3 Configurações de Moeda: Padrão em Real (BRL), com suporte futuro a outras moedas.
+
+1.4 Gestão de Consentimento (LGPD): Painel claro para o usuário gerenciar quais dados compartilha e para qual finalidade.
+
+1.5 Exclusão de Conta: Processo seguro e completo para apagar todos os dados do usuário, conforme a LGPD.
+
+2.0 Segurança
+
+2.1 Autenticação Multi-Fator (MFA): Opção de ativar verificação via app autenticador (Google Authenticator) ou SMS para login e ações sensíveis.
+
+2.2 Criptografia de Ponta a Ponta: Todos os dados do usuário são criptografados em trânsito e em repouso.
+
+2.3 Log de Atividades: Histórico de logins e atividades importantes na conta para auditoria do usuário.
+
+3.0 Notificações e Suporte
+
+3.1 Central de Notificações: Hub dentro do app para todas as notificações importantes.
+
+3.2 Configurações de Notificação: Controle granular do usuário sobre quais alertas deseja receber (push, e-mail).
+
+3.3 Central de Ajuda (FAQ): Base de conhecimento com artigos e tutoriais.
+
+3.4 Suporte via Chat: Canal de suporte direto dentro do aplicativo.
+
+Kairos - Plano Gratuito (A Base da Clareza)
+4.0 Painel Principal (Dashboard)
+
+4.1 Visão Geral: Apresenta um resumo do patrimônio líquido, saldo total em contas, últimas transações e próximos vencimentos.
+
+4.2 Gráficos Simples: Gráfico de pizza com a divisão de despesas do mês atual por categoria.
+
+5.0 Agregação de Contas
+
+5.1 Conexão via Open Finance: Módulo seguro para conectar contas correntes, poupança e cartões de crédito dos principais bancos brasileiros.
+
+5.2 Conexão Manual: Opção para adicionar contas manualmente (ex: dinheiro em espécie, contas não cobertas pelo Open Finance).
+
+5.3 Sincronização Automática: Atualização diária e automática dos saldos e transações.
+
+6.0 Transações e Categorização
+
+6.1 Feed de Transações Unificado: Todas as transações de todas as contas em um único feed cronológico.
+
+6.2 Motor de Categorização por IA: Classificação automática de despesas e receitas (ex: "Uber" -> "Transporte").
+
+6.3 Edição e Criação de Categorias: Permite ao usuário corrigir, dividir ou criar suas próprias categorias e subcategorias.
+
+6.4 Tags Personalizadas: Possibilidade de adicionar tags às transações para rastreamento específico (ex: #ferias2026, #reforma_cozinha).
+
+7.0 Orçamento e Metas (Básico)
+
+7.1 Orçamento por Categoria: Definir limites de gastos mensais para as principais categorias.
+
+7.2 Alertas de Orçamento: Notificações quando o usuário atinge 50%, 80% e 100% de um orçamento.
+
+7.3 Criação de Metas de Poupança: Definir objetivos com nome, valor e data alvo (ex: "Reserva de Emergência - R$ 15.000").
+
+7.4 Acompanhamento Visual de Metas: Barras de progresso para motivar o usuário.
+
+Kairos Pro (A Inteligência em Ação)
+8.0 Painel Pro (Dashboard Pro)
+
+8.1 Insights Proativos: O dashboard exibe cards com insights gerados pela IA (ex: "Alerta: Seus gastos com assinaturas aumentaram 20% nos últimos 3 meses.").
+
+8.2 "Saúde Financeira Score": Pontuação dinâmica que analisa liquidez, endividamento e capacidade de investimento do usuário.
+
+8.3 Projeção de Fluxo de Caixa Pessoal: Gráfico que projeta o saldo consolidado do usuário para os próximos 30-90 dias.
+
+9.0 Mecanismo de Simulação de Realidades (MSR)
+
+9.1 Biblioteca de Cenários: Modelos pré-configurados para as decisões mais comuns ("Comprar um imóvel", "Aposentadoria", "Abrir um negócio").
+
+9.2 Construtor de Cenários Personalizados: Ferramenta para o usuário criar seu próprio cenário "E se...?", ajustando variáveis (renda, despesas, inflação, taxa de juros, aportes).
+
+9.3 Comparador de Cenários: Interface para comparar lado a lado os resultados e as probabilidades de sucesso de diferentes simulações.
+
+10.0 Agente Autônomo Delegado
+
+10.1 Interface de Criação de Diretrizes: Tela para o usuário escrever regras em linguagem quase natural ou através de um construtor de blocos lógicos.
+
+10.2 Biblioteca de "Receitas": Modelos de automação prontos (ex: "Cofrinho do Troco", "Otimizador de Dívidas", "Investidor Automático").
+
+10.3 Painel de Controle e Aprovações: O usuário tem um dashboard para monitorar todas as ações do agente, podendo pausar diretrizes e devendo aprovar ações mais sensíveis.
+
+10.4 Log de Execução Detalhado: Histórico completo e transparente de cada ação executada pela IA em nome do usuário.
+
+11.0 Ecossistema de Dados de Vida
+
+11.1 Módulo de Conexões: Integração segura com Google Calendar, Apple Health, etc.
+
+11.2 Painel de Correlações: Gráficos e insights que cruzam dados de diferentes áreas da vida (ex: "Sua produtividade (eventos na agenda) vs. gastos com café").
+
+12.0 Análise Preditiva e Relatórios Narrativos
+
+12.1 Detecção de Anomalias: Alertas sobre transações incomuns ou desvios de padrão de gastos.
+
+12.2 Gerador de Relatórios: Criação de relatórios mensais/trimestrais em PDF, com a IA escrevendo uma análise narrativa sobre a evolução financeira do usuário.
+
+Kairos Pro - Módulo Empresarial (PJ)
+(Todas as funcionalidades Pro, mais as seguintes)
+
+13.0 Gestão de Fluxo de Caixa Preditivo
+
+13.1 Dashboard Gerencial: Visão consolidada do caixa, contas a pagar/receber, inadimplência e projeção de caixa para 30/60/90 dias.
+
+13.2 Alertas de Caixa: Notificações automáticas sobre potenciais "vales" (déficits) de caixa no futuro.
+
+14.0 Contas a Pagar e Receber
+
+14.1 Digitalização de Contas (OCR): Enviar uma foto ou PDF de uma conta para a IA extrair os dados (valor, vencimento, fornecedor).
+
+14.2 Automação de Cobranças: Configurar réguas de cobrança personalizadas (e-mails, lembretes via WhatsApp) para clientes inadimplentes.
+
+14.3 Geração de Cobranças via PIX: Emissão de QR Codes (estáticos e dinâmicos) para faturas.
+
+15.0 Conciliação Bancária Autônoma
+
+15.1 Motor de Conciliação por IA: A plataforma cruza automaticamente os lançamentos do extrato bancário com as faturas e contas a pagar registradas no sistema.
+
+15.2 Painel de Divergências: Interface para o gestor resolver rapidamente as poucas transações que a IA não conseguiu conciliar.
+
+16.0 Relatórios Gerenciais
+
+16.1 Análise de Lucratividade: Relatórios de lucratividade por cliente ou por projeto.
+
+16.2 DRE Gerencial Simplificado: Geração automática de um Demonstrativo de Resultado do Exercício para análise interna.
