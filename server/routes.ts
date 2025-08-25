@@ -1439,9 +1439,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const userId = req.user.claims.sub;
       
+      if (!id || id === 'undefined') {
+        return res.status(400).json({ message: "Invalid scenario ID" });
+      }
+      
       // Import scenario simulator
       const { scenarioSimulator } = await import('./scenario-simulator');
-      const result = await scenarioSimulator.simulateScenario(id, userId);
+      const result = await scenarioSimulator.simulateScenarioById(id, userId);
       
       res.json(result);
     } catch (error) {

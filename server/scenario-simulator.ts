@@ -52,6 +52,32 @@ export interface ScenarioParameters {
 export class ScenarioSimulator {
   
   /**
+   * Simulates a financial scenario by ID
+   */
+  async simulateScenarioById(scenarioId: string, userId: string): Promise<ScenarioSimulationResult> {
+    const { storage } = await import('./storage');
+    const scenario = await storage.getScenario(scenarioId, userId);
+    
+    if (!scenario) {
+      throw new Error('Scenario not found');
+    }
+
+    // Convert scenario to parameters
+    const params: ScenarioParameters = {
+      type: scenario.type as any,
+      targetAmount: parseFloat(scenario.targetAmount?.toString() || '0'),
+      targetDate: scenario.targetDate ? new Date(scenario.targetDate) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Default to 1 year from now
+      monthlyContribution: parseFloat(scenario.monthlyContribution?.toString() || '0'),
+      currentSavings: 0, // Could be added to scenario model
+      expectedReturn: parseFloat(scenario.expectedReturn?.toString() || '8'),
+      inflationRate: 3.5, // Default
+      riskTolerance: (scenario.riskTolerance as any) || 'moderate'
+    };
+
+    return await this.simulateScenario(params);
+  }
+
+  /**
    * Simulates a financial scenario using Monte Carlo methods
    */
   async simulateScenario(params: ScenarioParameters): Promise<ScenarioSimulationResult> {
@@ -252,9 +278,20 @@ export class ScenarioSimulator {
   /**
    * Calculate months between two dates
    */
-  private calculateMonthsToTarget(startDate: Date, targetDate: Date): number {
-    const yearDiff = targetDate.getFullYear() - startDate.getFullYear();
-    const monthDiff = targetDate.getMonth() - startDate.getMonth();
+  private calculateMonthsToTarget(startDate: Date, targetDate: Date | null | undefined): number {
+    if (!targetDate) {
+      return 12; // Default to 12 months if no target date
+    }
+    
+    const target = new Date(targetDate);
+    const start = new Date(startDate);
+    
+    if (isNaN(target.getTime()) || isNaN(start.getTime())) {
+      return 12; // Default if invalid dates
+    }
+    
+    const yearDiff = target.getFullYear() - start.getFullYear();
+    const monthDiff = target.getMonth() - start.getMonth();
     return Math.max(1, yearDiff * 12 + monthDiff);
   }
 
@@ -292,5 +329,7 @@ export class ScenarioSimulator {
     return templates[type] || {};
   }
 }
+
+export const scenarioSimulator = new ScenarioSimulator();
 
 export const scenarioSimulator = new ScenarioSimulator();

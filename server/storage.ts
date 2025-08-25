@@ -155,6 +155,7 @@ export interface IStorage {
   // Advanced features operations
   // Scenarios
   getScenarios(userId: string, organizationId?: string): Promise<Scenario[]>;
+  getScenario(id: string, userId: string): Promise<Scenario | undefined>;
   createScenario(scenario: InsertScenario): Promise<Scenario>;
   updateScenario(id: string, scenario: Partial<Scenario>): Promise<Scenario | undefined>;
   deleteScenario(id: string): Promise<boolean>;
@@ -1105,6 +1106,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(scenarios.id, id))
       .returning();
     return updated;
+  }
+
+  async getScenario(id: string, userId: string): Promise<Scenario | undefined> {
+    const [scenario] = await db
+      .select()
+      .from(scenarios)
+      .where(and(eq(scenarios.id, id), eq(scenarios.userId, userId)))
+      .limit(1);
+    return scenario;
   }
 
   async deleteScenario(id: string): Promise<boolean> {
