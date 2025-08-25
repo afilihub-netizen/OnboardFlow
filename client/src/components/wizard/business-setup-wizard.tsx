@@ -114,27 +114,27 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   if (currentStep === 1) {
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
-        <Card className="w-full max-w-2xl shadow-2xl border-2 border-white/20">
-          <CardHeader className="text-center pb-6">
+        <Card className="w-full max-w-2xl shadow-2xl bg-white border-2 border-slate-300">
+          <CardHeader className="text-center pb-6 bg-white">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Rocket className="w-8 h-8 text-blue-600" />
             </div>
-            <CardTitle className="text-2xl mb-2">👋 Bem-vindo ao FinanceFlow Empresarial</CardTitle>
-            <p className="text-slate-600">
+            <CardTitle className="text-2xl mb-2 text-slate-900 font-bold">👋 Bem-vindo ao FinanceFlow Empresarial</CardTitle>
+            <p className="text-slate-700 text-base">
               Antes de começar, queremos conhecer melhor o seu negócio para personalizar sua experiência.
             </p>
-            <p className="text-slate-600 font-semibold">
+            <p className="text-slate-800 font-semibold text-base">
               Em menos de 3 minutos, sua dashboard estará pronta e feita sob medida para você. 🚀
             </p>
           </CardHeader>
-          <CardContent className="text-center space-y-6">
-            <Progress value={progress} className="h-2" />
+          <CardContent className="text-center space-y-6 bg-white">
+            <Progress value={progress} className="h-3" />
             <div className="flex justify-between items-center">
-              <Button variant="outline" onClick={onSkip} className="flex items-center gap-2">
+              <Button variant="outline" onClick={onSkip} className="flex items-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-50">
                 <X className="w-4 h-4" />
                 Pular Configuração
               </Button>
-              <Button onClick={nextStep} className="flex items-center gap-2">
+              <Button onClick={nextStep} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white">
                 Começar Personalização
                 <ArrowRight className="w-4 h-4" />
               </Button>
@@ -149,12 +149,12 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   if (currentStep === 2) {
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
-        <Card className="w-full max-w-3xl shadow-2xl border-2 border-white/20">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl mb-4">Qual é o setor principal da sua empresa?</CardTitle>
-            <Progress value={progress} className="h-2" />
+        <Card className="w-full max-w-3xl shadow-2xl bg-white border-2 border-slate-300">
+          <CardHeader className="text-center bg-white">
+            <CardTitle className="text-xl mb-4 text-slate-900 font-bold">Qual é o setor principal da sua empresa?</CardTitle>
+            <Progress value={progress} className="h-3" />
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 bg-white">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sectors.map((sector) => (
                 <div
@@ -163,7 +163,7 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
                   className={`border-2 rounded-lg p-4 cursor-pointer transition-all duration-200 hover:scale-105 ${
                     wizardData.sector === sector.id 
                       ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-slate-200 hover:border-slate-300'
                   }`}
                   data-testid={`sector-${sector.id}`}
                 >
@@ -171,7 +171,7 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
                     <div className={`w-12 h-12 ${sector.color} rounded-lg flex items-center justify-center mx-auto`}>
                       <sector.icon className="w-6 h-6 text-white" />
                     </div>
-                    <div className="font-semibold text-sm">{sector.name}</div>
+                    <div className="font-semibold text-sm text-slate-800">{sector.name}</div>
                     {wizardData.sector === sector.id && (
                       <CheckCircle2 className="w-5 h-5 text-blue-500 mx-auto" />
                     )}
@@ -180,14 +180,14 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
               ))}
             </div>
             <div className="flex justify-between items-center pt-4">
-              <Button variant="outline" onClick={prevStep} className="flex items-center gap-2">
+              <Button variant="outline" onClick={prevStep} className="flex items-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-50">
                 <ArrowLeft className="w-4 h-4" />
                 Voltar
               </Button>
               <Button 
                 onClick={nextStep} 
                 disabled={!canProceed()}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-300"
                 data-testid="next-step"
               >
                 Continuar
@@ -204,11 +204,11 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   if (currentStep === 3) {
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
-        <Card className="w-full max-w-4xl shadow-2xl border-2 border-white/20">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl mb-2">O que é mais importante para você acompanhar de perto?</CardTitle>
-            <p className="text-sm text-slate-600 mb-4">Escolha até 2 prioridades</p>
-            <Progress value={progress} className="h-2" />
+        <Card className="w-full max-w-4xl shadow-2xl bg-white border-2 border-slate-300">
+          <CardHeader className="text-center bg-white">
+            <CardTitle className="text-xl mb-2 text-slate-900 font-bold">O que é mais importante para você acompanhar de perto?</CardTitle>
+            <p className="text-sm text-slate-700 mb-4 font-medium">Escolha até 2 prioridades</p>
+            <Progress value={progress} className="h-3" />
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -219,7 +219,7 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
                   className={`border-2 rounded-lg p-4 cursor-pointer transition-all duration-200 hover:scale-105 ${
                     wizardData.priorities.includes(priority.id)
                       ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-slate-200 hover:border-slate-300'
                   } ${wizardData.priorities.length >= 2 && !wizardData.priorities.includes(priority.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   data-testid={`priority-${priority.id}`}
                 >
@@ -269,19 +269,19 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   if (currentStep === 4) {
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
-        <Card className="w-full max-w-2xl shadow-2xl border-2 border-white/20">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl mb-4">Como você prefere visualizar suas informações?</CardTitle>
-            <Progress value={progress} className="h-2" />
+        <Card className="w-full max-w-2xl shadow-2xl bg-white border-2 border-slate-300">
+          <CardHeader className="text-center bg-white">
+            <CardTitle className="text-xl mb-4 text-slate-900 font-bold">Como você prefere visualizar suas informações?</CardTitle>
+            <Progress value={progress} className="h-3" />
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 bg-white">
             <div className="space-y-4">
               <div
                 onClick={() => setWizardData(prev => ({ ...prev, viewMode: 'executive' }))}
                 className={`border-2 rounded-lg p-6 cursor-pointer transition-all duration-200 hover:scale-105 ${
                   wizardData.viewMode === 'executive' 
                     ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-200 hover:border-gray-300'
+                    : 'border-slate-200 hover:border-slate-300'
                 }`}
                 data-testid="view-executive"
               >
@@ -290,8 +290,8 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
                     <Eye className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold mb-2">👔 Visão Resumida (Executiva)</h3>
-                    <p className="text-sm text-slate-600">Apenas indicadores principais para tomada rápida de decisão</p>
+                    <h3 className="font-semibold mb-2 text-slate-800">👔 Visão Resumida (Executiva)</h3>
+                    <p className="text-sm text-slate-700">Apenas indicadores principais para tomada rápida de decisão</p>
                   </div>
                   {wizardData.viewMode === 'executive' && (
                     <CheckCircle2 className="w-5 h-5 text-blue-500" />
@@ -304,7 +304,7 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
                 className={`border-2 rounded-lg p-6 cursor-pointer transition-all duration-200 hover:scale-105 ${
                   wizardData.viewMode === 'complete' 
                     ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-200 hover:border-gray-300'
+                    : 'border-slate-200 hover:border-slate-300'
                 }`}
                 data-testid="view-complete"
               >
@@ -313,8 +313,8 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
                     <BarChart3 className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold mb-2">📊 Visão Completa (Detalhada)</h3>
-                    <p className="text-sm text-slate-600">Todos os blocos: financeiro, projetos, departamentos, fornecedores</p>
+                    <h3 className="font-semibold mb-2 text-slate-800">📊 Visão Completa (Detalhada)</h3>
+                    <p className="text-sm text-slate-700">Todos os blocos: financeiro, projetos, departamentos, fornecedores</p>
                   </div>
                   {wizardData.viewMode === 'complete' && (
                     <CheckCircle2 className="w-5 h-5 text-blue-500" />
@@ -324,14 +324,14 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
             </div>
 
             <div className="flex justify-between items-center pt-4">
-              <Button variant="outline" onClick={prevStep} className="flex items-center gap-2">
+              <Button variant="outline" onClick={prevStep} className="flex items-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-50">
                 <ArrowLeft className="w-4 h-4" />
                 Voltar
               </Button>
               <Button 
                 onClick={nextStep} 
                 disabled={!canProceed()}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-300"
                 data-testid="next-step"
               >
                 Continuar
@@ -348,19 +348,19 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
   if (currentStep === 5) {
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
-        <Card className="w-full max-w-2xl shadow-2xl border-2 border-white/20">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl mb-4">Gostaria de ativar os desafios e conquistas mensais?</CardTitle>
-            <Progress value={progress} className="h-2" />
+        <Card className="w-full max-w-2xl shadow-2xl bg-white border-2 border-slate-300">
+          <CardHeader className="text-center bg-white">
+            <CardTitle className="text-xl mb-4 text-slate-900 font-bold">Gostaria de ativar os desafios e conquistas mensais?</CardTitle>
+            <Progress value={progress} className="h-3" />
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 bg-white">
             <div className="space-y-4">
               <div
                 onClick={() => setWizardData(prev => ({ ...prev, gamification: true }))}
                 className={`border-2 rounded-lg p-6 cursor-pointer transition-all duration-200 hover:scale-105 ${
                   wizardData.gamification 
                     ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-200 hover:border-gray-300'
+                    : 'border-slate-200 hover:border-slate-300'
                 }`}
                 data-testid="gamification-yes"
               >
@@ -369,8 +369,8 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
                     <Trophy className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold mb-2">✅ Sim, quero gamificação</h3>
-                    <p className="text-sm text-slate-600">Ativar Score Empresarial, badges e desafios mensais personalizados</p>
+                    <h3 className="font-semibold mb-2 text-slate-800">✅ Sim, quero gamificação</h3>
+                    <p className="text-sm text-slate-700">Ativar Score Empresarial, badges e desafios mensais personalizados</p>
                   </div>
                   {wizardData.gamification && (
                     <CheckCircle2 className="w-5 h-5 text-blue-500" />
@@ -383,7 +383,7 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
                 className={`border-2 rounded-lg p-6 cursor-pointer transition-all duration-200 hover:scale-105 ${
                   !wizardData.gamification 
                     ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-200 hover:border-gray-300'
+                    : 'border-slate-200 hover:border-slate-300'
                 }`}
                 data-testid="gamification-no"
               >
@@ -392,8 +392,8 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
                     <X className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold mb-2">❌ Não agora</h3>
-                    <p className="text-sm text-slate-600">Pode ativar depois nas configurações quando preferir</p>
+                    <h3 className="font-semibold mb-2 text-slate-800">❌ Não agora</h3>
+                    <p className="text-sm text-slate-700">Pode ativar depois nas configurações quando preferir</p>
                   </div>
                   {!wizardData.gamification && (
                     <CheckCircle2 className="w-5 h-5 text-blue-500" />
@@ -403,13 +403,13 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
             </div>
 
             <div className="flex justify-between items-center pt-4">
-              <Button variant="outline" onClick={prevStep} className="flex items-center gap-2">
+              <Button variant="outline" onClick={prevStep} className="flex items-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-50">
                 <ArrowLeft className="w-4 h-4" />
                 Voltar
               </Button>
               <Button 
                 onClick={nextStep} 
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
                 data-testid="next-step"
               >
                 Continuar
@@ -428,28 +428,28 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
     
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
-        <Card className="w-full max-w-2xl shadow-2xl border-2 border-white/20">
-          <CardHeader className="text-center">
+        <Card className="w-full max-w-2xl shadow-2xl bg-white border-2 border-slate-300">
+          <CardHeader className="text-center bg-white">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
-            <CardTitle className="text-2xl mb-2">🎉 Pronto!</CardTitle>
-            <p className="text-slate-600">
+            <CardTitle className="text-2xl mb-2 text-slate-900 font-bold">🎉 Pronto!</CardTitle>
+            <p className="text-slate-700 font-medium">
               Sua dashboard foi personalizada de acordo com o seu setor e prioridades.
             </p>
-            <Progress value={100} className="h-2 mt-4" />
+            <Progress value={100} className="h-3 mt-4" />
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 bg-white">
             <div className="bg-slate-50 rounded-lg p-4 space-y-3">
-              <h3 className="font-semibold text-center mb-4">Configurações Aplicadas:</h3>
+              <h3 className="font-semibold text-center mb-4 text-slate-800">Configurações Aplicadas:</h3>
               
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>Setor:</span>
+                  <span className="text-slate-700 font-medium">Setor:</span>
                   <Badge variant="outline">{selectedSector?.name}</Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span>Prioridades:</span>
+                  <span className="text-slate-700 font-medium">Prioridades:</span>
                   <div className="flex gap-1">
                     {wizardData.priorities.map(p => {
                       const priority = priorityOptions.find(opt => opt.id === p);
@@ -462,13 +462,13 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
                   </div>
                 </div>
                 <div className="flex justify-between">
-                  <span>Visualização:</span>
+                  <span className="text-slate-700 font-medium">Visualização:</span>
                   <Badge variant="outline">
                     {wizardData.viewMode === 'executive' ? 'Resumida' : 'Completa'}
                   </Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span>Gamificação:</span>
+                  <span className="text-slate-700 font-medium">Gamificação:</span>
                   <Badge variant={wizardData.gamification ? "default" : "outline"}>
                     {wizardData.gamification ? 'Ativada' : 'Desativada'}
                   </Badge>
@@ -476,18 +476,18 @@ export function BusinessSetupWizard({ onComplete, onSkip }: BusinessSetupWizardP
               </div>
             </div>
 
-            <p className="text-center text-sm text-slate-600">
+            <p className="text-center text-sm text-slate-700 font-medium">
               Você poderá alterar essas preferências a qualquer momento nas configurações.
             </p>
 
             <div className="flex justify-between items-center pt-4">
-              <Button variant="outline" onClick={prevStep} className="flex items-center gap-2">
+              <Button variant="outline" onClick={prevStep} className="flex items-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-50">
                 <ArrowLeft className="w-4 h-4" />
                 Voltar
               </Button>
               <Button 
                 onClick={handleComplete} 
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
                 data-testid="complete-wizard"
               >
                 🚀 Ir para Minha Dashboard
