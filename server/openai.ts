@@ -11,7 +11,7 @@ export async function generateFinancialInsights(financialData: any) {
     const { transactions, summary, categories } = financialData;
     
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-pro",
+      model: "gemini-2.0-flash-exp",
       config: {
         systemInstruction: `Você é um consultor financeiro especializado. Analise os dados financeiros fornecidos e gere insights personalizados em português brasileiro.
 
@@ -46,8 +46,22 @@ Responda APENAS com JSON válido no formato:
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{"insights": []}');
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating financial insights:", error);
+    
+    // Handle rate limiting by returning fallback insights
+    if (error.status === 429) {
+      return {
+        insights: [
+          {
+            type: "alert",
+            title: "Assistente temporariamente indisponível",
+            message: "O assistente de IA está sobrecarregado. Insights personalizados serão gerados novamente em breve."
+          }
+        ]
+      };
+    }
+    
     throw new Error("Failed to generate financial insights");
   }
 }
@@ -79,7 +93,7 @@ function splitTextIntoChunks(text: string, maxChunkSize: number = 6000): string[
 // Function to process a single chunk
 async function processChunk(extractText: string, availableCategories: string[] = []) {
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-pro",
+    model: "gemini-2.0-flash-exp",
     config: {
       systemInstruction: `CRÍTICO: Extraia TODAS as transações do extrato bancário, sem limites ou exceções.
 

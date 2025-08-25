@@ -1059,7 +1059,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error) {
       console.error("Error generating AI insights:", error);
-      res.status(500).json({ message: "Failed to generate AI insights" });
+      // Return fallback insights instead of error
+      res.json({
+        insights: [
+          {
+            type: "alert",
+            title: "Insights temporariamente indisponíveis",
+            message: "Nossos insights personalizados estão sendo atualizados. Tente novamente em alguns minutos."
+          }
+        ]
+      });
     }
   });
 

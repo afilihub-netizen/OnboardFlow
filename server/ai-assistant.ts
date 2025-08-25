@@ -32,7 +32,7 @@ export class FinancialAssistant {
       const systemPrompt = this.buildSystemPrompt(financialData);
       
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-pro",
+        model: "gemini-2.0-flash-exp",
         config: {
           systemInstruction: systemPrompt,
         },
@@ -40,9 +40,15 @@ export class FinancialAssistant {
       });
 
       return response.text || "Desculpe, não consegui processar sua pergunta.";
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao processar pergunta financeira:', error);
-      throw new Error('Erro interno do assistente financeiro');
+      
+      // Handle rate limiting error specifically
+      if (error.status === 429) {
+        return "⏰ Desculpe, muitas perguntas foram feitas recentemente. Aguarde um momento e tente novamente em alguns segundos. Nosso assistente está sobrecarregado no momento.";
+      }
+      
+      return "🤖 Desculpe, não consegui processar sua pergunta no momento. Tente reformular ou aguarde alguns instantes.";
     }
   }
 
@@ -82,7 +88,7 @@ EXEMPLOS DE RESPOSTAS ESPERADAS:
   }> {
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-pro",
+        model: "gemini-2.0-flash-exp",
         config: {
           systemInstruction: `Você é um especialista em categorização de transações financeiras brasileiras.
 
@@ -139,7 +145,7 @@ Seja preciso e use seu conhecimento sobre o mercado brasileiro.`
       const monthlyData = this.groupTransactionsByMonth(transactions);
       
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-pro",
+        model: "gemini-2.0-flash-exp",
         config: {
           systemInstruction: `Você é um analista financeiro expert. Analise os padrões de gastos e retorne insights em JSON.
 
