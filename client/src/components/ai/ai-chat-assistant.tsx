@@ -70,7 +70,7 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
       const assistantMessage: ChatMessage = {
         role: 'assistant',
         content: response.response,
-        timestamp: new Date(response.timestamp)
+        timestamp: response.timestamp ? new Date(response.timestamp) : new Date()
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -156,10 +156,12 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
                     >
                       <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                       <span className="text-xs opacity-70 block mt-1">
-                        {message.timestamp.toLocaleTimeString('pt-BR', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {message.timestamp && !isNaN(message.timestamp.getTime()) 
+                          ? message.timestamp.toLocaleTimeString('pt-BR', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          : ''}
                       </span>
                     </div>
                   </div>
