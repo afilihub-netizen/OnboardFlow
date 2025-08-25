@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, User, Send, Loader2, MessageCircle, X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Bot, User, Send, Loader2, MessageCircle, X, Palette } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,6 +28,45 @@ const SUGGESTED_QUESTIONS = [
   "Estou gastando mais ou menos que mês passado?"
 ];
 
+const CHAT_THEMES = {
+  default: {
+    name: 'Padrão',
+    background: 'bg-white',
+    chatBackground: 'bg-white',
+    icon: '💬'
+  },
+  gradient: {
+    name: 'Gradiente Azul',
+    background: 'bg-gradient-to-br from-blue-50 to-indigo-100',
+    chatBackground: 'bg-gradient-to-br from-blue-50 to-indigo-100',
+    icon: '🌊'
+  },
+  dark: {
+    name: 'Escuro',
+    background: 'bg-gray-900',
+    chatBackground: 'bg-gray-900',
+    icon: '🌙'
+  },
+  nature: {
+    name: 'Natureza',
+    background: 'bg-gradient-to-br from-green-50 to-emerald-100',
+    chatBackground: 'bg-gradient-to-br from-green-50 to-emerald-100',
+    icon: '🌿'
+  },
+  sunset: {
+    name: 'Pôr do Sol',
+    background: 'bg-gradient-to-br from-orange-50 to-pink-100',
+    chatBackground: 'bg-gradient-to-br from-orange-50 to-pink-100',
+    icon: '🌅'
+  },
+  professional: {
+    name: 'Profissional',
+    background: 'bg-gradient-to-br from-slate-50 to-gray-100',
+    chatBackground: 'bg-gradient-to-br from-slate-50 to-gray-100',
+    icon: '💼'
+  }
+};
+
 export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -37,6 +77,10 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState(() => {
+    return localStorage.getItem('chat-theme') || 'default';
+  });
+  const [showThemeSelector, setShowThemeSelector] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -47,6 +91,18 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const handleThemeChange = (theme: string) => {
+    setSelectedTheme(theme);
+    localStorage.setItem('chat-theme', theme);
+    setShowThemeSelector(false);
+    toast({
+      title: "Tema atualizado!",
+      description: `Tema "${CHAT_THEMES[theme as keyof typeof CHAT_THEMES].name}" aplicado com sucesso.`,
+    });
+  };
+
+  const currentTheme = CHAT_THEMES[selectedTheme as keyof typeof CHAT_THEMES] || CHAT_THEMES.default;
 
   const handleSendMessage = async (question?: string) => {
     const messageText = question || input;
@@ -123,7 +179,7 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-2xl h-[600px] flex flex-col shadow-2xl bg-white border-2 border-blue-200 rounded-xl overflow-hidden">
-        <CardHeader className="flex-row items-center justify-between space-y-0 pb-3 border-b">
+        <CardHeader className="flex-row items-center justify-between space-y-0 pb-3 border-b bg-white/80 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
               <Bot className="w-5 h-5 text-blue-600" />
@@ -133,13 +189,48 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
               <p className="text-sm text-slate-600">Pergunte sobre suas finanças</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose} data-testid="close-chat">
-            <X className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowThemeSelector(!showThemeSelector)}
+              data-testid="theme-selector"
+              title="Alterar tema"
+            >
+              <Palette className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose} data-testid="close-chat">
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
         </CardHeader>
 
-        <CardContent className="flex-1 flex flex-col p-0 bg-white overflow-hidden">
-          <ScrollArea className="flex-1 p-4 bg-white">
+        {showThemeSelector && (
+          <div className="border-b bg-white/90 backdrop-blur-sm p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Palette className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-medium">Escolha um tema:</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {Object.entries(CHAT_THEMES).map(([key, theme]) => (
+                <Button
+                  key={key}
+                  variant={selectedTheme === key ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleThemeChange(key)}
+                  className="h-auto p-3 flex flex-col items-center gap-1"
+                  data-testid={`theme-${key}`}
+                >
+                  <span className="text-lg">{theme.icon}</span>
+                  <span className="text-xs">{theme.name}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <CardContent className={`flex-1 flex flex-col p-0 overflow-hidden ${currentTheme.chatBackground}`}>
+          <ScrollArea className={`flex-1 p-4 ${currentTheme.chatBackground}`}>
             <div className="space-y-4 pr-2">
               {messages.map((message, index) => (
                 <div
@@ -167,8 +258,10 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
                     <div
                       className={`rounded-lg px-4 py-2 break-words ${
                         message.role === 'user'
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 text-gray-900 border border-gray-200'
+                          ? 'bg-blue-500 text-white shadow-md'
+                          : selectedTheme === 'dark' 
+                            ? 'bg-gray-800 text-white border border-gray-700'
+                            : 'bg-white/80 backdrop-blur-sm text-gray-900 border border-gray-200 shadow-sm'
                       }`}
                     >
                       <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
@@ -191,10 +284,16 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
                     <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
                       <Bot className="w-4 h-4 text-slate-600" />
                     </div>
-                    <div className="bg-gray-100 border border-gray-200 rounded-lg px-4 py-2">
+                    <div className={`rounded-lg px-4 py-2 ${
+                      selectedTheme === 'dark' 
+                        ? 'bg-gray-800 border border-gray-700'
+                        : 'bg-white/80 backdrop-blur-sm border border-gray-200'
+                    }`}>
                       <div className="flex items-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                        <span className="text-sm text-gray-600">Analisando seus dados...</span>
+                        <span className={`text-sm ${
+                          selectedTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                        }`}>Analisando seus dados...</span>
                       </div>
                     </div>
                   </div>
@@ -228,7 +327,7 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
           )}
 
           {/* Input de mensagem */}
-          <div className="p-4 border-t bg-white">
+          <div className="p-4 border-t bg-white/80 backdrop-blur-sm">
             <div className="flex gap-2">
               <Input
                 value={input}
