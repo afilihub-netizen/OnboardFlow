@@ -32,11 +32,11 @@ export class FinancialAssistant {
       const systemPrompt = this.buildSystemPrompt(financialData);
       
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-pro",
+        model: "gemini-1.5-pro",
         config: {
           systemInstruction: systemPrompt,
         },
-        contents: question,
+        contents: [{ role: "user", parts: [{ text: question }] }],
       });
 
       return response.text || "Desculpe, não consegui processar sua pergunta.";
@@ -82,7 +82,7 @@ EXEMPLOS DE RESPOSTAS ESPERADAS:
   }> {
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-pro",
+        model: "gemini-1.5-pro",
         config: {
           systemInstruction: `Você é um especialista em categorização de transações financeiras brasileiras.
 
@@ -107,19 +107,9 @@ Analise a descrição e retorne um JSON com:
   "subcategory": "subcategoria_opcional"
 }
 
-Seja preciso e use seu conhecimento sobre o mercado brasileiro.`,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "object",
-            properties: {
-              category: { type: "string" },
-              confidence: { type: "number" },
-              subcategory: { type: "string" }
-            },
-            required: ["category", "confidence"]
-          }
+Seja preciso e use seu conhecimento sobre o mercado brasileiro.`
         },
-        contents: `Descrição: "${description}", Valor: R$ ${amount.toFixed(2)}`,
+        contents: [{ role: "user", parts: [{ text: `Descrição: "${description}", Valor: R$ ${amount.toFixed(2)}` }] }],
       });
 
       const content = response.text || '{}';
@@ -149,7 +139,7 @@ Seja preciso e use seu conhecimento sobre o mercado brasileiro.`,
       const monthlyData = this.groupTransactionsByMonth(transactions);
       
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-pro",
+        model: "gemini-1.5-pro",
         config: {
           systemInstruction: `Você é um analista financeiro expert. Analise os padrões de gastos e retorne insights em JSON.
 
@@ -165,19 +155,9 @@ Foque em:
 - Crescimento/redução de categorias
 - Gastos anômalos
 - Oportunidades de economia
-- Tendências preocupantes`,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "object",
-            properties: {
-              insights: { type: "array", items: { type: "string" } },
-              warnings: { type: "array", items: { type: "string" } },
-              suggestions: { type: "array", items: { type: "string" } }
-            },
-            required: ["insights", "warnings", "suggestions"]
-          }
+- Tendências preocupantes`
         },
-        contents: `Dados mensais: ${JSON.stringify(monthlyData.slice(0, 6))}`,
+        contents: [{ role: "user", parts: [{ text: `Dados mensais: ${JSON.stringify(monthlyData.slice(0, 6))}` }] }],
       });
 
       const content = response.text || '{"insights":[],"warnings":[],"suggestions":[]}';

@@ -11,7 +11,7 @@ export async function generateFinancialInsights(financialData: any) {
     const { transactions, summary, categories } = financialData;
     
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-1.5-pro",
       config: {
         systemInstruction: `Você é um consultor financeiro especializado. Analise os dados financeiros fornecidos e gere insights personalizados em português brasileiro.
 
@@ -36,28 +36,9 @@ Responda APENAS com JSON válido no formato:
       "message": "Mensagem detalhada com valores específicos"
     }
   ]
-}`,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "object",
-          properties: {
-            insights: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  type: { type: "string" },
-                  title: { type: "string" },
-                  message: { type: "string" }
-                },
-                required: ["type", "title", "message"]
-              }
-            }
-          },
-          required: ["insights"]
-        }
+}`
       },
-      contents: `Analise estes dados financeiros e gere insights personalizados:\n\nResumo: ${JSON.stringify(summary)}\nTransações recentes: ${JSON.stringify(transactions?.slice(-20) || [])}\nCategorias: ${JSON.stringify(categories)}`,
+      contents: [{ role: "user", parts: [{ text: `Analise estes dados financeiros e gere insights personalizados:\n\nResumo: ${JSON.stringify(summary)}\nTransações recentes: ${JSON.stringify(transactions?.slice(-20) || [])}\nCategorias: ${JSON.stringify(categories)}` }] }],
     });
 
     const content = response.text || '{"insights": []}';
@@ -98,7 +79,7 @@ function splitTextIntoChunks(text: string, maxChunkSize: number = 6000): string[
 // Function to process a single chunk
 async function processChunk(extractText: string, availableCategories: string[] = []) {
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-pro",
+    model: "gemini-1.5-pro",
     config: {
       systemInstruction: `CRÍTICO: Extraia TODAS as transações do extrato bancário, sem limites ou exceções.
 
@@ -121,30 +102,9 @@ FIELD RULES:
 - category: one of: Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros
 
 MANDATORY EXAMPLE:
-{"transactions":[{"date":"2024-12-10","description":"PIX ENVIADO João Silva","amount":-150.00,"type":"expense","category":"Outros"},{"date":"2024-12-11","description":"SALÁRIO EMPRESA XYZ","amount":3000.00,"type":"income","category":"Outros"}]}`,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: "object",
-        properties: {
-          transactions: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                date: { type: "string" },
-                description: { type: "string" },
-                amount: { type: "number" },
-                type: { type: "string" },
-                category: { type: "string" }
-              },
-              required: ["date", "description", "amount", "type", "category"]
-            }
-          }
-        },
-        required: ["transactions"]
-      }
+{"transactions":[{"date":"2024-12-10","description":"PIX ENVIADO João Silva","amount":-150.00,"type":"expense","category":"Outros"},{"date":"2024-12-11","description":"SALÁRIO EMPRESA XYZ","amount":3000.00,"type":"income","category":"Outros"}]}`
     },
-    contents: `Analise este extrato bancário e extraia as transações:\n\n${extractText}`,
+    contents: [{ role: "user", parts: [{ text: `Analise este extrato bancário e extraia as transações:\n\n${extractText}` }] }],
   });
 
   let content = response.text || '{"transactions": []}';
