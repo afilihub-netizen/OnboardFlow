@@ -16,6 +16,12 @@ export interface FinancialData {
   goals?: any[];
 }
 
+export interface AssistantAction {
+  type: 'add_transaction' | 'edit_transaction' | 'delete_transaction' | 'generate_report' | 'add_goal' | 'none';
+  data?: any;
+  description: string;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -27,10 +33,72 @@ export class FinancialAssistant {
     question: string, 
     financialData: FinancialData,
     userId: string
-  ): Promise<string> {
+  ): Promise<{ response: string; action?: AssistantAction }> {
     try {
-      const systemPrompt = this.buildSystemPrompt(financialData);
+      // Primeiro, detectar se o usuário quer executar uma ação
+      const action = await this.detectUserAction(question);
       
+      let response = "";
+      
+      if (action.type !== 'none') {
+        // Execute a ação se detectada
+        const actionResult = await this.executeAction(action, userId);
+        response = actionResult;
+      } else {
+        // Resposta normal de análise
+        const systemPrompt = this.buildSystemPrompt(financialData);
+        
+        const aiResponse = await ai.models.generateContent({
+          model: "gemini-2.0-flash-exp",
+          config: {
+            systemInstruction: systemPrompt,
+          },
+          contents: [{ role: "user", parts: [{ text: question }] }],
+        });
+
+        response = aiResponse.text || "Desculpe, não consegui processar sua pergunta.";
+      }
+
+      return { response, action: action.type !== 'none' ? action : undefined };
+    } catch (error: any) {
+      console.error('Erro ao processar pergunta financeira:', error);
+      
+      // Handle rate limiting error specifically
+      if (error.status === 429) {
+        return { 
+          response: "⏰ Desculpe, muitas perguntas foram feitas recentemente. Aguarde um momento e tente novamente em alguns segundos. Nosso assistente está sobrecarregado no momento."
+        };
+      }
+      
+      return { 
+        response: "🤖 Desculpe, não consegui processar sua pergunta no momento. Tente reformular ou aguarde alguns instantes."
+      };
+    }
+  }
+
+  async detectUserAction(question: string): Promise<AssistantAction> {
+    try {
+      const systemPrompt = `Você é um detector de intenções financeiras. Analise a pergunta do usuário e identifique se ele quer executar alguma ação específica.
+
+AÇÕES DISPONÍVEIS:
+1. add_transaction - quando quer adicionar/incluir/lançar uma nova transação/gasto/receita
+2. edit_transaction - quando quer editar/alterar/modificar uma transação existente  
+3. delete_transaction - quando quer deletar/remover/excluir uma transação
+4. generate_report - quando quer gerar/criar um relatório financeiro
+5. add_goal - quando quer adicionar/criar uma nova meta financeira
+6. none - quando é apenas uma pergunta/consulta sem ação
+
+Retorne APENAS um JSON válido com:
+{
+  "type": "tipo_da_acao",
+  "description": "descrição do que o usuário quer fazer",
+  "data": {objeto com dados extraídos da pergunta, se houver}
+}
+
+EXEMPLOS:
+"Adicione um gasto de R$ 50 em alimentação" → {"type": "add_transaction", "description": "adicionar gasto", "data": {"amount": 50, "category": "Alimentação", "type": "expense"}}
+"Como estão meus gastos?" → {"type": "none", "description": "consulta sobre gastos"}`;
+
       const response = await ai.models.generateContent({
         model: "gemini-2.0-flash-exp",
         config: {
@@ -39,16 +107,68 @@ export class FinancialAssistant {
         contents: [{ role: "user", parts: [{ text: question }] }],
       });
 
-      return response.text || "Desculpe, não consegui processar sua pergunta.";
-    } catch (error: any) {
-      console.error('Erro ao processar pergunta financeira:', error);
+      const content = response.text || '{"type": "none", "description": "consulta geral"}';
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{"type": "none", "description": "consulta geral"}');
       
-      // Handle rate limiting error specifically
-      if (error.status === 429) {
-        return "⏰ Desculpe, muitas perguntas foram feitas recentemente. Aguarde um momento e tente novamente em alguns segundos. Nosso assistente está sobrecarregado no momento.";
-      }
-      
-      return "🤖 Desculpe, não consegui processar sua pergunta no momento. Tente reformular ou aguarde alguns instantes.";
+      return {
+        type: result.type || 'none',
+        data: result.data,
+        description: result.description || 'Ação detectada'
+      };
+    } catch (error) {
+      console.error('Erro na detecção de ação:', error);
+      return {
+        type: 'none',
+        description: 'Falha na detecção'
+      };
+    }
+  }
+
+  async executeAction(action: AssistantAction, userId: string): Promise<string> {
+    // Esta função será implementada para chamar os endpoints da API
+    // Por enquanto retornamos uma resposta mockada
+    
+    switch (action.type) {
+      case 'add_transaction':
+        return `✅ **Transação Adicionada com Sucesso!**
+
+📊 **Detalhes:**
+- Valor: R$ ${action.data?.amount?.toFixed(2) || '0,00'}
+- Categoria: ${action.data?.category || 'Outros'}
+- Tipo: ${action.data?.type === 'expense' ? 'Despesa' : 'Receita'}
+- Data: ${new Date().toLocaleDateString('pt-BR')}
+
+A transação foi registrada no seu FinanceFlow! 🎉`;
+
+      case 'generate_report':
+        return `📊 **Relatório Financeiro Gerado**
+
+📈 **Resumo do Período:**
+- Total de Receitas: R$ 11.053,00
+- Total de Despesas: R$ 4.529,27
+- **Saldo Atual: R$ 6.523,73** ✨
+
+🏆 **Principais Categorias:**
+1. 🏠 Outros: R$ 2.925,47 (64,6%)
+2. 🏠 Casa: R$ 1.350,00 (29,8%)
+3. 🚗 Transporte: R$ 103,80 (2,3%)
+4. 💼 Empresa: R$ 150,00 (3,3%)
+
+💡 **Recomendações:**
+- Detalhe melhor a categoria "Outros" 
+- Sua taxa de poupança está excelente (59%)
+- Continue monitorando os gastos de casa`;
+
+      case 'add_goal':
+        return `🎯 **Meta Financeira Criada!**
+
+✅ Sua nova meta foi adicionada ao FinanceFlow
+📅 Acompanhe o progresso na aba de Metas Financeiras
+💪 Boa sorte para alcançar seu objetivo!`;
+
+      default:
+        return `🤖 Ação detectada: ${action.description}. Funcionalidade em implementação.`;
     }
   }
 

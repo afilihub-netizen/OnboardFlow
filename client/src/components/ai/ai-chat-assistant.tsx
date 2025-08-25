@@ -3,14 +3,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, User, Send, Loader2, MessageCircle, X } from 'lucide-react';
+import { Bot, User, Send, Loader2, MessageCircle, X, CheckCircle } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  action?: any;
 }
 
 interface AIChatAssistantProps {
@@ -87,7 +90,8 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
       const assistantMessage: ChatMessage = {
         role: 'assistant',
         content: responseText,
-        timestamp: response?.timestamp ? new Date(response.timestamp) : new Date()
+        timestamp: response?.timestamp ? new Date(response.timestamp) : new Date(),
+        action: response?.action
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -168,11 +172,43 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
                       className={`rounded-lg px-4 py-2 break-words ${
                         message.role === 'user'
                           ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 text-gray-900 border border-gray-200'
+                          : 'bg-gray-50 text-gray-900 border border-gray-200 shadow-sm'
                       }`}
                     >
-                      <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                      <span className="text-xs opacity-70 block mt-1">
+                      {message.role === 'user' ? (
+                        <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                      ) : (
+                        <div className="text-sm">
+                          <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]}
+                            className="prose prose-sm max-w-none prose-p:m-1 prose-headings:m-1 prose-headings:font-semibold prose-strong:font-semibold prose-ul:m-1 prose-ol:m-1 prose-li:m-0"
+                            components={{
+                              h1: ({children}) => <h1 className="text-lg font-bold text-gray-800 mb-2">{children}</h1>,
+                              h2: ({children}) => <h2 className="text-base font-semibold text-gray-800 mb-1">{children}</h2>,
+                              h3: ({children}) => <h3 className="text-sm font-semibold text-gray-800 mb-1">{children}</h3>,
+                              p: ({children}) => <p className="text-sm text-gray-700 mb-2 last:mb-0">{children}</p>,
+                              ul: ({children}) => <ul className="list-disc list-inside text-sm text-gray-700 mb-2 ml-2">{children}</ul>,
+                              ol: ({children}) => <ol className="list-decimal list-inside text-sm text-gray-700 mb-2 ml-2">{children}</ol>,
+                              li: ({children}) => <li className="mb-1">{children}</li>,
+                              strong: ({children}) => <strong className="font-semibold text-gray-800">{children}</strong>,
+                              em: ({children}) => <em className="italic text-gray-700">{children}</em>,
+                              code: ({children}) => <code className="bg-gray-200 px-1 py-0.5 rounded text-xs font-mono">{children}</code>,
+                              blockquote: ({children}) => <blockquote className="border-l-4 border-blue-400 pl-3 italic text-gray-600 mb-2">{children}</blockquote>
+                            }}
+                          >
+                            {message.content}
+                          </ReactMarkdown>
+                          {message.action && (
+                            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-200">
+                              <CheckCircle className="w-4 h-4 text-green-600" />
+                              <span className="text-xs text-green-700 font-medium">
+                                Ação executada: {message.action.description}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <span className="text-xs opacity-70 block mt-2">
                         {message.timestamp && !isNaN(message.timestamp.getTime()) 
                           ? message.timestamp.toLocaleTimeString('pt-BR', {
                               hour: '2-digit',
@@ -207,22 +243,25 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
 
           {/* Sugestões de perguntas */}
           {messages.length === 1 && (
-            <div className="px-4 py-3 border-t border-b bg-slate-50">
-              <p className="text-sm font-medium text-slate-700 mb-2">Perguntas frequentes:</p>
-              <div className="grid grid-cols-2 gap-2">
-                {SUGGESTED_QUESTIONS.map((question, index) => (
+            <div className="px-4 py-3 border-t border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+              <p className="text-sm font-medium text-slate-700 mb-3">💡 Experimente perguntar:</p>
+              <div className="grid grid-cols-1 gap-2">
+                {SUGGESTED_QUESTIONS.slice(0, 4).map((question, index) => (
                   <Button
                     key={index}
                     variant="outline"
                     size="sm"
-                    className="text-xs h-8 justify-start"
+                    className="text-xs h-9 justify-start text-left hover:bg-white/70 border-blue-200 hover:border-blue-300 transition-all"
                     onClick={() => handleSendMessage(question)}
                     disabled={isLoading}
                     data-testid={`suggestion-${index}`}
                   >
-                    {question}
+                    <span className="truncate">{question}</span>
                   </Button>
                 ))}
+              </div>
+              <div className="mt-3 text-xs text-slate-600">
+                <strong>🤖 Posso ajudar você a:</strong> adicionar gastos, gerar relatórios, analisar finanças e muito mais!
               </div>
             </div>
           )}

@@ -534,6 +534,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Obter dados financeiros do usuário para contexto
       const transactions = await storage.getTransactions(userId, {});
       const categories = await storage.getCategories(userId);
+      const investments = await storage.getInvestments(userId);
+      const goals = await storage.getBudgetGoals(userId);
       
       // Calcular totais
       const totalIncome = transactions
@@ -557,19 +559,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
         transactions,
         totalIncome,
         totalExpenses,
-        categories: categoryTotals
+        categories: categoryTotals,
+        investments: investments || [],
+        goals: goals || []
       };
 
-      const response = await financialAssistant.analyzeFinancialQuestion(
+      const result = await financialAssistant.analyzeFinancialQuestion(
         question,
         financialData,
         userId
       );
 
-      res.json({ response, timestamp: new Date() });
+      res.json({ 
+        response: result.response, 
+        action: result.action,
+        timestamp: new Date() 
+      });
     } catch (error) {
       console.error("Error processing AI chat:", error);
-      res.status(500).json({ message: "Failed to process question" });
+      res.status(500).json({ 
+        message: "Failed to process question",
+        response: "Desculpe, ocorreu um erro ao processar sua pergunta. Tente novamente."
+      });
+    }
+  });
+
+  // AI Actions endpoints - para o assistente executar ações
+  app.post('/api/ai/actions/add-transaction', isAuthenticated, async (req: any, res) => {
+    try {
+      const { amount, category, description, type } = req.body;
+      const userId = req.user.claims.sub;
+
+      // Buscar categoria por nome ou criar uma nova
+      const categories = await storage.getCategories(userId);
+      let categoryId = categories.find(c => c.name.toLowerCase() === category?.toLowerCase())?.id;
+      
+      if (!categoryId) {
+        const newCategory = await storage.createCategory({
+          name: category || 'Outros',
+          color: '#6B7280',
+          icon: 'circle',
+          userId
+        });
+        categoryId = newCategory.id;
+      }
+
+      const transactionData = {
+        description: description || 'Adicionado pelo assistente IA',
+        amount: parseFloat(amount.toString()),
+        categoryId,
+        type: type || 'expense',
+        date: new Date().toISOString(),
+        userId,
+        paymentMethod: 'Outros'
+      };
+
+      const transaction = await storage.createTransaction(transactionData);
+      
+      res.json({
+        success: true,
+        transaction,
+        message: 'Transação adicionada com sucesso!'
+      });
+    } catch (error) {
+      console.error('Erro ao adicionar transação via IA:', error);
+      res.status(500).json({ success: false, message: 'Erro ao adicionar transação' });
+    }
+  });
+
+  app.post('/api/ai/actions/generate-report', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { period = 'month' } = req.body;
+
+      // Buscar dados para o relatório
+      const [transactions, summary] = await Promise.all([
+        storage.getTransactions(userId, {}),
+        storage.getFinancialSummary(userId)
+      ]);
+
+      const report = {
+        period,
+        summary,
+        totalTransactions: transactions.length,
+        categoryBreakdown: transactions
+          .filter(t => t.type === 'expense')
+          .reduce((acc, t) => {
+            const cat = t.category || 'Outros';
+            acc[cat] = (acc[cat] || 0) + parseFloat(t.amount.toString());
+            return acc;
+          }, {} as { [key: string]: number }),
+        generatedAt: new Date().toISOString()
+      };
+
+      res.json({
+        success: true,
+        report,
+        message: 'Relatório gerado com sucesso!'
+      });
+    } catch (error) {
+      console.error('Erro ao gerar relatório via IA:', error);
+      res.status(500).json({ success: false, message: 'Erro ao gerar relatório' });
     }
   });
 
