@@ -1130,6 +1130,43 @@ export class DatabaseStorage implements IStorage {
     return newRule;
   }
 
+  async updateAutomationRule(id: string, userId: string, updateData: Partial<AutomationRule>): Promise<AutomationRule | undefined> {
+    const [updated] = await db
+      .update(automationRules)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(and(eq(automationRules.id, id), eq(automationRules.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async toggleAutomationRule(id: string, userId: string): Promise<AutomationRule | undefined> {
+    // First get the current status
+    const [rule] = await db
+      .select()
+      .from(automationRules)
+      .where(and(eq(automationRules.id, id), eq(automationRules.userId, userId)))
+      .limit(1);
+    
+    if (!rule) return undefined;
+
+    const newStatus = rule.status === 'active' ? 'paused' : 'active';
+    
+    const [updated] = await db
+      .update(automationRules)
+      .set({ status: newStatus, updatedAt: new Date() })
+      .where(and(eq(automationRules.id, id), eq(automationRules.userId, userId)))
+      .returning();
+    
+    return updated;
+  }
+
+  async deleteAutomationRule(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(automationRules)
+      .where(and(eq(automationRules.id, id), eq(automationRules.userId, userId)));
+    return (result.rowCount ?? 0) > 0;
+  }
+
   async updateAutomationRuleExecution(ruleId: string): Promise<void> {
     await db
       .update(automationRules)

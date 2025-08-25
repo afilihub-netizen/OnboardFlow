@@ -84,7 +84,7 @@ export class AutomationEngine {
   private async parseUserIntent(userInput: string, userId: string): Promise<{
     name: string;
     description: string;
-    type: string;
+    type: 'transfer' | 'investment' | 'alert' | 'categorization' | 'payment';
     trigger: AutomationTrigger;
     actions: AutomationAction[];
     isRecurring: boolean;
@@ -145,7 +145,7 @@ export class AutomationEngine {
       return {
         name: parsed.name || "Regra de Automação",
         description: parsed.description || userInput,
-        type: (parsed.type as 'transfer' | 'investment' | 'alert' | 'categorization' | 'payment') || "alert",
+        type: (['transfer', 'investment', 'alert', 'categorization', 'payment'].includes(parsed.type) ? parsed.type : 'alert') as 'transfer' | 'investment' | 'alert' | 'categorization' | 'payment',
         trigger: parsed.trigger || {
           type: 'transaction_amount',
           conditions: { operator: 'gt', value: 1000 }
@@ -183,7 +183,7 @@ export class AutomationEngine {
    * Check if any automation rules should be triggered by a transaction
    */
   async checkTriggersForTransaction(transaction: Transaction): Promise<AutomationExecution[]> {
-    const rules = await storage.getActiveAutomationRules(transaction.userId, transaction.organizationId);
+    const rules = await storage.getActiveAutomationRules(transaction.userId, transaction.organizationId || undefined);
     const executions: AutomationExecution[] = [];
 
     for (const rule of rules) {
@@ -256,7 +256,7 @@ export class AutomationEngine {
       transaction.userId,
       trigger.conditions.category,
       timeframe,
-      transaction.organizationId
+      transaction.organizationId || undefined
     );
 
     const threshold = trigger.conditions.value as number;
@@ -267,7 +267,7 @@ export class AutomationEngine {
    * Evaluate balance threshold triggers
    */
   private async evaluateBalanceTrigger(trigger: AutomationTrigger, transaction: Transaction): Promise<boolean> {
-    const currentBalance = await storage.getTotalBalance(transaction.userId, transaction.organizationId);
+    const currentBalance = await storage.getTotalBalance(transaction.userId, transaction.organizationId || undefined);
     const threshold = trigger.conditions.value as number;
     
     return this.evaluateAmountCondition(currentBalance, threshold, trigger.conditions.operator);
@@ -279,7 +279,7 @@ export class AutomationEngine {
   private async evaluatePatternTrigger(trigger: AutomationTrigger, transaction: Transaction): Promise<boolean> {
     // Use AI to detect spending patterns
     try {
-      const recentTransactions = await storage.getRecentTransactions(transaction.userId, 30, transaction.organizationId);
+      const recentTransactions = await storage.getRecentTransactions(transaction.userId, 30, transaction.organizationId || undefined);
       
       const prompt = `
       Analise estas transações recentes e determine se há um padrão preocupante:
@@ -500,6 +500,214 @@ export class AutomationEngine {
   }
 
   /**
+   * Create automation rule from predefined template
+   */
+  async createFromTemplate(userId: string, templateId: string, customizations: any = {}): Promise<AutomationRule> {
+    const templates = {
+      'savings_rule': () => this.createSavingsRuleFromTemplate(userId, customizations),
+      'investment_allocation': () => this.createInvestmentAllocationFromTemplate(userId, customizations),
+      'bill_reminder': () => this.createBillReminderFromTemplate(userId, customizations),
+      'expense_limit': () => this.createExpenseLimitFromTemplate(userId, customizations),
+      'auto_categorization': () => this.createCategorizationRuleFromTemplate(userId, customizations),
+      'overspend_alert': () => this.createOverspendAlertFromTemplate(userId, customizations),
+      'investment_roundup': () => this.createInvestmentRoundupFromTemplate(userId, customizations),
+    };
+
+    const templateFn = templates[templateId as keyof typeof templates];
+    if (!templateFn) {
+      throw new Error(`Template não encontrado: ${templateId}`);
+    }
+
+    return await templateFn();
+  }
+
+  private async createSavingsRuleFromTemplate(userId: string, customizations: any): Promise<AutomationRule> {
+    const rule: InsertAutomationRule = {
+      userId,
+      organizationId: customizations.organizationId,
+      name: customizations.name || 'Regra de Poupança Automática',
+      description: customizations.description || 'Transfere automaticamente uma porcentagem da renda para poupança',
+      type: 'transfer',
+      trigger: {
+        type: 'income_received',
+        conditions: { operator: 'gte', value: customizations.minAmount || 100 }
+      },
+      actions: [{
+        type: 'transfer',
+        parameters: { 
+          percentage: customizations.percentage || 20, 
+          destination: customizations.destination || 'savings',
+          description: 'Transferência automática para poupança'
+        }
+      }],
+      isRecurring: true,
+      status: 'active'
+    };
+
+    return await storage.createAutomationRule(rule);
+  }
+
+  private async createInvestmentAllocationFromTemplate(userId: string, customizations: any): Promise<AutomationRule> {
+    const rule: InsertAutomationRule = {
+      userId,
+      organizationId: customizations.organizationId,
+      name: customizations.name || 'Alocação Automática de Investimentos',
+      description: customizations.description || 'Distribui automaticamente fundos em portfólio diversificado',
+      type: 'investment',
+      trigger: {
+        type: 'balance_threshold',
+        conditions: { operator: 'gte', value: customizations.minBalance || 500 }
+      },
+      actions: [{
+        type: 'investment',
+        parameters: { 
+          amount: customizations.amount || 500,
+          description: 'Alocação automática de investimentos'
+        }
+      }],
+      isRecurring: true,
+      status: 'active'
+    };
+
+    return await storage.createAutomationRule(rule);
+  }
+
+  private async createBillReminderFromTemplate(userId: string, customizations: any): Promise<AutomationRule> {
+    const rule: InsertAutomationRule = {
+      userId,
+      organizationId: customizations.organizationId,
+      name: customizations.name || 'Lembrete de Contas',
+      description: customizations.description || 'Envia lembretes antes do vencimento de contas',
+      type: 'alert',
+      trigger: {
+        type: 'date_based',
+        conditions: { operator: 'eq', value: customizations.daysBefore || 3 }
+      },
+      actions: [{
+        type: 'notification',
+        parameters: { 
+          message: customizations.message || 'Lembrete: Conta vencendo em breve',
+          priority: customizations.priority || 'high'
+        }
+      }],
+      isRecurring: true,
+      status: 'active'
+    };
+
+    return await storage.createAutomationRule(rule);
+  }
+
+  private async createExpenseLimitFromTemplate(userId: string, customizations: any): Promise<AutomationRule> {
+    const rule: InsertAutomationRule = {
+      userId,
+      organizationId: customizations.organizationId,
+      name: customizations.name || 'Controle de Limite de Gastos',
+      description: customizations.description || 'Monitora e alerta quando limites de gastos são atingidos',
+      type: 'alert',
+      trigger: {
+        type: 'category_spend',
+        conditions: { 
+          operator: 'gt', 
+          value: customizations.limit || 1000,
+          category: customizations.category || 'all',
+          timeframe: customizations.period || 'monthly'
+        }
+      },
+      actions: [{
+        type: 'notification',
+        parameters: { 
+          message: customizations.message || 'Limite de gastos atingido!',
+          priority: 'high'
+        }
+      }],
+      isRecurring: true,
+      status: 'active'
+    };
+
+    return await storage.createAutomationRule(rule);
+  }
+
+  private async createCategorizationRuleFromTemplate(userId: string, customizations: any): Promise<AutomationRule> {
+    const rule: InsertAutomationRule = {
+      userId,
+      organizationId: customizations.organizationId,
+      name: customizations.name || 'Categorização Automática',
+      description: customizations.description || 'Categoriza automaticamente transações baseado em padrões',
+      type: 'categorization',
+      trigger: {
+        type: 'pattern_detected',
+        conditions: { operator: 'eq', value: 1 }
+      },
+      actions: [{
+        type: 'categorize',
+        parameters: { 
+          category: customizations.category || 'other',
+          description: 'Categorização automática'
+        }
+      }],
+      isRecurring: true,
+      status: 'active'
+    };
+
+    return await storage.createAutomationRule(rule);
+  }
+
+  private async createOverspendAlertFromTemplate(userId: string, customizations: any): Promise<AutomationRule> {
+    const rule: InsertAutomationRule = {
+      userId,
+      organizationId: customizations.organizationId,
+      name: customizations.name || 'Alerta de Gasto Excessivo',
+      description: customizations.description || 'Notifica quando gasto em uma categoria excede limite',
+      type: 'alert',
+      trigger: {
+        type: 'category_spend',
+        conditions: { 
+          operator: 'gt', 
+          value: customizations.limit || 1000, 
+          timeframe: 'monthly',
+          category: customizations.category
+        }
+      },
+      actions: [{
+        type: 'notification',
+        parameters: { 
+          message: customizations.message || 'Você excedeu seu limite de gastos nesta categoria',
+          priority: 'high'
+        }
+      }],
+      isRecurring: false,
+      status: 'active'
+    };
+
+    return await storage.createAutomationRule(rule);
+  }
+
+  private async createInvestmentRoundupFromTemplate(userId: string, customizations: any): Promise<AutomationRule> {
+    const rule: InsertAutomationRule = {
+      userId,
+      organizationId: customizations.organizationId,
+      name: customizations.name || 'Arredondamento para Investimento',
+      description: customizations.description || 'Investe o "troco" das compras automaticamente',
+      type: 'investment',
+      trigger: {
+        type: 'transaction_amount',
+        conditions: { operator: 'gt', value: customizations.minAmount || 10 }
+      },
+      actions: [{
+        type: 'investment',
+        parameters: { 
+          percentage: customizations.roundupPercentage || 5,
+          description: 'Investimento do troco arredondado'
+        }
+      }],
+      isRecurring: true,
+      status: 'active'
+    };
+
+    return await storage.createAutomationRule(rule);
+  }
+
+  /**
    * Get predefined automation templates
    */
   static getAutomationTemplates(): Record<string, Partial<InsertAutomationRule>> {
@@ -545,6 +753,57 @@ export class AutomationEngine {
         actions: [{
           type: 'investment',
           parameters: { description: 'Investimento do troco arredondado' }
+        }],
+        isRecurring: true
+      },
+      'bill_reminder': {
+        name: 'Lembrete de Contas',
+        description: 'Envia lembretes antes do vencimento de contas',
+        type: 'alert',
+        trigger: {
+          type: 'date_based',
+          conditions: { operator: 'eq', value: 3 }
+        },
+        actions: [{
+          type: 'notification',
+          parameters: { 
+            message: 'Lembrete: Conta vencendo em breve',
+            priority: 'high'
+          }
+        }],
+        isRecurring: true
+      },
+      'expense_limit': {
+        name: 'Controle de Limite de Gastos',
+        description: 'Monitora e alerta quando limites de gastos são atingidos',
+        type: 'alert',
+        trigger: {
+          type: 'category_spend',
+          conditions: { operator: 'gt', value: 1000, timeframe: 'monthly' }
+        },
+        actions: [{
+          type: 'notification',
+          parameters: { 
+            message: 'Limite de gastos atingido!',
+            priority: 'high'
+          }
+        }],
+        isRecurring: true
+      },
+      'auto_categorization': {
+        name: 'Categorização Automática',
+        description: 'Categoriza automaticamente transações baseado em padrões',
+        type: 'categorization',
+        trigger: {
+          type: 'pattern_detected',
+          conditions: { operator: 'eq', value: 1 }
+        },
+        actions: [{
+          type: 'categorize',
+          parameters: { 
+            category: 'other',
+            description: 'Categorização automática'
+          }
         }],
         isRecurring: true
       }

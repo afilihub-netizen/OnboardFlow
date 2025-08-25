@@ -1479,6 +1479,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/automation-rules/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      const updateData = req.body;
+      
+      const rule = await storage.updateAutomationRule(id, userId, updateData);
+      if (!rule) {
+        return res.status(404).json({ message: "Automation rule not found" });
+      }
+      
+      res.json(rule);
+    } catch (error) {
+      console.error("Error updating automation rule:", error);
+      res.status(400).json({ message: "Failed to update automation rule" });
+    }
+  });
+
+  app.put("/api/automation-rules/:id/toggle", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const rule = await storage.toggleAutomationRule(id, userId);
+      if (!rule) {
+        return res.status(404).json({ message: "Automation rule not found" });
+      }
+      
+      res.json(rule);
+    } catch (error) {
+      console.error("Error toggling automation rule:", error);
+      res.status(400).json({ message: "Failed to toggle automation rule" });
+    }
+  });
+
+  app.delete("/api/automation-rules/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      const success = await storage.deleteAutomationRule(id, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Automation rule not found" });
+      }
+      
+      res.json({ message: "Automation rule deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting automation rule:", error);
+      res.status(400).json({ message: "Failed to delete automation rule" });
+    }
+  });
+
+  app.post("/api/automation-rules/from-template", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { templateId, customizations } = req.body;
+      
+      // Import automation engine
+      const { automationEngine } = await import('./automation-engine');
+      const rule = await automationEngine.createFromTemplate(userId, templateId, customizations);
+      
+      res.status(201).json(rule);
+    } catch (error) {
+      console.error("Error creating rule from template:", error);
+      res.status(400).json({ message: "Failed to create rule from template" });
+    }
+  });
+
   app.get("/api/automation-templates", isAuthenticated, async (req: any, res) => {
     try {
       // Import automation engine

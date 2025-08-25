@@ -105,6 +105,66 @@ export function AutomationManager() {
     },
   });
 
+  const toggleRuleMutation = useMutation({
+    mutationFn: async (ruleId: string) => {
+      return await apiRequest("PUT", `/api/automation-rules/${ruleId}/toggle`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/automation-rules"] });
+      toast({
+        title: "Status Atualizado",
+        description: "Status da regra alterado com sucesso!",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao alterar status da regra",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteRuleMutation = useMutation({
+    mutationFn: async (ruleId: string) => {
+      return await apiRequest("DELETE", `/api/automation-rules/${ruleId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/automation-rules"] });
+      toast({
+        title: "Regra Excluída",
+        description: "Regra de automação excluída com sucesso!",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao excluir regra de automação",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createFromTemplateMutation = useMutation({
+    mutationFn: async (data: { templateId: string; customizations: any }) => {
+      return await apiRequest("POST", "/api/automation-rules/from-template", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/automation-rules"] });
+      toast({
+        title: "Regra Criada",
+        description: "Regra criada a partir do template com sucesso!",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao criar regra a partir do template",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateRule = async () => {
     if (!newRuleInput.trim()) return;
 
@@ -115,6 +175,43 @@ export function AutomationManager() {
       });
     } catch (error) {
       console.error('Error creating automation rule:', error);
+    }
+  };
+
+  const handleToggleRule = async (ruleId: string) => {
+    try {
+      await toggleRuleMutation.mutateAsync(ruleId);
+    } catch (error) {
+      console.error('Error toggling automation rule:', error);
+    }
+  };
+
+  const handleDeleteRule = async (ruleId: string) => {
+    if (confirm('Tem certeza que deseja excluir esta regra de automação?')) {
+      try {
+        await deleteRuleMutation.mutateAsync(ruleId);
+      } catch (error) {
+        console.error('Error deleting automation rule:', error);
+      }
+    }
+  };
+
+  const handleUseTemplate = async (templateId: string) => {
+    // For now, create with default settings - could open a configuration modal
+    try {
+      await createFromTemplateMutation.mutateAsync({
+        templateId,
+        customizations: {
+          // Add default customizations based on template type
+          name: `Template: ${templateId}`,
+          percentage: 20,
+          limit: 1000,
+          minAmount: 100,
+        }
+      });
+      setActiveTab("rules"); // Switch to rules tab to see the new rule
+    } catch (error) {
+      console.error('Error creating rule from template:', error);
     }
   };
 
@@ -198,13 +295,21 @@ export function AutomationManager() {
           </div>
           
           <div className="flex items-center space-x-2">
-            <Button size="sm" variant="outline" data-testid={`edit-rule-${rule.id}`}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              data-testid={`edit-rule-${rule.id}`}
+              title="Configurar regra"
+            >
               <Settings className="h-3 w-3" />
             </Button>
             <Button 
               size="sm" 
               variant={rule.status === 'active' ? 'outline' : 'default'}
               data-testid={`toggle-rule-${rule.id}`}
+              onClick={() => handleToggleRule(rule.id)}
+              disabled={toggleRuleMutation.isPending}
+              title={rule.status === 'active' ? 'Pausar regra' : 'Ativar regra'}
             >
               {rule.status === 'active' ? (
                 <Pause className="h-3 w-3" />
@@ -212,7 +317,15 @@ export function AutomationManager() {
                 <Play className="h-3 w-3" />
               )}
             </Button>
-            <Button size="sm" variant="outline" className="text-red-600">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+              data-testid={`delete-rule-${rule.id}`}
+              onClick={() => handleDeleteRule(rule.id)}
+              disabled={deleteRuleMutation.isPending}
+              title="Excluir regra"
+            >
               <Trash2 className="h-3 w-3" />
             </Button>
           </div>
@@ -243,8 +356,13 @@ export function AutomationManager() {
             <Badge variant="secondary" className="text-xs">
               {template.category}
             </Badge>
-            <Button size="sm" data-testid={`use-template-${template.id}`}>
-              Usar Template
+            <Button 
+              size="sm" 
+              data-testid={`use-template-${template.id}`}
+              onClick={() => handleUseTemplate(template.id)}
+              disabled={createFromTemplateMutation.isPending}
+            >
+              {createFromTemplateMutation.isPending ? "Criando..." : "Usar Template"}
             </Button>
           </div>
         </CardContent>
@@ -270,7 +388,7 @@ export function AutomationManager() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="rules" data-testid="tab-rules">
-            Minhas Regras ({automationRules?.length || 0})
+            Minhas Regras ({Array.isArray(automationRules) ? automationRules.length : 0})
           </TabsTrigger>
           <TabsTrigger value="create" data-testid="tab-create">Criar Nova</TabsTrigger>
           <TabsTrigger value="templates" data-testid="tab-templates">Templates</TabsTrigger>
@@ -291,9 +409,9 @@ export function AutomationManager() {
                 </Card>
               ))}
             </div>
-          ) : automationRules && automationRules.length > 0 ? (
+          ) : automationRules && Array.isArray(automationRules) && automationRules.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2">
-              {automationRules.map(renderRuleCard)}
+              {Array.isArray(automationRules) ? automationRules.map(renderRuleCard) : []}
             </div>
           ) : (
             <Card>
