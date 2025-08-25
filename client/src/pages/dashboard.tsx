@@ -17,7 +17,6 @@ import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { AIInsights } from "@/components/dashboard/ai-insights";
 import { FixedExpenses } from "@/components/dashboard/fixed-expenses";
 import { MonthlyGoalsNotifications } from "@/components/dashboard/monthly-goals-notifications";
-import { AIAssistant } from "@/components/ai/ai-assistant";
 import { AIDashboard } from "@/components/ai/ai-dashboard";
 import { BusinessMetrics } from "@/components/business/business-metrics";
 import { BusinessDashboardHeader } from "@/components/business/business-dashboard-header";
@@ -34,7 +33,6 @@ export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const { isBusinessAccount, companyName } = useBusinessTheme();
-  const [isAIMinimized, setIsAIMinimized] = useState(true);
   const [viewMode, setViewMode] = useState<'executive' | 'complete'>('executive');
   const [activeTab, setActiveTab] = useState('financeiro');
   const [showWizard, setShowWizard] = useState(false);
@@ -396,21 +394,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* AI Assistant */}
-        {isAIMinimized ? (
-          <AIAssistant
-            className="fixed bottom-4 right-4 z-50"
-            isMinimized={true}
-            onToggleMinimize={() => setIsAIMinimized(false)}
-          />
-        ) : (
-          <div className="fixed bottom-4 right-4 w-96 h-[600px] z-50 shadow-xl">
-            <AIAssistant
-              isMinimized={false}
-              onToggleMinimize={() => setIsAIMinimized(true)}
-            />
-          </div>
-        )}
       </main>
 
       {/* Wizard de Configuração Inicial */}
