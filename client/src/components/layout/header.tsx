@@ -48,85 +48,32 @@ export function Header({ title, subtitle }: HeaderProps) {
   };
 
   return (
-    <header className={`backdrop-blur-xl shadow-lg border-b sticky top-0 z-40 ${
-      isBusinessAccount 
-        ? 'business-header bg-gradient-to-r from-slate-700/90 to-slate-800/90 text-white border-slate-600/50' 
-        : 'bg-white/80 dark:bg-gray-800/80 border-gray-200/60 dark:border-gray-700/60'
-    }`}>
-      <div className="px-6 py-5 ml-0 md:ml-0 pl-16 md:pl-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-4">
-              <h2 className={`text-3xl font-bold bg-gradient-to-r ${
-                isBusinessAccount 
-                  ? 'from-white to-slate-200 bg-clip-text text-transparent' 
-                  : 'from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent'
-              }`} data-testid="page-title">
-                {isBusinessAccount && companyName ? companyName : title}
-              </h2>
-              {isBusinessAccount && (
-                <Badge className="bg-white/20 backdrop-blur text-white border-white/30 hover:bg-white/30 transition-all duration-200">
-                  <Building2 className="w-3 h-3 mr-1" />
-                  Empresarial
-                </Badge>
-              )}
-            </div>
-            <p className={`text-sm font-medium ${
-              isBusinessAccount ? 'text-slate-300' : 'text-gray-600 dark:text-gray-400'
-            }`} data-testid="page-subtitle">
-              {isBusinessAccount && industry ? `${industry} • ${subtitle}` : subtitle}
-            </p>
-          </div>
-          
-          <div className="flex items-center space-x-3">
+    <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
+      <div className="px-6 py-4 ml-0 md:ml-0 pl-16 md:pl-6">
+        <div className="flex items-center justify-end">
+          <div className="flex items-center space-x-4">
             {/* Notifications */}
             <NotificationPanel />
             
-            {/* AI Assistant Button */}
-            <Button 
-              className={`modern-button-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 ${
-                isBusinessAccount 
-                  ? 'bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white border-slate-500'
-                  : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white'
-              }`}
-              data-testid="button-ai-assistant"
-            >
-              <Bot className="w-4 h-4 mr-2" />
-              {isBusinessAccount ? 'Consultoria IA' : 'Assistente IA'}
-            </Button>
-            
             {/* User Profile */}
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/10 dark:bg-gray-800/30 backdrop-blur border border-white/20 dark:border-gray-600/30">
-              <Avatar className="ring-2 ring-white/30 dark:ring-gray-400/30 shadow-lg">
+            <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+              <Avatar className="h-8 w-8">
                 <AvatarImage src={user?.profileImageUrl} alt="Profile" />
-                <AvatarFallback className={`font-bold ${
-                  isBusinessAccount 
-                    ? 'bg-gradient-to-br from-white to-slate-100 text-slate-700' 
-                    : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white'
-                }`}>
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold">
                   {getUserInitials()}
                 </AvatarFallback>
               </Avatar>
               
-              <div className="hidden md:block">
-                <p className={`text-sm font-semibold ${
-                  isBusinessAccount ? 'text-white' : 'text-gray-900 dark:text-white'
-                }`} data-testid="user-name">
-                  {user?.firstName && user?.lastName 
-                    ? `${user.firstName} ${user.lastName}` 
-                    : user?.email || 'Usuário'
-                  }
-                </p>
-                <div className="flex items-center gap-1">
-                  {getAccountIcon()}
-                  <p className={`text-xs font-medium ${
-                    isBusinessAccount ? 'text-slate-300' : 'text-gray-600 dark:text-gray-400'
-                  }`} data-testid="user-account-type">
-                    {user?.accountType === 'business' ? 'Conta Empresarial' : 
-                     user?.accountType === 'family' ? 'Conta Familiar' : 'Conta Individual'}
-                  </p>
-                </div>
-              </div>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                {user?.firstName || "Usuário"}
+              </span>
+              
+              {isBusinessAccount && (
+                <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-xs">
+                  <Building2 className="w-3 h-3 mr-1" />
+                  MODO EMPRESARIAL
+                </Badge>
+              )}
             </div>
           </div>
         </div>
