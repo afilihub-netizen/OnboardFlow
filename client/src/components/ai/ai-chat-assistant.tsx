@@ -63,16 +63,31 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
     setIsLoading(true);
 
     try {
-      const response: any = await apiRequest('POST', '/api/ai/chat', {
+      const res = await apiRequest('POST', '/api/ai/chat', {
         question: messageText
       });
 
-      console.log('AI Response received:', response);
+      const response = await res.json();
+
+      console.log('Full AI Response received:', response);
+      console.log('Response type:', typeof response);
+      console.log('Response keys:', Object.keys(response || {}));
+
+      let responseText = '';
+      if (response && typeof response === 'object') {
+        responseText = response.response || response.message || '';
+      } else if (typeof response === 'string') {
+        responseText = response;
+      }
+
+      if (!responseText) {
+        responseText = 'Desculpe, não recebi uma resposta válida da IA. Tente novamente.';
+      }
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: response.response || 'Desculpe, não recebi uma resposta válida.',
-        timestamp: response.timestamp ? new Date(response.timestamp) : new Date()
+        content: responseText,
+        timestamp: response?.timestamp ? new Date(response.timestamp) : new Date()
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -107,7 +122,7 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl h-[600px] flex flex-col shadow-2xl bg-white border border-gray-200">
+      <Card className="w-full max-w-2xl h-[600px] flex flex-col shadow-2xl bg-white border-2 border-blue-200 rounded-xl">
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-3 border-b">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
