@@ -122,7 +122,7 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl h-[600px] flex flex-col shadow-2xl bg-white border-2 border-blue-200 rounded-xl">
+      <Card className="w-full max-w-2xl h-[600px] flex flex-col shadow-2xl bg-white border-2 border-blue-200 rounded-xl overflow-hidden">
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-3 border-b">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -138,16 +138,16 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
           </Button>
         </CardHeader>
 
-        <CardContent className="flex-1 flex flex-col p-0 bg-white">
+        <CardContent className="flex-1 flex flex-col p-0 bg-white overflow-hidden">
           <ScrollArea className="flex-1 p-4 bg-white">
-            <div className="space-y-4">
+            <div className="space-y-4 pr-2">
               {messages.map((message, index) => (
                 <div
                   key={index}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex w-full ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`flex items-start gap-3 max-w-[80%] ${
+                    className={`flex items-start gap-3 max-w-[75%] ${
                       message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
                     }`}
                   >
@@ -165,13 +165,13 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
                       )}
                     </div>
                     <div
-                      className={`rounded-lg px-4 py-2 ${
+                      className={`rounded-lg px-4 py-2 break-words ${
                         message.role === 'user'
                           ? 'bg-blue-500 text-white'
                           : 'bg-gray-100 text-gray-900 border border-gray-200'
                       }`}
                     >
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                       <span className="text-xs opacity-70 block mt-1">
                         {message.timestamp && !isNaN(message.timestamp.getTime()) 
                           ? message.timestamp.toLocaleTimeString('pt-BR', {
@@ -186,8 +186,8 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
               ))}
 
               {isLoading && (
-                <div className="flex justify-start">
-                  <div className="flex items-start gap-3">
+                <div className="flex justify-start w-full">
+                  <div className="flex items-start gap-3 max-w-[75%]">
                     <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
                       <Bot className="w-4 h-4 text-slate-600" />
                     </div>
