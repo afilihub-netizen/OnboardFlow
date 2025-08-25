@@ -45,7 +45,7 @@ export class FinancialAssistant {
             content: question
           }
         ],
-        max_tokens: 500,
+        max_completion_tokens: 500,
         temperature: 0.7,
       });
 
@@ -126,7 +126,7 @@ Seja preciso e use seu conhecimento sobre o mercado brasileiro.`
             content: `Descrição: "${description}", Valor: R$ ${amount.toFixed(2)}`
           }
         ],
-        max_tokens: 150,
+        max_completion_tokens: 150,
       });
 
       const content = response.choices[0].message.content || '{}';
@@ -181,7 +181,7 @@ Foque em:
             content: `Dados mensais: ${JSON.stringify(monthlyData.slice(0, 6))}`
           }
         ],
-        max_tokens: 400,
+        max_completion_tokens: 400,
       });
 
       const content = response.choices[0].message.content || '{"insights":[],"warnings":[],"suggestions":[]}';

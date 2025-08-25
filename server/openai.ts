@@ -48,7 +48,7 @@ Responda APENAS com JSON válido no formato:
           content: `Analise estes dados financeiros e gere insights personalizados:\n\nResumo: ${JSON.stringify(summary)}\nTransações recentes: ${JSON.stringify(transactions?.slice(-20) || [])}\nCategorias: ${JSON.stringify(categories)}`
         }
       ],
-      max_tokens: 1000,
+      max_completion_tokens: 1000,
       temperature: 0.3
     });
 
@@ -122,8 +122,7 @@ MANDATORY EXAMPLE:
         content: `Analise este extrato bancário e extraia as transações:\n\n${extractText}`
       }
     ],
-    response_format: { type: "json_object" },
-    max_tokens: 8000,
+    max_completion_tokens: 8000,
     temperature: 0.1
   });
 
