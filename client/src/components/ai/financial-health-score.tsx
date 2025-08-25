@@ -38,7 +38,8 @@ export function FinancialHealthScore() {
   const fetchHealthScore = async () => {
     setIsLoading(true);
     try {
-      const data: FinancialHealthData = await apiRequest('GET', '/api/ai/financial-health') as FinancialHealthData;
+      const response = await apiRequest('GET', '/api/ai/financial-health');
+      const data: FinancialHealthData = await response.json();
       setHealthData(data);
     } catch (error) {
       console.error('Erro ao obter score de saúde:', error);

@@ -29,7 +29,8 @@ export function SpendingPatterns() {
   const fetchPatterns = async () => {
     setIsLoading(true);
     try {
-      const data: SpendingPatternsData = await apiRequest('GET', '/api/ai/spending-patterns') as SpendingPatternsData;
+      const response = await apiRequest('GET', '/api/ai/spending-patterns');
+      const data: SpendingPatternsData = await response.json();
       setPatternsData(data);
     } catch (error) {
       console.error('Erro ao obter padrões de gastos:', error);
