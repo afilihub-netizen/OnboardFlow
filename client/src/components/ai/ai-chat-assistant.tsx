@@ -67,9 +67,11 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
         question: messageText
       });
 
+      console.log('AI Response received:', response);
+
       const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: response.response,
+        content: response.response || 'Desculpe, não recebi uma resposta válida.',
         timestamp: response.timestamp ? new Date(response.timestamp) : new Date()
       };
 
@@ -104,8 +106,8 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl h-[600px] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-2xl h-[600px] flex flex-col shadow-2xl bg-white border border-gray-200">
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-3 border-b">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -121,8 +123,8 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
           </Button>
         </CardHeader>
 
-        <CardContent className="flex-1 flex flex-col p-0">
-          <ScrollArea className="flex-1 p-4">
+        <CardContent className="flex-1 flex flex-col p-0 bg-white">
+          <ScrollArea className="flex-1 p-4 bg-white">
             <div className="space-y-4">
               {messages.map((message, index) => (
                 <div
@@ -151,7 +153,7 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
                       className={`rounded-lg px-4 py-2 ${
                         message.role === 'user'
                           ? 'bg-blue-500 text-white'
-                          : 'bg-slate-100 text-slate-900'
+                          : 'bg-gray-100 text-gray-900 border border-gray-200'
                       }`}
                     >
                       <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -174,10 +176,10 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
                     <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
                       <Bot className="w-4 h-4 text-slate-600" />
                     </div>
-                    <div className="bg-slate-100 rounded-lg px-4 py-2">
+                    <div className="bg-gray-100 border border-gray-200 rounded-lg px-4 py-2">
                       <div className="flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-sm text-slate-600">Analisando seus dados...</span>
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                        <span className="text-sm text-gray-600">Analisando seus dados...</span>
                       </div>
                     </div>
                   </div>
@@ -211,7 +213,7 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
           )}
 
           {/* Input de mensagem */}
-          <div className="p-4 border-t">
+          <div className="p-4 border-t bg-white">
             <div className="flex gap-2">
               <Input
                 value={input}
