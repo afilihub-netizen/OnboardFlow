@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bot, User, Send, Loader2, MessageCircle, X, CheckCircle } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -21,7 +22,7 @@ interface AIChatAssistantProps {
   onClose: () => void;
 }
 
-const SUGGESTED_QUESTIONS = [
+const SUGGESTED_QUESTIONS_INDIVIDUAL = [
   "Como estão meus gastos este mês?",
   "Em que categoria gasto mais?",
   "Onde posso economizar?",
@@ -30,14 +31,39 @@ const SUGGESTED_QUESTIONS = [
   "Estou gastando mais ou menos que mês passado?"
 ];
 
+const SUGGESTED_QUESTIONS_BUSINESS = [
+  "Como está o fluxo de caixa da empresa?",
+  "Qual departamento tem maior gasto?",
+  "Como estão as vendas este mês?",
+  "Onde a empresa pode reduzir custos?",
+  "Qual fornecedor tem maior volume?",
+  "Como está a margem de lucro?"
+];
+
 export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
+  const { user } = useAuth();
+  const accountType = user?.accountType || 'individual';
+  
+  // Chave do localStorage baseada no tipo de conta
+  const getStorageKey = () => `financeflow_chat_${accountType}`;
+  
+  // Mensagem inicial baseada no tipo de conta
+  const getInitialMessage = (): ChatMessage => {
+    if (accountType === 'business') {
+      return {
+        role: 'assistant',
+        content: '🏢 Olá! Sou seu assistente financeiro empresarial. Posso te ajudar analisando dados financeiros da empresa, fluxo de caixa, departamentos, fornecedores e muito mais. Como posso ajudar sua empresa hoje?',
+        timestamp: new Date()
+      };
+    }
+    return {
       role: 'assistant',
       content: '👋 Olá! Sou seu assistente financeiro pessoal. Posso te ajudar analisando seus dados financeiros e respondendo perguntas sobre seus gastos, receitas e saúde financeira. Como posso ajudar hoje?',
       timestamp: new Date()
-    }
-  ]);
+    };
+  };
+  
+  const [messages, setMessages] = useState<ChatMessage[]>([getInitialMessage()]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -46,6 +72,35 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Carregar mensagens do localStorage quando o tipo de conta mudar
+  useEffect(() => {
+    const storageKey = getStorageKey();
+    const savedMessages = localStorage.getItem(storageKey);
+    
+    if (savedMessages) {
+      try {
+        const parsedMessages = JSON.parse(savedMessages).map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+        setMessages(parsedMessages);
+      } catch (error) {
+        console.error('Erro ao carregar mensagens do chat:', error);
+        setMessages([getInitialMessage()]);
+      }
+    } else {
+      setMessages([getInitialMessage()]);
+    }
+  }, [accountType]);
+
+  // Salvar mensagens no localStorage sempre que mudarem
+  useEffect(() => {
+    if (messages.length > 0) {
+      const storageKey = getStorageKey();
+      localStorage.setItem(storageKey, JSON.stringify(messages));
+    }
+  }, [messages, accountType]);
 
   useEffect(() => {
     scrollToBottom();
@@ -133,8 +188,12 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
               <Bot className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <CardTitle className="text-lg">Assistente Financeiro IA</CardTitle>
-              <p className="text-sm text-slate-600">Pergunte sobre suas finanças</p>
+              <CardTitle className="text-lg">
+                {accountType === 'business' ? 'Assistente Empresarial IA' : 'Assistente Financeiro IA'}
+              </CardTitle>
+              <p className="text-sm text-slate-600">
+                {accountType === 'business' ? 'Pergunte sobre as finanças da empresa' : 'Pergunte sobre suas finanças'}
+              </p>
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose} data-testid="close-chat">
@@ -245,22 +304,27 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
             <div className="px-4 py-3 border-t border-b bg-gradient-to-r from-blue-50 to-indigo-50">
               <p className="text-sm font-medium text-slate-700 mb-3">💡 Experimente perguntar:</p>
               <div className="grid grid-cols-1 gap-2">
-                {SUGGESTED_QUESTIONS.slice(0, 4).map((question, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs h-9 justify-start text-left hover:bg-white/70 border-blue-200 hover:border-blue-300 transition-all"
-                    onClick={() => handleSendMessage(question)}
-                    disabled={isLoading}
-                    data-testid={`suggestion-${index}`}
-                  >
-                    <span className="truncate">{question}</span>
-                  </Button>
-                ))}
+                {(accountType === 'business' ? SUGGESTED_QUESTIONS_BUSINESS : SUGGESTED_QUESTIONS_INDIVIDUAL)
+                  .slice(0, 4)
+                  .map((question, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-9 justify-start text-left hover:bg-white/70 border-blue-200 hover:border-blue-300 transition-all"
+                      onClick={() => handleSendMessage(question)}
+                      disabled={isLoading}
+                      data-testid={`suggestion-${index}`}
+                    >
+                      <span className="truncate">{question}</span>
+                    </Button>
+                  )
+                )}
               </div>
               <div className="mt-3 text-xs text-slate-600">
-                <strong>🤖 Posso ajudar você a:</strong> adicionar gastos, gerar relatórios, analisar finanças e muito mais!
+                <strong>🤖 Posso ajudar você a:</strong> {accountType === 'business' 
+                  ? 'analisar departamentos, gerar relatórios empresariais, controlar fluxo de caixa e muito mais!' 
+                  : 'adicionar gastos, gerar relatórios, analisar finanças e muito mais!'}
               </div>
             </div>
           )}
