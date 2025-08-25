@@ -46,7 +46,6 @@ export class FinancialAssistant {
           }
         ],
         max_completion_tokens: 500,
-        temperature: 0.7,
       });
 
       return response.choices[0].message.content || "Desculpe, não consegui processar sua pergunta.";

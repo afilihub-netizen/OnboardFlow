@@ -49,7 +49,6 @@ Responda APENAS com JSON válido no formato:
         }
       ],
       max_completion_tokens: 1000,
-      temperature: 0.3
     });
 
     const content = response.choices[0].message.content || '{"insights": []}';
@@ -123,7 +122,6 @@ MANDATORY EXAMPLE:
       }
     ],
     max_completion_tokens: 8000,
-    temperature: 0.1
   });
 
   let content = response.choices[0].message.content || '{"transactions": []}';
