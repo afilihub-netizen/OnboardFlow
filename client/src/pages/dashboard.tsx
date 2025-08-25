@@ -16,7 +16,6 @@ import { MonthlyGoalsNotifications } from "@/components/dashboard/monthly-goals-
 import { AIAssistant } from "@/components/ai/ai-assistant";
 import { BusinessMetrics } from "@/components/business/business-metrics";
 import { BusinessDashboardHeader } from "@/components/business/business-dashboard-header";
-import { BusinessModeIndicator } from "@/components/business/business-mode-indicator";
 import { BusinessDepartmentalMetrics } from "@/components/business/business-departmental-metrics";
 import { BusinessSuppliersWidget } from "@/components/business/business-suppliers-widget";
 import { BusinessFinancialHealth } from "@/components/business/business-financial-health";
@@ -50,7 +49,6 @@ export default function Dashboard() {
 
   return (
     <div className={`flex h-screen ${isBusinessAccount ? '' : 'bg-gray-50 dark:bg-gray-900'}`}>
-      <BusinessModeIndicator />
       <Sidebar />
       
       <main className="flex-1 overflow-auto">
