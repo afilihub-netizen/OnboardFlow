@@ -26,6 +26,8 @@ import { BusinessFinancialHealth } from "@/components/business/business-financia
 import { BusinessCashFlow } from "@/components/business/business-cash-flow";
 import { BusinessProjectsROI } from "@/components/business/business-projects-roi";
 import { BusinessGamification } from "@/components/business/business-gamification";
+import { BusinessSetupWizard } from "@/components/wizard/business-setup-wizard";
+import { ClearPreferences } from "@/components/debug/clear-preferences";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -34,6 +36,22 @@ export default function Dashboard() {
   const [isAIMinimized, setIsAIMinimized] = useState(true);
   const [viewMode, setViewMode] = useState<'executive' | 'complete'>('executive');
   const [activeTab, setActiveTab] = useState('financeiro');
+  const [showWizard, setShowWizard] = useState(false);
+  const [userPreferences, setUserPreferences] = useState<any>(null);
+
+  // Carregar preferências do localStorage na inicialização
+  useEffect(() => {
+    const savedPrefs = localStorage.getItem('financeflow_business_preferences');
+    if (savedPrefs) {
+      const prefs = JSON.parse(savedPrefs);
+      setUserPreferences(prefs);
+      setViewMode(prefs.viewMode || 'executive');
+      setActiveTab(prefs.defaultTab || 'financeiro');
+    } else if (isBusinessAccount) {
+      // Se é conta empresarial e não tem preferências, mostrar wizard
+      setShowWizard(true);
+    }
+  }, [isBusinessAccount]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -49,6 +67,73 @@ export default function Dashboard() {
       return;
     }
   }, [isAuthenticated, isLoading, toast]);
+
+  const handleWizardComplete = (data: any) => {
+    const preferences = {
+      sector: data.sector,
+      priorities: data.priorities,
+      viewMode: data.viewMode,
+      gamification: data.gamification,
+      defaultTab: getDefaultTabBySector(data.sector),
+      setupCompleted: true,
+      completedAt: new Date().toISOString()
+    };
+    
+    localStorage.setItem('financeflow_business_preferences', JSON.stringify(preferences));
+    setUserPreferences(preferences);
+    setViewMode(data.viewMode);
+    setActiveTab(getDefaultTabBySector(data.sector));
+    setShowWizard(false);
+    
+    toast({
+      title: "✅ Configuração Concluída!",
+      description: "Sua dashboard foi personalizada com sucesso.",
+    });
+  };
+
+  const handleWizardSkip = () => {
+    const defaultPrefs = {
+      sector: 'outros',
+      priorities: ['fluxo', 'lucro'],
+      viewMode: 'executive',
+      gamification: false,
+      defaultTab: 'financeiro',
+      setupCompleted: false,
+      skippedAt: new Date().toISOString()
+    };
+    
+    localStorage.setItem('financeflow_business_preferences', JSON.stringify(defaultPrefs));
+    setUserPreferences(defaultPrefs);
+    setShowWizard(false);
+  };
+
+  const getDefaultTabBySector = (sector: string) => {
+    switch (sector) {
+      case 'varejo': return 'financeiro';
+      case 'ecommerce': return 'projetos';
+      case 'consultoria': return 'projetos';
+      case 'industria': return 'departamentos';
+      default: return 'financeiro';
+    }
+  };
+
+  const getSectorInfo = () => {
+    if (!userPreferences) return null;
+    
+    const sectorNames: Record<string, string> = {
+      varejo: 'Varejo',
+      industria: 'Indústria', 
+      ecommerce: 'E-commerce',
+      consultoria: 'Serviços/Consultoria',
+      contabil: 'Contábil/Jurídico',
+      outros: 'Outros'
+    };
+    
+    return {
+      name: sectorNames[userPreferences.sector] || 'Não definido',
+      priorities: userPreferences.priorities || []
+    };
+  };
 
   if (isLoading || !isAuthenticated) {
     return <div className="flex h-screen items-center justify-center">Carregando...</div>;
@@ -78,7 +163,14 @@ export default function Dashboard() {
                     <BarChart3 className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-slate-800">Nível de Visualização</h3>
+                    <h3 className="font-semibold text-slate-800">
+                      Nível de Visualização
+                      {userPreferences && (
+                        <span className="text-xs text-blue-600 ml-2">
+                          ({getSectorInfo()?.name})
+                        </span>
+                      )}
+                    </h3>
                     <p className="text-sm text-slate-600">
                       {viewMode === 'executive' ? 'Mostrando indicadores principais' : 'Visão completa e detalhada'}
                     </p>
@@ -89,6 +181,20 @@ export default function Dashboard() {
                   <Badge className={`px-3 py-1 ${viewMode === 'executive' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                     {viewMode === 'executive' ? 'Modo Executivo' : 'Modo Completo'}
                   </Badge>
+                  {userPreferences && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowWizard(true)}
+                        className="text-xs"
+                        data-testid="reconfigure-wizard"
+                      >
+                        ⚙️ Reconfigurar
+                      </Button>
+                      <ClearPreferences onClear={() => setUserPreferences(null)} />
+                    </>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -161,9 +267,11 @@ export default function Dashboard() {
                       <div className="transform transition-all duration-300 hover:scale-[1.01] animate-in fade-in-50 duration-500">
                         <BusinessFinancialHealth />
                       </div>
-                      <div className="transform transition-all duration-300 hover:scale-[1.01] animate-in fade-in-50 duration-700">
-                        <BusinessGamification />
-                      </div>
+                      {userPreferences?.gamification && (
+                        <div className="transform transition-all duration-300 hover:scale-[1.01] animate-in fade-in-50 duration-700">
+                          <BusinessGamification />
+                        </div>
+                      )}
                     </>
                   )}
                 </TabsContent>
@@ -265,6 +373,14 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+
+      {/* Wizard de Configuração Inicial */}
+      {showWizard && (
+        <BusinessSetupWizard 
+          onComplete={handleWizardComplete}
+          onSkip={handleWizardSkip}
+        />
+      )}
     </div>
   );
 }

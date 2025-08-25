@@ -1,0 +1,126 @@
+Vou desenhar um roteiro completo do wizard inicial para personalizar o sistema empresarial (pode ser adaptado também para o pessoal depois). A ideia é que o usuário configure em 2–3 minutos e já sinta que o FinanceFlow foi feito sob medida para o negócio dele.
+
+🧭 Wizard Inicial – Personalização do FinanceFlow Empresarial
+Tela 1 – Boas-vindas
+
+📌 Texto:
+
+👋 Bem-vindo ao FinanceFlow Empresarial.
+Antes de começar, queremos conhecer melhor o seu negócio para personalizar sua experiência.
+Em menos de 3 minutos, sua dashboard estará pronta e feita sob medida para você. 🚀
+
+Botão:
+
+👉 “Começar Personalização”
+
+Tela 2 – Identificação do Negócio
+
+📌 Pergunta:
+
+Qual é o setor principal da sua empresa?
+
+Opções (com ícones):
+
+🛒 Varejo
+
+🏭 Indústria
+
+🌐 E-commerce
+
+🧑‍💼 Serviços / Consultoria
+
+💼 Escritório Contábil / Jurídico
+
+Outros (campo aberto)
+
+Impacto no sistema:
+
+Define quais blocos principais serão sugeridos na dashboard.
+
+Exemplo:
+
+Varejo → Estoque, Vendas, Custos.
+
+E-commerce → ROI de Marketing, Logística, Fluxo de Caixa.
+
+Consultoria → Receita Recorrente, ROI de Projetos, Margem.
+
+Tela 3 – Prioridade de Gestão
+
+📌 Pergunta:
+
+O que é mais importante para você acompanhar de perto?
+
+Opções (pode escolher até 2):
+
+💰 Fluxo de Caixa
+
+📈 Lucro / Margem
+
+🧾 Custos e Despesas
+
+🚀 ROI de Projetos / Marketing
+
+📦 Estoque e Operações
+
+👥 Equipe e Produtividade
+
+Impacto no sistema:
+
+Os KPIs escolhidos ficam fixados no topo da dashboard (painel executivo).
+
+Tela 4 – Nível de Detalhamento
+
+📌 Pergunta:
+
+Como você prefere visualizar suas informações?
+
+Opções:
+
+👔 Visão Resumida → apenas indicadores principais.
+
+📊 Visão Completa → todos os blocos (financeiro, projetos, departamentos, fornecedores).
+
+Impacto no sistema:
+
+Define se o dashboard abre em modo executivo (clean, poucos cards) ou detalhado (muitos cards).
+
+Tela 5 – Configuração de Gamificação
+
+📌 Pergunta:
+
+Gostaria de ativar os desafios e conquistas mensais para sua empresa?
+
+Opções:
+
+✅ Sim, quero gamificação (ativar Score Empresarial e badges).
+
+❌ Não agora (pode ativar depois nas configurações).
+
+Impacto no sistema:
+
+Se ativado → sistema sugere metas mensais (ex.: reduzir custos em 5%, melhorar ROI em 8%).
+
+Mostra Score Empresarial (0–100) já no topo.
+
+Tela 6 – Finalização
+
+📌 Texto:
+
+🎉 Pronto, [Nome da Empresa]!
+Sua dashboard foi personalizada de acordo com o seu setor e prioridades.
+Você poderá alterar essas preferências a qualquer momento nas configurações.
+
+Botão:
+
+🚀 “Ir para Minha Dashboard”
+
+🖥️ Resultado Final
+
+Dashboard inicial já aparece adaptada → só com KPIs e blocos que fazem sentido para aquele tipo de negócio.
+
+Usuário sente que o sistema foi “feito sob medida”.
+
+A cada login, a IA pode sugerir ajustes:
+
+“Percebemos que você sempre acessa os relatórios de fornecedores. Deseja fixar esse bloco no topo?”
