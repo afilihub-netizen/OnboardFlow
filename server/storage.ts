@@ -13,6 +13,16 @@ import {
   notifications,
   workflowTriggers,
   emailPreferences,
+  scenarios,
+  automationRules,
+  reports,
+  predictions,
+  accountsPayable,
+  accountsReceivable,
+  cashflowPredictions,
+  financialScores,
+  aiInsights,
+  anomalyDetections,
   type User,
   type UpsertUser,
   type Category,
@@ -41,6 +51,26 @@ import {
   type InsertUserPermissions,
   type EmailPreferences,
   type InsertEmailPreferences,
+  type Scenario,
+  type InsertScenario,
+  type AutomationRule,
+  type InsertAutomationRule,
+  type Report,
+  type InsertReport,
+  type Prediction,
+  type InsertPrediction,
+  type AccountsPayable,
+  type InsertAccountsPayable,
+  type AccountsReceivable,
+  type InsertAccountsReceivable,
+  type CashflowPrediction,
+  type InsertCashflowPrediction,
+  type FinancialScore,
+  type InsertFinancialScore,
+  type AiInsight,
+  type InsertAiInsight,
+  type AnomalyDetection,
+  type InsertAnomalyDetection,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, gte, lte, sum, count, gt, isNotNull, isNull, sql } from "drizzle-orm";
@@ -121,6 +151,47 @@ export interface IStorage {
   // Email preferences operations
   getEmailPreferences(userId: string): Promise<EmailPreferences | undefined>;
   upsertEmailPreferences(preferences: InsertEmailPreferences & { userId: string }): Promise<EmailPreferences>;
+
+  // Advanced features operations
+  // Scenarios
+  getScenarios(userId: string, organizationId?: string): Promise<Scenario[]>;
+  createScenario(scenario: InsertScenario): Promise<Scenario>;
+  updateScenario(id: string, scenario: Partial<Scenario>): Promise<Scenario | undefined>;
+  deleteScenario(id: string): Promise<boolean>;
+
+  // Automation Rules
+  getActiveAutomationRules(userId: string, organizationId?: string): Promise<AutomationRule[]>;
+  createAutomationRule(rule: InsertAutomationRule): Promise<AutomationRule>;
+  updateAutomationRuleExecution(ruleId: string): Promise<void>;
+  saveAutomationExecution(execution: any): Promise<void>;
+
+  // Predictions
+  createPrediction(prediction: InsertPrediction): Promise<Prediction>;
+  getCashflowPredictions(userId: string, organizationId?: string): Promise<CashflowPrediction[]>;
+  createCashflowPrediction(prediction: InsertCashflowPrediction): Promise<CashflowPrediction>;
+
+  // Financial Scores
+  createFinancialScore(score: InsertFinancialScore): Promise<FinancialScore>;
+  getLatestFinancialScore(userId: string, organizationId?: string): Promise<FinancialScore | undefined>;
+
+  // AI Insights
+  createAiInsight(insight: InsertAiInsight): Promise<AiInsight>;
+  getAiInsights(userId: string, organizationId?: string, limit?: number): Promise<AiInsight[]>;
+
+  // Anomaly Detection
+  createAnomalyDetection(anomaly: InsertAnomalyDetection): Promise<AnomalyDetection>;
+  getAnomalyDetections(userId: string, organizationId?: string, limit?: number): Promise<AnomalyDetection[]>;
+
+  // Reports
+  createReport(report: InsertReport): Promise<Report>;
+  getReports(userId: string, organizationId?: string): Promise<Report[]>;
+
+  // Helper methods for predictions and analysis
+  getTransactionsForPrediction(userId: string, organizationId?: string, days: number): Promise<Transaction[]>;
+  getRecentTransactions(userId: string, days: number, organizationId?: string): Promise<Transaction[]>;
+  getCategorySpendingForPeriod(userId: string, categoryId: string, timeframe: string, organizationId?: string): Promise<number>;
+  getTotalBalance(userId: string, organizationId?: string): Promise<number>;
+  updateTransactionCategory(transactionId: string, categoryId: string): Promise<Transaction | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1005,6 +1076,285 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return upserted;
+  }
+
+  // ===== ADVANCED FEATURES IMPLEMENTATION =====
+
+  // Scenarios operations
+  async getScenarios(userId: string, organizationId?: string): Promise<Scenario[]> {
+    const conditions = organizationId 
+      ? and(eq(scenarios.userId, userId), eq(scenarios.organizationId, organizationId))
+      : and(eq(scenarios.userId, userId), isNull(scenarios.organizationId));
+    
+    return await db
+      .select()
+      .from(scenarios)
+      .where(conditions)
+      .orderBy(desc(scenarios.createdAt));
+  }
+
+  async createScenario(scenario: InsertScenario): Promise<Scenario> {
+    const [newScenario] = await db.insert(scenarios).values(scenario).returning();
+    return newScenario;
+  }
+
+  async updateScenario(id: string, scenario: Partial<Scenario>): Promise<Scenario | undefined> {
+    const [updated] = await db
+      .update(scenarios)
+      .set({ ...scenario, updatedAt: new Date() })
+      .where(eq(scenarios.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteScenario(id: string): Promise<boolean> {
+    const result = await db.delete(scenarios).where(eq(scenarios.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Automation Rules operations
+  async getActiveAutomationRules(userId: string, organizationId?: string): Promise<AutomationRule[]> {
+    const conditions = organizationId 
+      ? and(eq(automationRules.userId, userId), eq(automationRules.organizationId, organizationId), eq(automationRules.status, 'active'))
+      : and(eq(automationRules.userId, userId), isNull(automationRules.organizationId), eq(automationRules.status, 'active'));
+    
+    return await db
+      .select()
+      .from(automationRules)
+      .where(conditions)
+      .orderBy(desc(automationRules.createdAt));
+  }
+
+  async createAutomationRule(rule: InsertAutomationRule): Promise<AutomationRule> {
+    const [newRule] = await db.insert(automationRules).values(rule).returning();
+    return newRule;
+  }
+
+  async updateAutomationRuleExecution(ruleId: string): Promise<void> {
+    await db
+      .update(automationRules)
+      .set({ 
+        executionCount: sql`${automationRules.executionCount} + 1`,
+        lastExecuted: new Date() 
+      })
+      .where(eq(automationRules.id, ruleId));
+  }
+
+  async saveAutomationExecution(execution: any): Promise<void> {
+    // For now, just log the execution - could create a separate table for this
+    console.log('Automation execution saved:', execution);
+  }
+
+  // Predictions operations
+  async createPrediction(prediction: InsertPrediction): Promise<Prediction> {
+    const [newPrediction] = await db.insert(predictions).values(prediction).returning();
+    return newPrediction;
+  }
+
+  async getCashflowPredictions(userId: string, organizationId?: string): Promise<CashflowPrediction[]> {
+    const conditions = organizationId 
+      ? and(eq(cashflowPredictions.userId, userId), eq(cashflowPredictions.organizationId, organizationId))
+      : and(eq(cashflowPredictions.userId, userId), isNull(cashflowPredictions.organizationId));
+    
+    return await db
+      .select()
+      .from(cashflowPredictions)
+      .where(conditions)
+      .orderBy(cashflowPredictions.predictionDate);
+  }
+
+  async createCashflowPrediction(prediction: InsertCashflowPrediction): Promise<CashflowPrediction> {
+    const [newPrediction] = await db.insert(cashflowPredictions).values(prediction).returning();
+    return newPrediction;
+  }
+
+  // Financial Scores operations
+  async createFinancialScore(score: InsertFinancialScore): Promise<FinancialScore> {
+    const [newScore] = await db.insert(financialScores).values(score).returning();
+    return newScore;
+  }
+
+  async getLatestFinancialScore(userId: string, organizationId?: string): Promise<FinancialScore | undefined> {
+    const conditions = organizationId 
+      ? and(eq(financialScores.userId, userId), eq(financialScores.organizationId, organizationId))
+      : and(eq(financialScores.userId, userId), isNull(financialScores.organizationId));
+    
+    const [score] = await db
+      .select()
+      .from(financialScores)
+      .where(conditions)
+      .orderBy(desc(financialScores.calculatedAt))
+      .limit(1);
+    
+    return score;
+  }
+
+  // AI Insights operations
+  async createAiInsight(insight: InsertAiInsight): Promise<AiInsight> {
+    const [newInsight] = await db.insert(aiInsights).values(insight).returning();
+    return newInsight;
+  }
+
+  async getAiInsights(userId: string, organizationId?: string, limit = 50): Promise<AiInsight[]> {
+    const conditions = organizationId 
+      ? and(eq(aiInsights.userId, userId), eq(aiInsights.organizationId, organizationId))
+      : and(eq(aiInsights.userId, userId), isNull(aiInsights.organizationId));
+    
+    return await db
+      .select()
+      .from(aiInsights)
+      .where(conditions)
+      .orderBy(desc(aiInsights.createdAt))
+      .limit(limit);
+  }
+
+  // Anomaly Detection operations
+  async createAnomalyDetection(anomaly: InsertAnomalyDetection): Promise<AnomalyDetection> {
+    const [newAnomaly] = await db.insert(anomalyDetections).values(anomaly).returning();
+    return newAnomaly;
+  }
+
+  async getAnomalyDetections(userId: string, organizationId?: string, limit = 50): Promise<AnomalyDetection[]> {
+    const conditions = organizationId 
+      ? and(eq(anomalyDetections.userId, userId), eq(anomalyDetections.organizationId, organizationId))
+      : and(eq(anomalyDetections.userId, userId), isNull(anomalyDetections.organizationId));
+    
+    return await db
+      .select()
+      .from(anomalyDetections)
+      .where(conditions)
+      .orderBy(desc(anomalyDetections.createdAt))
+      .limit(limit);
+  }
+
+  // Reports operations
+  async createReport(report: InsertReport): Promise<Report> {
+    const [newReport] = await db.insert(reports).values(report).returning();
+    return newReport;
+  }
+
+  async getReports(userId: string, organizationId?: string): Promise<Report[]> {
+    const conditions = organizationId 
+      ? and(eq(reports.userId, userId), eq(reports.organizationId, organizationId))
+      : and(eq(reports.userId, userId), isNull(reports.organizationId));
+    
+    return await db
+      .select()
+      .from(reports)
+      .where(conditions)
+      .orderBy(desc(reports.createdAt));
+  }
+
+  // Helper methods for predictions and analysis
+  async getTransactionsForPrediction(userId: string, organizationId?: string, days: number): Promise<Transaction[]> {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const conditions = organizationId 
+      ? and(eq(transactions.userId, userId), eq(transactions.organizationId, organizationId), gte(transactions.date, startDate))
+      : and(eq(transactions.userId, userId), isNull(transactions.organizationId), gte(transactions.date, startDate));
+    
+    return await db
+      .select()
+      .from(transactions)
+      .where(conditions)
+      .orderBy(desc(transactions.date));
+  }
+
+  async getRecentTransactions(userId: string, days: number, organizationId?: string): Promise<Transaction[]> {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const conditions = organizationId 
+      ? and(eq(transactions.userId, userId), eq(transactions.organizationId, organizationId), gte(transactions.date, startDate))
+      : and(eq(transactions.userId, userId), isNull(transactions.organizationId), gte(transactions.date, startDate));
+    
+    return await db
+      .select()
+      .from(transactions)
+      .where(conditions)
+      .orderBy(desc(transactions.date));
+  }
+
+  async getCategorySpendingForPeriod(userId: string, categoryId: string, timeframe: string, organizationId?: string): Promise<number> {
+    const now = new Date();
+    let startDate = new Date();
+    
+    switch (timeframe) {
+      case 'daily':
+        startDate.setDate(now.getDate() - 1);
+        break;
+      case 'weekly':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'monthly':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'yearly':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate.setMonth(now.getMonth() - 1);
+    }
+
+    const conditions = organizationId 
+      ? and(
+          eq(transactions.userId, userId), 
+          eq(transactions.organizationId, organizationId),
+          eq(transactions.categoryId, categoryId),
+          eq(transactions.type, 'expense'),
+          gte(transactions.date, startDate)
+        )
+      : and(
+          eq(transactions.userId, userId), 
+          isNull(transactions.organizationId),
+          eq(transactions.categoryId, categoryId),
+          eq(transactions.type, 'expense'),
+          gte(transactions.date, startDate)
+        );
+
+    const result = await db
+      .select({ total: sum(transactions.amount) })
+      .from(transactions)
+      .where(conditions);
+
+    return parseFloat(result[0]?.total || '0');
+  }
+
+  async getTotalBalance(userId: string, organizationId?: string): Promise<number> {
+    const conditions = organizationId 
+      ? and(eq(transactions.userId, userId), eq(transactions.organizationId, organizationId))
+      : and(eq(transactions.userId, userId), isNull(transactions.organizationId));
+
+    const results = await db
+      .select({
+        type: transactions.type,
+        total: sum(transactions.amount)
+      })
+      .from(transactions)
+      .where(conditions)
+      .groupBy(transactions.type);
+
+    let balance = 0;
+    for (const result of results) {
+      const amount = parseFloat(result.total || '0');
+      if (result.type === 'income') {
+        balance += amount;
+      } else {
+        balance -= amount;
+      }
+    }
+
+    return balance;
+  }
+
+  async updateTransactionCategory(transactionId: string, categoryId: string): Promise<Transaction | undefined> {
+    const [updated] = await db
+      .update(transactions)
+      .set({ categoryId, updatedAt: new Date() })
+      .where(eq(transactions.id, transactionId))
+      .returning();
+    return updated;
   }
 }
 

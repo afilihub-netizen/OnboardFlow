@@ -1404,6 +1404,221 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== ADVANCED FEATURES ROUTES =====
+
+  // Scenario Simulation Routes
+  app.get("/api/scenarios", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = req.query.organizationId;
+      const scenarios = await storage.getScenarios(userId, organizationId);
+      res.json(scenarios);
+    } catch (error) {
+      console.error("Error fetching scenarios:", error);
+      res.status(500).json({ message: "Failed to fetch scenarios" });
+    }
+  });
+
+  app.post("/api/scenarios", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const scenarioData = {
+        ...req.body,
+        userId,
+      };
+      const scenario = await storage.createScenario(scenarioData);
+      res.status(201).json(scenario);
+    } catch (error) {
+      console.error("Error creating scenario:", error);
+      res.status(400).json({ message: "Failed to create scenario" });
+    }
+  });
+
+  app.post("/api/scenarios/:id/simulate", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
+      
+      // Import scenario simulator
+      const { scenarioSimulator } = await import('./scenario-simulator');
+      const result = await scenarioSimulator.simulateScenario(id, userId);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error simulating scenario:", error);
+      res.status(500).json({ message: "Failed to simulate scenario" });
+    }
+  });
+
+  // Automation Rules Routes
+  app.get("/api/automation-rules", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = req.query.organizationId;
+      const rules = await storage.getActiveAutomationRules(userId, organizationId);
+      res.json(rules);
+    } catch (error) {
+      console.error("Error fetching automation rules:", error);
+      res.status(500).json({ message: "Failed to fetch automation rules" });
+    }
+  });
+
+  app.post("/api/automation-rules", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { userInput, organizationId } = req.body;
+      
+      // Import automation engine
+      const { automationEngine } = await import('./automation-engine');
+      const rule = await automationEngine.createAutomationRule(userId, userInput, organizationId);
+      
+      res.status(201).json(rule);
+    } catch (error) {
+      console.error("Error creating automation rule:", error);
+      res.status(400).json({ message: "Failed to create automation rule" });
+    }
+  });
+
+  app.get("/api/automation-templates", isAuthenticated, async (req: any, res) => {
+    try {
+      // Import automation engine
+      const { AutomationEngine } = await import('./automation-engine');
+      const templates = AutomationEngine.getAutomationTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching automation templates:", error);
+      res.status(500).json({ message: "Failed to fetch automation templates" });
+    }
+  });
+
+  // Predictive Analytics Routes
+  app.get("/api/predictions/cashflow", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = req.query.organizationId;
+      
+      // Import predictive analytics
+      const { predictiveAnalytics } = await import('./predictive-analytics');
+      const predictions = await predictiveAnalytics.generateCashflowPredictions(userId, organizationId);
+      
+      res.json(predictions);
+    } catch (error) {
+      console.error("Error generating cashflow predictions:", error);
+      res.status(500).json({ message: "Failed to generate cashflow predictions" });
+    }
+  });
+
+  app.get("/api/predictions/expenses", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = req.query.organizationId;
+      const timeframe = req.query.timeframe as '30d' | '60d' | '90d' | '1y' || '30d';
+      
+      // Import predictive analytics
+      const { predictiveAnalytics } = await import('./predictive-analytics');
+      const predictions = await predictiveAnalytics.generateExpensePredictions(userId, timeframe, organizationId);
+      
+      res.json(predictions);
+    } catch (error) {
+      console.error("Error generating expense predictions:", error);
+      res.status(500).json({ message: "Failed to generate expense predictions" });
+    }
+  });
+
+  // Anomaly Detection Routes
+  app.get("/api/anomalies", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = req.query.organizationId;
+      const limit = parseInt(req.query.limit as string) || 20;
+      
+      const anomalies = await storage.getAnomalyDetections(userId, organizationId, limit);
+      res.json(anomalies);
+    } catch (error) {
+      console.error("Error fetching anomalies:", error);
+      res.status(500).json({ message: "Failed to fetch anomalies" });
+    }
+  });
+
+  // AI Insights Routes
+  app.get("/api/ai-insights", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = req.query.organizationId;
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      const insights = await storage.getAiInsights(userId, organizationId, limit);
+      res.json({ insights });
+    } catch (error) {
+      console.error("Error fetching AI insights:", error);
+      res.status(500).json({ message: "Failed to fetch AI insights" });
+    }
+  });
+
+  // Financial Score Routes
+  app.get("/api/financial-score", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = req.query.organizationId;
+      
+      const score = await storage.getLatestFinancialScore(userId, organizationId);
+      if (!score) {
+        return res.status(404).json({ message: "No financial score found" });
+      }
+      
+      res.json(score);
+    } catch (error) {
+      console.error("Error fetching financial score:", error);
+      res.status(500).json({ message: "Failed to fetch financial score" });
+    }
+  });
+
+  app.post("/api/financial-score/calculate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = req.query.organizationId;
+      
+      // Import AI assistant for score calculation
+      const { aiAssistant } = await import('./ai-assistant');
+      const score = await aiAssistant.calculateFinancialHealthScore(userId, organizationId);
+      
+      res.json(score);
+    } catch (error) {
+      console.error("Error calculating financial score:", error);
+      res.status(500).json({ message: "Failed to calculate financial score" });
+    }
+  });
+
+  // Reports Routes
+  app.get("/api/reports", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const organizationId = req.query.organizationId;
+      
+      const reports = await storage.getReports(userId, organizationId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+      res.status(500).json({ message: "Failed to fetch reports" });
+    }
+  });
+
+  app.post("/api/reports/generate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { type, timeframe, organizationId } = req.body;
+      
+      // Import AI assistant for report generation
+      const { aiAssistant } = await import('./ai-assistant');
+      const report = await aiAssistant.generateNarrativeReport(userId, type, timeframe, organizationId);
+      
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating report:", error);
+      res.status(500).json({ message: "Failed to generate report" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -6,7 +6,7 @@ import { useBusinessTheme } from "@/hooks/useBusinessTheme";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload, Crown, Building2, Users, Receipt, Package, Briefcase, LogOut } from "lucide-react";
+import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload, Crown, Building2, Users, Receipt, Package, Briefcase, LogOut, Brain } from "lucide-react";
 
 const getNavigation = (isBusinessAccount: boolean) => {
   const baseNavigation = [
@@ -16,6 +16,7 @@ const getNavigation = (isBusinessAccount: boolean) => {
     { name: isBusinessAccount ? 'Orçamentos' : 'Metas', href: '/goals', icon: Target },
     { name: 'Importação', href: '/import', icon: Upload },
     { name: 'Relatórios', href: '/reports', icon: FileText },
+    { name: 'IA Avançada', href: '/advanced', icon: Brain },
     { name: 'Categorias', href: '/categories', icon: Tags },
   ];
 

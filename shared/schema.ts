@@ -502,3 +502,382 @@ export const insertEmailPreferencesSchema = createInsertSchema(emailPreferences)
   createdAt: true,
   updatedAt: true,
 });
+
+// ===== NEW ADVANCED FEATURES SCHEMA =====
+
+// Scenario status enum for simulation tracking
+export const scenarioStatusEnum = pgEnum('scenario_status', ['draft', 'active', 'completed', 'archived']);
+export const scenarioTypeEnum = pgEnum('scenario_type', ['retirement', 'house_purchase', 'emergency_fund', 'business_investment', 'custom']);
+
+// Financial Scenarios for simulation
+export const scenarios = pgTable("scenarios", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  type: scenarioTypeEnum("type").notNull(),
+  status: scenarioStatusEnum("status").default('draft'),
+  targetAmount: decimal("target_amount", { precision: 15, scale: 2 }),
+  targetDate: timestamp("target_date"),
+  monthlyContribution: decimal("monthly_contribution", { precision: 10, scale: 2 }),
+  expectedReturn: decimal("expected_return", { precision: 5, scale: 2 }), // Annual return percentage
+  riskTolerance: varchar("risk_tolerance"), // conservative, moderate, aggressive
+  parameters: jsonb("parameters"), // Scenario-specific parameters
+  results: jsonb("results"), // Simulation results
+  probability: decimal("probability", { precision: 5, scale: 2 }), // Success probability
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Automation rules for intelligent financial automation
+export const automationStatusEnum = pgEnum('automation_status', ['active', 'paused', 'completed', 'failed']);
+export const automationTypeEnum = pgEnum('automation_type', ['transfer', 'investment', 'alert', 'categorization', 'payment']);
+
+export const automationRules = pgTable("automation_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  type: automationTypeEnum("type").notNull(),
+  status: automationStatusEnum("status").default('active'),
+  trigger: jsonb("trigger").notNull(), // Trigger conditions
+  actions: jsonb("actions").notNull(), // Actions to execute
+  executionCount: integer("execution_count").default(0),
+  lastExecuted: timestamp("last_executed"),
+  nextExecution: timestamp("next_execution"),
+  maxExecutions: integer("max_executions"), // Optional limit
+  isRecurring: boolean("is_recurring").default(false),
+  metadata: jsonb("metadata"), // Additional configuration
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Generated reports storage
+export const reportStatusEnum = pgEnum('report_status', ['generating', 'completed', 'failed']);
+export const reportTypeEnum = pgEnum('report_type', ['monthly', 'quarterly', 'annual', 'custom', 'cashflow', 'profitability']);
+
+export const reports = pgTable("reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  title: varchar("title", { length: 200 }).notNull(),
+  type: reportTypeEnum("type").notNull(),
+  status: reportStatusEnum("status").default('generating'),
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  content: text("content"), // Generated narrative content
+  data: jsonb("data"), // Report data and charts
+  insights: jsonb("insights"), // AI-generated insights
+  fileUrl: varchar("file_url"), // PDF download URL
+  generatedBy: varchar("generated_by").default('ai'), // ai, user, scheduled
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Predictive analysis results
+export const predictionTypeEnum = pgEnum('prediction_type', ['cashflow', 'expense', 'income', 'investment', 'anomaly']);
+
+export const predictions = pgTable("predictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  type: predictionTypeEnum("type").notNull(),
+  timeframe: varchar("timeframe").notNull(), // 30d, 60d, 90d, 1y
+  prediction: jsonb("prediction").notNull(), // Prediction data
+  confidence: decimal("confidence", { precision: 5, scale: 2 }), // Confidence percentage
+  actualValue: decimal("actual_value", { precision: 15, scale: 2 }), // For accuracy tracking
+  accuracy: decimal("accuracy", { precision: 5, scale: 2 }), // Calculated accuracy
+  metadata: jsonb("metadata"), // Additional prediction context
+  createdAt: timestamp("created_at").defaultNow(),
+  validUntil: timestamp("valid_until").notNull(),
+});
+
+// Accounts Payable (Business)
+export const payableStatusEnum = pgEnum('payable_status', ['pending', 'paid', 'overdue', 'cancelled']);
+
+export const accountsPayable = pgTable("accounts_payable", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  vendorName: varchar("vendor_name", { length: 200 }).notNull(),
+  vendorEmail: varchar("vendor_email"),
+  vendorPhone: varchar("vendor_phone"),
+  invoiceNumber: varchar("invoice_number", { length: 100 }),
+  description: text("description").notNull(),
+  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+  taxAmount: decimal("tax_amount", { precision: 15, scale: 2 }),
+  totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  issueDate: timestamp("issue_date").notNull(),
+  status: payableStatusEnum("status").default('pending'),
+  categoryId: varchar("category_id").references(() => categories.id),
+  departmentId: varchar("department_id").references(() => departments.id),
+  paidDate: timestamp("paid_date"),
+  paidAmount: decimal("paid_amount", { precision: 15, scale: 2 }),
+  paymentMethod: paymentMethodEnum("payment_method"),
+  attachmentUrl: varchar("attachment_url"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Accounts Receivable (Business)
+export const receivableStatusEnum = pgEnum('receivable_status', ['pending', 'received', 'overdue', 'cancelled']);
+
+export const accountsReceivable = pgTable("accounts_receivable", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  clientName: varchar("client_name", { length: 200 }).notNull(),
+  clientEmail: varchar("client_email"),
+  clientPhone: varchar("client_phone"),
+  invoiceNumber: varchar("invoice_number", { length: 100 }),
+  description: text("description").notNull(),
+  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+  taxAmount: decimal("tax_amount", { precision: 15, scale: 2 }),
+  totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  issueDate: timestamp("issue_date").notNull(),
+  status: receivableStatusEnum("status").default('pending'),
+  categoryId: varchar("category_id").references(() => categories.id),
+  departmentId: varchar("department_id").references(() => departments.id),
+  receivedDate: timestamp("received_date"),
+  receivedAmount: decimal("received_amount", { precision: 15, scale: 2 }),
+  paymentMethod: paymentMethodEnum("payment_method"),
+  pixQRCode: text("pix_qr_code"), // QR code for PIX payments
+  attachmentUrl: varchar("attachment_url"),
+  notes: text("notes"),
+  createdBy: varchar("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Cashflow predictions for business planning
+export const cashflowPredictions = pgTable("cashflow_predictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  predictionDate: timestamp("prediction_date").notNull(),
+  predictedInflow: decimal("predicted_inflow", { precision: 15, scale: 2 }).notNull(),
+  predictedOutflow: decimal("predicted_outflow", { precision: 15, scale: 2 }).notNull(),
+  predictedBalance: decimal("predicted_balance", { precision: 15, scale: 2 }).notNull(),
+  confidence: decimal("confidence", { precision: 5, scale: 2 }),
+  factors: jsonb("factors"), // Contributing factors
+  actualInflow: decimal("actual_inflow", { precision: 15, scale: 2 }),
+  actualOutflow: decimal("actual_outflow", { precision: 15, scale: 2 }),
+  actualBalance: decimal("actual_balance", { precision: 15, scale: 2 }),
+  accuracy: decimal("accuracy", { precision: 5, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Financial health scores history
+export const financialScores = pgTable("financial_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  score: integer("score").notNull(), // 0-100
+  level: varchar("level").notNull(), // poor, fair, good, excellent
+  factors: jsonb("factors").notNull(), // Detailed breakdown
+  recommendations: jsonb("recommendations"), // AI recommendations
+  improvements: jsonb("improvements"), // Improvement tracking
+  calculatedAt: timestamp("calculated_at").defaultNow(),
+});
+
+// AI-generated insights storage
+export const insightTypeEnum = pgEnum('insight_type', ['opportunity', 'alert', 'recommendation', 'trend', 'achievement']);
+export const insightPriorityEnum = pgEnum('insight_priority', ['low', 'medium', 'high', 'critical']);
+
+export const aiInsights = pgTable("ai_insights", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  type: insightTypeEnum("type").notNull(),
+  priority: insightPriorityEnum("priority").default('medium'),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description").notNull(),
+  impact: decimal("impact", { precision: 15, scale: 2 }), // Potential financial impact
+  actionRequired: boolean("action_required").default(false),
+  actionUrl: varchar("action_url"), // URL for taking action
+  dataSource: varchar("data_source"), // What triggered this insight
+  metadata: jsonb("metadata"), // Additional context
+  isRead: boolean("is_read").default(false),
+  isActedUpon: boolean("is_acted_upon").default(false),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Anomaly detection results
+export const anomalyTypeEnum = pgEnum('anomaly_type', ['spending_spike', 'unusual_merchant', 'timing_anomaly', 'amount_anomaly', 'frequency_anomaly']);
+export const anomalySeverityEnum = pgEnum('anomaly_severity', ['info', 'warning', 'critical']);
+
+export const anomalyDetections = pgTable("anomaly_detections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  type: anomalyTypeEnum("type").notNull(),
+  severity: anomalySeverityEnum("severity").default('warning'),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description").notNull(),
+  transactionId: varchar("transaction_id").references(() => transactions.id),
+  anomalyScore: decimal("anomaly_score", { precision: 5, scale: 2 }), // 0-100
+  expectedValue: decimal("expected_value", { precision: 15, scale: 2 }),
+  actualValue: decimal("actual_value", { precision: 15, scale: 2 }),
+  deviation: decimal("deviation", { precision: 15, scale: 2 }),
+  context: jsonb("context"), // Additional context data
+  isResolved: boolean("is_resolved").default(false),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ===== RELATIONS FOR NEW ADVANCED FEATURES =====
+
+export const scenariosRelations = relations(scenarios, ({ one }) => ({
+  user: one(users, { fields: [scenarios.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [scenarios.organizationId], references: [organizations.id] }),
+}));
+
+export const automationRulesRelations = relations(automationRules, ({ one }) => ({
+  user: one(users, { fields: [automationRules.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [automationRules.organizationId], references: [organizations.id] }),
+}));
+
+export const reportsRelations = relations(reports, ({ one }) => ({
+  user: one(users, { fields: [reports.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [reports.organizationId], references: [organizations.id] }),
+}));
+
+export const predictionsRelations = relations(predictions, ({ one }) => ({
+  user: one(users, { fields: [predictions.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [predictions.organizationId], references: [organizations.id] }),
+}));
+
+export const accountsPayableRelations = relations(accountsPayable, ({ one }) => ({
+  organization: one(organizations, { fields: [accountsPayable.organizationId], references: [organizations.id] }),
+  category: one(categories, { fields: [accountsPayable.categoryId], references: [categories.id] }),
+  department: one(departments, { fields: [accountsPayable.departmentId], references: [departments.id] }),
+  createdBy: one(users, { fields: [accountsPayable.createdBy], references: [users.id] }),
+}));
+
+export const accountsReceivableRelations = relations(accountsReceivable, ({ one }) => ({
+  organization: one(organizations, { fields: [accountsReceivable.organizationId], references: [organizations.id] }),
+  category: one(categories, { fields: [accountsReceivable.categoryId], references: [categories.id] }),
+  department: one(departments, { fields: [accountsReceivable.departmentId], references: [departments.id] }),
+  createdBy: one(users, { fields: [accountsReceivable.createdBy], references: [users.id] }),
+}));
+
+export const cashflowPredictionsRelations = relations(cashflowPredictions, ({ one }) => ({
+  user: one(users, { fields: [cashflowPredictions.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [cashflowPredictions.organizationId], references: [organizations.id] }),
+}));
+
+export const financialScoresRelations = relations(financialScores, ({ one }) => ({
+  user: one(users, { fields: [financialScores.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [financialScores.organizationId], references: [organizations.id] }),
+}));
+
+export const aiInsightsRelations = relations(aiInsights, ({ one }) => ({
+  user: one(users, { fields: [aiInsights.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [aiInsights.organizationId], references: [organizations.id] }),
+}));
+
+export const anomalyDetectionsRelations = relations(anomalyDetections, ({ one }) => ({
+  user: one(users, { fields: [anomalyDetections.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [anomalyDetections.organizationId], references: [organizations.id] }),
+  transaction: one(transactions, { fields: [anomalyDetections.transactionId], references: [transactions.id] }),
+  resolvedBy: one(users, { fields: [anomalyDetections.resolvedBy], references: [users.id] }),
+}));
+
+// ===== TYPES FOR NEW ADVANCED FEATURES =====
+
+export type InsertScenario = typeof scenarios.$inferInsert;
+export type Scenario = typeof scenarios.$inferSelect;
+
+export type InsertAutomationRule = typeof automationRules.$inferInsert;
+export type AutomationRule = typeof automationRules.$inferSelect;
+
+export type InsertReport = typeof reports.$inferInsert;
+export type Report = typeof reports.$inferSelect;
+
+export type InsertPrediction = typeof predictions.$inferInsert;
+export type Prediction = typeof predictions.$inferSelect;
+
+export type InsertAccountsPayable = typeof accountsPayable.$inferInsert;
+export type AccountsPayable = typeof accountsPayable.$inferSelect;
+
+export type InsertAccountsReceivable = typeof accountsReceivable.$inferInsert;
+export type AccountsReceivable = typeof accountsReceivable.$inferSelect;
+
+export type InsertCashflowPrediction = typeof cashflowPredictions.$inferInsert;
+export type CashflowPrediction = typeof cashflowPredictions.$inferSelect;
+
+export type InsertFinancialScore = typeof financialScores.$inferInsert;
+export type FinancialScore = typeof financialScores.$inferSelect;
+
+export type InsertAiInsight = typeof aiInsights.$inferInsert;
+export type AiInsight = typeof aiInsights.$inferSelect;
+
+export type InsertAnomalyDetection = typeof anomalyDetections.$inferInsert;
+export type AnomalyDetection = typeof anomalyDetections.$inferSelect;
+
+// ===== INSERT SCHEMAS FOR NEW ADVANCED FEATURES =====
+
+export const insertScenarioSchema = createInsertSchema(scenarios).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAutomationRuleSchema = createInsertSchema(automationRules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  executionCount: true,
+  lastExecuted: true,
+  nextExecution: true,
+});
+
+export const insertReportSchema = createInsertSchema(reports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPredictionSchema = createInsertSchema(predictions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAccountsPayableSchema = createInsertSchema(accountsPayable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAccountsReceivableSchema = createInsertSchema(accountsReceivable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCashflowPredictionSchema = createInsertSchema(cashflowPredictions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertFinancialScoreSchema = createInsertSchema(financialScores).omit({
+  id: true,
+  calculatedAt: true,
+});
+
+export const insertAiInsightSchema = createInsertSchema(aiInsights).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAnomalyDetectionSchema = createInsertSchema(anomalyDetections).omit({
+  id: true,
+  createdAt: true,
+  resolvedAt: true,
+});

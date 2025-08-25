@@ -19,6 +19,7 @@ import Goals from "@/pages/goals";
 import Import from "@/pages/import";
 import Subscription from "@/pages/subscription";
 import Upgrade from "@/pages/upgrade";
+import AdvancedFeatures from "@/pages/advanced-features";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -40,6 +41,7 @@ function Router() {
             <Route path="/import" component={Import} />
             <Route path="/reports" component={Reports} />
             <Route path="/categories" component={Categories} />
+            <Route path="/advanced" component={AdvancedFeatures} />
             <Route path="/subscription" component={Subscription} />
             <Route path="/upgrade" component={Upgrade} />
             <Route path="/profile" component={Profile} />
