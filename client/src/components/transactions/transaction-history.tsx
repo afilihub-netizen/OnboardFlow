@@ -18,7 +18,7 @@ export function TransactionHistory() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [periodFilter, setPeriodFilter] = useState("current-month");
+  const [periodFilter, setPeriodFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [searchFilter, setSearchFilter] = useState("");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
@@ -79,6 +79,11 @@ export function TransactionHistory() {
       case "current-year":
         startDate = new Date(now.getFullYear(), 0, 1);
         endDate = new Date(now.getFullYear(), 11, 31);
+        break;
+      case "all":
+        // Não adiciona filtros de data - busca todas as transações
+        startDate = null;
+        endDate = null;
         break;
     }
 
@@ -438,9 +443,10 @@ export function TransactionHistory() {
             
             <Select value={periodFilter} onValueChange={setPeriodFilter}>
               <SelectTrigger className="w-40" data-testid="select-period-filter">
-                <SelectValue placeholder="Período" />
+                <SelectValue placeholder="Todos os períodos" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">Todos os períodos</SelectItem>
                 <SelectItem value="current-month">Este mês</SelectItem>
                 <SelectItem value="last-3-months">Últimos 3 meses</SelectItem>
                 <SelectItem value="current-year">Este ano</SelectItem>
