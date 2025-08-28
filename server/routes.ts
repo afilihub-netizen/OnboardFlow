@@ -1108,10 +1108,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const ocrResult = await ocrResponse.json();
     
+    // Debug log to see the actual error structure
+    console.log('OCR Result debug:', {
+      IsErroredOnProcessing: ocrResult.IsErroredOnProcessing,
+      ErrorMessage: ocrResult.ErrorMessage,
+      hasResults: ocrResult.ParsedResults?.length > 0
+    });
+    
     // Check for critical errors (ignore page limit warnings)
-    const hasPageLimitError = ocrResult.ErrorMessage?.includes('maximum page limit');
+    const errorMessage = ocrResult.ErrorMessage || '';
+    const hasPageLimitError = errorMessage.includes('maximum page limit') || 
+                             errorMessage.includes('page limit') ||
+                             errorMessage.includes('limit');
+    
+    // Only throw error if it's a real processing error, not a page limit issue
     if (ocrResult.IsErroredOnProcessing && !hasPageLimitError) {
       throw new Error(`OCR processing error: ${ocrResult.ErrorMessage}`);
+    }
+    
+    // If we have page limit error but also have results, treat as success
+    if (hasPageLimitError && ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0) {
+      console.log('Page limit reached but got results, treating as success');
     }
     
     let extractedText = '';
