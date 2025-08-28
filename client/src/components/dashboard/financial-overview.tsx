@@ -55,11 +55,11 @@ export function FinancialOverview() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {/* Balance Card */}
       <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border border-blue-400/20 shadow-xl rounded-2xl animate-scale-in hover:shadow-2xl transition-all duration-300 overflow-hidden">
         <CardContent className="p-6">
-          <div className="flex items-start justify-between mb-6">
+          <div className="flex items-start justify-between mb-4 gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-blue-100 text-sm font-medium uppercase tracking-wide mb-3">Saldo Total</p>
               <p className="text-3xl font-bold tracking-tight leading-none modern-large-value" data-testid="balance-total">
@@ -80,7 +80,7 @@ export function FinancialOverview() {
       {/* Income Card */}
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-2xl animate-scale-in hover:shadow-2xl transition-all duration-300 overflow-hidden" style={{animationDelay: '0.1s'}}>
         <CardContent className="p-6">
-          <div className="flex items-start justify-between mb-6">
+          <div className="flex items-start justify-between mb-4 gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-gray-600 dark:text-gray-400 text-sm font-medium uppercase tracking-wide mb-3">Receitas</p>
               <p className="text-3xl font-bold text-green-600 tracking-tight leading-none modern-large-value" data-testid="income-total">
@@ -101,7 +101,7 @@ export function FinancialOverview() {
       {/* Expenses Card */}
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-2xl animate-scale-in hover:shadow-2xl transition-all duration-300 overflow-hidden" style={{animationDelay: '0.2s'}}>
         <CardContent className="p-6">
-          <div className="flex items-start justify-between mb-6">
+          <div className="flex items-start justify-between mb-4 gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-gray-600 dark:text-gray-400 text-sm font-medium uppercase tracking-wide mb-3">Gastos</p>
               <p className="text-3xl font-bold text-red-600 tracking-tight leading-none modern-large-value" data-testid="expenses-total">
@@ -122,7 +122,7 @@ export function FinancialOverview() {
       {/* Investments Card */}
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-2xl animate-scale-in hover:shadow-2xl transition-all duration-300 overflow-hidden" style={{animationDelay: '0.3s'}}>
         <CardContent className="p-6">
-          <div className="flex items-start justify-between mb-6">
+          <div className="flex items-start justify-between mb-4 gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-gray-600 dark:text-gray-400 text-sm font-medium uppercase tracking-wide mb-3">Investimentos</p>
               <p className="text-3xl font-bold text-purple-600 tracking-tight leading-none modern-large-value" data-testid="investments-total">
