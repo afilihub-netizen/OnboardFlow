@@ -1,0 +1,408 @@
+# Nexo — Documento de Detalhamento (Plano de Recursos Definitivo)
+
+> **Propósito**: Especificar o escopo funcional, técnico e operacional do Nexo, um webapp financeiro que entrega inteligência preditiva, visão 360º de patrimônio, automação produtiva, colaboração e educação contextual — para PF, MEI e PJ — utilizando stack free‑tier friendly (Next.js, Supabase, Cloudflare Workers, Workers AI, Brevo) e integrações (Open Finance sandbox, FIPE e índices imobiliários).
+
+---
+
+## 1) Objetivos do Produto
+
+* **Unificar** dados financeiros de pessoas e empresas em um hub único.
+* **Prever** fluxo de caixa e riscos, transformando dados em decisões.
+* **Orquestrar** automações (conciliação, assinaturas, cofres e aprovações).
+* **Colaborar** com papéis e workflows (família, time financeiro, contador).
+* **Educar** no contexto (Nexus Academy) com IA que sugere ações concretas.
+
+**Resultados-chave (12 meses):**
+
+* Atingir **D30 ≥ 35%** de retenção de usuários ativos.
+* Economizar **≥ R\$ 150/mês** por usuário com cortes de assinaturas/otimizações.
+* **Conversão Free→Pro ≥ 6%** após 14 dias de uso com insights entregues.
+
+---
+
+## 2) Personas & Casos de Uso
+
+* **PF Iniciante**: quer enxergar gastos, criar metas e evitar rombo no mês.
+* **PF Investidor**: agrega corretoras, acompanha patrimônio e metas ambiciosas.
+* **Autônomo/MEI**: separa PF/PJ, emite NFS‑e (fase 2), controla fluxo e documentos.
+* **Gestor Financeiro (PME)**: contas a pagar/receber, conciliação e aprovações.
+* **Contador/Advisor**: acesso leitura/ação limitada, exportações e relatórios.
+* **Sócio/Diretor**: visão consolidada (filiais), metas e tesouraria.
+
+---
+
+## 3) Jornada de Valor (macro)
+
+1. **Captação de dados**: Open Finance (sandbox no MVP) + upload OFX/CSV/PDF.
+2. **Diagnóstico**: categorização, benchmarking, alertas e saúde financeira.
+3. **Planejamento**: metas, cofres, cenários “E se?” e orçamento.
+4. **Automação**: conciliação, documentos, assinaturas, alocações, aprovações.
+5. **Colaboração**: times, papéis, trilhas de auditoria.
+6. **Educação**: Academy contextual + Copiloto Nexo (IA) com ações diretas.
+
+---
+
+## 4) Módulos → Épicos → Histórias & Critérios
+
+### Módulo 1 — Cérebro Analítico (Inteligência Preditiva)
+
+**Visão**: Prever, comparar e simular para reduzir incerteza e antecipar ações.
+
+**Épicos e Histórias**
+
+* **E1.1 Fluxo de Caixa Preditivo**
+
+  * H1: Como usuário, quero projeção de saldo 30/60/90 dias por conta/org.
+
+    * **Aceite**: gráfico com bandas; atualização diária; erro ≤ 20% no MVP.
+  * H2: Como usuário, quero alertas de risco (saldo<0) com antecedência.
+
+    * **Aceite**: alerta via e‑mail/app; janela configurável (7/14/30 dias).
+* **E1.2 Benchmarking Anônimo**
+
+  * H1: Ver minha despesa por categoria x peers (renda/região/porte).
+
+    * **Aceite**: p25/p50/p75; anonimização por bucket; sem dados pessoais.
+* **E1.3 Simulador “E se?”**
+
+  * H1: Ajustar variáveis (receita, corte de categorias, parcelamentos/juros) e comparar com baseline.
+
+    * **Aceite**: salvar cenários, exportar plano e criar tarefas/alertas.
+
+**KPIs**: tempo até 1º insight (< 10 min), adesão ao simulador (> 20% dos ativos), precisão de previsão (MAE/MAPE por janela).
+
+---
+
+### Módulo 2 — Ecossistema de Patrimônio (Visão 360º)
+
+**Visão**: Patrimônio líquido atualizado com reavaliação de veículos/imóveis.
+
+**Épicos e Histórias**
+
+* **E2.1 Patrimônio Líquido Dinâmico**
+
+  * H1: Cadastrar ativos (bancários, investimentos, veículos, imóveis, cripto, outros).
+
+    * **Aceite**: tipos suportados, moeda, origem e atualização.
+  * H2: Atualização FIPE (veículos) diária.
+
+    * **Aceite**: variação registrada; log de atualização; override manual.
+  * H3: Imóveis por índice/bairro + ajuste manual do usuário.
+
+    * **Aceite**: fonte do índice registrada; histórico de valuation.
+* **E2.2 Metas & Cofres Multi‑Institucionais**
+
+  * H1: Criar metas (valor, data, prioridade) com cofres vinculados a múltiplas contas.
+
+    * **Aceite**: regras de alocação (% de entrada/recebível), barra de progresso.
+  * H2: Previsão de atingimento (usa E1.1) e alertas de atraso.
+
+**KPIs**: % usuários com patrimônio configurado, variação de patrimônio acompanhada, metas ativas versus concluídas.
+
+---
+
+### Módulo 3 — Autopilot de Produtividade (Automação Total)
+
+**Visão**: Eliminar trabalho manual, reduzir erros e acelerar rotinas.
+
+**Épicos e Histórias**
+
+* **E3.1 Conciliação & Documentos**
+
+  * H1: Importar OFX/CSV/PDF (OCR) e anexar comprovantes por transação.
+
+    * **Aceite**: parser robusto, de‑duplicação por hash e matching por regras.
+  * H2: Categorização semi‑automática com aprendizado por feedback.
+
+    * **Aceite**: sugerir categoria, taxa de acerto ≥ 70% (MVP), melhoria contínua.
+* **E3.2 Gestor de Assinaturas**
+
+  * H1: Detectar recorrências e consolidar assinaturas (valor, ciclo, próxima cobrança).
+
+    * **Aceite**: tolerância de ±3 dias; merge por merchant; alerta de aumento de preço.
+
+**KPIs**: tempo médio de conciliação, taxa de erro de categorização, assinaturas canceladas/reduzidas.
+
+---
+
+### Módulo 4 — Hub Colaborativo (Finanças em Conjunto)
+
+**Visão**: Times, papéis e aprovações para PF compartilhado e PJ.
+
+**Épicos e Histórias**
+
+* **E4.1 Espaços Compartilhados**
+
+  * H1: Convidar usuários para uma organização com papéis (admin, gestor, contador, leitura).
+
+    * **Aceite**: convites por e‑mail, aceitação, remoção e logs.
+* **E4.2 Workflows de Aprovação (PJ)**
+
+  * H1: Configurar regras de aprovação por valor/centro de custo.
+
+    * **Aceite**: estados (draft→pending→approved→paid→archived), trilha de auditoria.
+
+**KPIs**: tempo até aprovação, número de acessos por papel, incidentes de acesso indevido (esperado: 0).
+
+---
+
+### Módulo 5 — Plataforma de Conhecimento (Educação Contextual)
+
+**Visão**: Aprendizado “just‑in‑time” e Copiloto com ações.
+
+**Épicos e Histórias**
+
+* **E5.1 Nexus Academy**
+
+  * H1: Cards educativos disparados por gatilhos (ex.: gasto fora da curva, risco de caixa).
+
+    * **Aceite**: CTR>15% nos cards; salvamento em "favoritos".
+* **E5.2 Copiloto Nexo (IA)**
+
+  * H1: Chat que responde perguntas do usuário e dispara ações (function calling).
+
+    * **Aceite**: escopos respeitando RLS; log explicável; latência P95 < 2,5s.
+
+**KPIs**: % de sessões com interação com IA, tarefas geradas pela IA, NPS dos cards.
+
+---
+
+## 5) Arquitetura (free‑tier friendly)
+
+* **Frontend**: Next.js (App Router), Tailwind, shadcn/ui, Recharts, i18n.
+* **Backend**: Cloudflare Workers (API), Cron Triggers (jobs), Workers KV/Durable Objects (opcional), Upstash Redis (opcional).
+* **Dados**: Supabase Postgres (RLS, Views, Functions), Storage (comprovantes), pgvector (RAG).
+* **IA**: Cloudflare Workers AI (Llama 3.x) para chat e embeddings; Groq opcional.
+* **E‑mail**: Brevo/MailerSend (verificação, reset, alertas).
+* **Ingestão**: Open Finance sandbox (Pluggy/Belvo/Quanto) + upload OFX/CSV/PDF (OCR Tesseract).
+* **Integrações**: FIPE (veículos), índices de imóveis (por bairro/CEP; fase 1 com índice; fase 2 com provedor).
+* **Observabilidade**: Vercel Analytics + logs de Worker; Umami opcional.
+
+---
+
+## 6) Esquema de Dados (núcleo)
+
+**Tabelas** (principais campos e tipos; `PK`/`FK` abreviados):
+
+* **orgs** `(id UUID PK, name TEXT, type TEXT CHECK in('pf','mei','pj'), created_at TIMESTAMPTZ)`
+* **users** `(id UUID PK, email CITEXT UNIQUE, created_at TIMESTAMPTZ)`
+* **org\_members** `(org_id UUID FK, user_id UUID FK, role TEXT CHECK in('admin','manager','accountant','viewer'), PRIMARY KEY(org_id,user_id))`
+* **accounts** `(id UUID PK, org_id UUID FK, institution TEXT, type TEXT, currency TEXT, display_name TEXT)`
+* **transactions** `(id UUID PK, org_id UUID FK, account_id UUID FK, date DATE, amount NUMERIC(14,2), description TEXT, category_id UUID NULL, is_recurring BOOLEAN DEFAULT false, doc_url TEXT NULL, ext_hash TEXT UNIQUE NULL, created_at TIMESTAMPTZ)`
+* **categories** `(id UUID PK, org_id UUID NULL, name TEXT, parent_id UUID NULL)`
+* **assets** `(id UUID PK, org_id UUID FK, kind TEXT CHECK in('vehicle','real_estate','crypto','other'), meta_json JSONB, valuation NUMERIC(14,2), valuation_src TEXT, updated_at TIMESTAMPTZ)`
+* **goals** `(id UUID PK, org_id UUID FK, name TEXT, target_amount NUMERIC, due_date DATE, priority INT, rule_json JSONB)`
+* **vault\_links** `(goal_id UUID FK, account_id UUID FK, rule_json JSONB, PRIMARY KEY(goal_id, account_id))`
+* **subs** `(id UUID PK, org_id UUID FK, merchant TEXT, amount NUMERIC, cadence TEXT, next_charge_at DATE, last_usage_score NUMERIC)`
+* **approvals** `(id UUID PK, org_id UUID FK, entity_type TEXT, entity_id UUID, status TEXT, approver_id UUID FK, step INT, ts TIMESTAMPTZ)`
+* **audit\_logs** `(id UUID PK, org_id UUID FK, actor_id UUID, action TEXT, entity TEXT, before_json JSONB, after_json JSONB, ts TIMESTAMPTZ)`
+
+**Índices Sugeridos**: `transactions(org_id,date)`, `transactions(org_id,category_id)`, `subs(org_id,merchant)`, `assets(org_id,kind)`.
+
+**RLS (exemplos)**
+
+```sql
+alter table transactions enable row level security;
+
+create policy "member can select own tx"
+on transactions for select
+using (exists (
+  select 1 from org_members om
+  where om.org_id = transactions.org_id
+    and om.user_id = auth.uid()
+));
+
+create policy "privileged roles can write tx"
+on transactions for insert with check (exists (
+  select 1 from org_members om
+  where om.org_id = transactions.org_id
+    and om.user_id = auth.uid()
+    and om.role in ('admin','manager','accountant')
+));
+```
+
+---
+
+## 7) API (contratos principais)
+
+**Padrão**: REST JSON sobre HTTPS (Workers). Autenticação via JWT Supabase.
+
+### Transactions
+
+* `POST /v1/transactions/import` — body: `{ source: 'ofx'|'csv'|'pdf', file: base64, account_id }`
+
+  * **200**: `{ imported:int, duplicates:int, errors:int }`
+* `GET /v1/transactions?org_id&from&to&category_id&search`
+
+  * **200**: `{ items:[...], total:int }`
+* `PATCH /v1/transactions/{id}` — body parcial (categoria, doc\_url, notas)
+
+### Subscriptions
+
+* `GET /v1/subscriptions?org_id`
+
+  * **200**: `{ items:[{merchant, amount, cadence, next_charge_at, health}] }`
+* `POST /v1/subscriptions/{id}/cancel-suggest` — registra uma sugestão/decisão
+
+### Assets
+
+* `POST /v1/assets` — cria ativo (veículo/imóvel etc.)
+* `POST /v1/assets/{id}/reprice` — força reavaliação (FIPE/índice)
+
+### Goals & Vaults
+
+* `POST /v1/goals` — cria meta, `rule_json` com regras de alocação
+* `POST /v1/goals/{id}/simulate` — usa motor de previsão para ETA de atingimento
+
+### Scenarios (“E se?”)
+
+* `POST /v1/scenarios` — `{ deltas:{ income:+x%, categories:{...}, loan:{amount, rate, months} } }`
+
+  * **200**: `{ baseline:{...}, scenario:{...}, delta:{...} }`
+
+### Approvals
+
+* `POST /v1/approvals` — inicia fluxo; `entity_type`, `entity_id`, `policy`
+* `POST /v1/approvals/{id}/decision` — `{ approve|reject, comment }`
+
+**Erros**: padrão `{ code, message, details }` com códigos semanticamente úteis.
+
+---
+
+## 8) Jobs & CRON (Cloudflare)
+
+* **daily\_forecast** (02:00): recalcula previsões 30/60/90, risco de caixa, atualiza caches.
+* **daily\_benchmark** (03:00): agrega indicadores por buckets anonimizados.
+* **daily\_assets\_reprice** (04:00): FIPE e índices de imóveis; salva histórico.
+* **hourly\_alerts** (xx:10): dispara alertas (e‑mail) de risco, metas, assinaturas.
+* **hourly\_classifier** (xx:40): reclassifica transações novas com heurísticas/feedback.
+
+Entradas/saídas registradas em `audit_logs` e tabelas de controle.
+
+---
+
+## 9) Núcleo Preditivo & Algoritmos (MVP)
+
+* **Previsão de caixa**: média móvel ponderada + correção sazonal (dia‑semana/mês) por categoria/conta; suavização exponencial; fallback por cluster de categorias.
+* **Risco de caixa**: simulação Monte Carlo simples com variação histórica de entradas/saídas; banda de confiança.
+* **Assinaturas**: clustering por `merchant` + janela de 25‑35 dias; tolerância de valor ±15%; unificação por similaridade de string.
+* **Conciliação**: hash de linha normalizada (data, valor, merchant) + janela de tolerância; OCR → extração com regexes treinadas por feedback.
+
+Roadmap para modelos (fase 2): Prophet/ARIMA por série relevante; regressões com features macro (feriados, sazonalidade setorial).
+
+---
+
+## 10) Benchmarking (Privacidade)
+
+* **Anonimização**: org\_id → hash com salt; agregação mínima ≥ 50 orgs por bucket.
+* **Buckets**: renda/faturamento (faixas), região (UF/mesorregião), porte (MEI/PME).
+* **Saída**: p25/p50/p75 por categoria; nunca exibir valores de org individual.
+
+---
+
+## 11) Cofres & Regras de Alocação
+
+* **rule\_json** exemplos:
+
+```json
+{
+  "on_income": [{"percent": 0.1, "to": "goal:reserva"}],
+  "on_receivable": [{"amount": 500, "to": "goal:impostos"}],
+  "caps": {"monthly_max": 2000}
+}
+```
+
+* Execução via job `hourly_classifier` + triggers no BD; logs em `audit_logs`.
+
+---
+
+## 12) Segurança, LGPD & Auditoria
+
+* **RLS** em todas as tabelas com dados do cliente; testes automatizados de acesso.
+* **Criptografia**: pgcrypto em campos sensíveis; secrets em KV/vars com rotação.
+* **Auditoria**: `audit_logs` com before/after; IP/agent quando aplicável.
+* **Consentimentos**: registro de consentimento (Open Finance quando em produção).
+* **Retenção**: política de deleção/anonimização sob solicitação; exportação de dados.
+
+---
+
+## 13) Telemetria & Métricas (para produto e growth)
+
+**Eventos** (exemplos): `signup_completed`, `ofx_uploaded`, `tx_categorized_auto`, `benchmark_viewed`, `scenario_created`, `subscription_canceled`, `approval_approved`, `ia_action_executed`.
+
+**KPIs**: adoção, ativação (TTI: time‑to‑insight), retenção D7/D30, L90 economia estimada, conversão pro, NPS, latência P95 do chat IA.
+
+---
+
+## 14) Testes & Qualidade
+
+* **Unit**: parsers OFX/CSV, regras de categorização, cálculos de previsão.
+* **Integração**: RLS (happy/negative paths), endpoints críticos, CRON jobs.
+* **E2E**: jornada PF e PJ (caminho dourado) com contas seed e arquivos de exemplo.
+* **Dados de teste**: fixtures por persona (PF básico, MEI, PME varejo/serviço).
+
+---
+
+## 15) Roadmap 0–90 dias (marcos)
+
+* **D0–14**: Auth+RLS; upload OFX/CSV; dashboard; cofres/metas (manual); e‑mail.
+* **D15–35**: previsão simples; benchmarking inicial; assinaturas; OCR+anexos.
+* **D36–56**: simulador “E se?”; Copiloto Nexo (IA) com ações; FIPE; imóveis por índice.
+* **D57–90**: aprovações (PJ); exportações (PDF/Excel); polimento UX; experimento Pro.
+
+---
+
+## 16) Entregáveis do MVP
+
+* Monorepo (web + workers + packages).
+* **DDL SQL** (tabelas + índices + RLS) e **migrations**.
+* **Spec API** (OpenAPI mínima) + cliente TS.
+* Job CRON (templates) + scripts de seed.
+* Templates de e‑mail (verificação, reset, alertas).
+* Guia de implantação (Vercel/Cloudflare/Supabase) + `.env.example`.
+
+---
+
+## 17) Custos & Escala (free‑tier → growth)
+
+* **Free‑tier**: Vercel/Cloudflare/Supabase/Brevo/Workers AI com limites confortáveis para MVP.
+* **Escala**: ativar produção de Open Finance com 1 agregador; cache Redis; partitions por org.
+* **Observabilidade**: alerts de cota e de latência; plano de contingência para picos.
+
+---
+
+## 18) Dependências & Secrets (exemplos)
+
+* `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+* `BREVO_API_KEY` ou `MAILERSEND_API_KEY`
+* `WORKERS_AI_TOKEN`
+* `FIPE_API_KEY` (quando aplicável)
+* `ENCRYPTION_KEY`, `JWT_SECRET`
+
+---
+
+## 19) Anexos (exemplos práticos)
+
+### A) DDL (trecho inicial)
+
+```sql
+create extension if not exists pgcrypto;
+create extension if not exists vector;
+
+create table orgs (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  type text not null check (type in ('pf','mei','pj')),
+  created_at timestamptz default now()
+);
+
+create table users (
+  id uuid primary key,
+  email citext unique not null,
+  created_at timestamptz default now()
+);
+
+create table org_members (
+  org_id uuid references orgs(id) on delete cascade,
+  user_id uuid references users(id) on delete casca
+```
