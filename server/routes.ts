@@ -1115,29 +1115,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       hasResults: ocrResult.ParsedResults?.length > 0
     });
     
-    // Check for critical errors (ignore page limit warnings)
-    const errorMessage = Array.isArray(ocrResult.ErrorMessage) 
-      ? ocrResult.ErrorMessage.join(' ') 
-      : (ocrResult.ErrorMessage || '');
-    
-    const hasPageLimitError = errorMessage.includes('maximum page limit') || 
-                             errorMessage.includes('page limit') ||
-                             errorMessage.includes('limit');
-    
-    // If we have results, always treat as success regardless of error flags
+    // Check if we got any usable results first
     const hasValidResults = ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0;
     
-    // Only throw error if it's a real processing error AND we have no results
-    if (ocrResult.IsErroredOnProcessing && !hasValidResults) {
-      // But if it's just a page limit error and we have results, don't throw
-      if (!hasPageLimitError) {
-        throw new Error(`OCR processing error: ${errorMessage}`);
-      }
-    }
-    
-    // Log success case
+    // If we have results, always continue (ignore any error flags)
     if (hasValidResults) {
       console.log(`Successfully extracted text from ${ocrResult.ParsedResults.length} page(s)`);
+    } else {
+      // Only throw error if we have no results AND it's a real error
+      const errorMessage = Array.isArray(ocrResult.ErrorMessage) 
+        ? ocrResult.ErrorMessage.join(' ') 
+        : (ocrResult.ErrorMessage || '');
+      
+      const isPageLimitError = errorMessage.includes('maximum page limit') || 
+                              errorMessage.includes('page limit');
+      
+      // Don't throw error for page limit issues
+      if (ocrResult.IsErroredOnProcessing && !isPageLimitError) {
+        throw new Error(`OCR processing error: ${errorMessage}`);
+      }
     }
     
     let extractedText = '';
