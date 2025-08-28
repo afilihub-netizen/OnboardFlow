@@ -53,7 +53,7 @@ export default function Import() {
     },
   });
 
-  // Import transactions mutation
+  // Import transactions mutation with auto subscription detection
   const importTransactionsMutation = useMutation({
     mutationFn: async (transactions: any[]) => {
       const promises = transactions.map(transaction =>
@@ -67,13 +67,30 @@ export default function Import() {
           return res.json();
         })
       );
-      return Promise.all(promises);
+      
+      const results = await Promise.all(promises);
+      
+      // Trigger automatic subscription detection after importing all transactions
+      try {
+        await fetch("/api/subscriptions/detect", {
+          method: "POST",
+          credentials: 'include',
+          headers: { "Content-Type": "application/json" }
+        });
+        console.log("Auto-detection of subscriptions triggered after import");
+      } catch (error) {
+        console.warn("Failed to auto-detect subscriptions:", error);
+      }
+      
+      return results;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/financial-summary"] });
       toast({
         title: "Transações importadas",
-        description: `${selectedTransactions.size} transações foram importadas com sucesso.`,
+        description: `${selectedTransactions.size} transações importadas com sucesso. Verificando automaticamente por assinaturas...`,
       });
       setCurrentStep(1);
       setParsedTransactions([]);

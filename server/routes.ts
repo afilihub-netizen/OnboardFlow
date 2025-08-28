@@ -2180,6 +2180,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = getUserId(req);
       
       const detectedSubscriptions = await storage.detectRecurringPayments(userId);
+      
+      // Create notification for detected subscriptions if any found
+      if (detectedSubscriptions.length > 0) {
+        const notificationData = {
+          userId,
+          type: 'subscription_detected',
+          title: 'Assinaturas Detectadas Automaticamente',
+          message: `Detectamos ${detectedSubscriptions.length} possível${detectedSubscriptions.length > 1 ? 'is' : ''} assinatura${detectedSubscriptions.length > 1 ? 's' : ''} em suas transações importadas. Verifique na aba Assinaturas.`,
+          relatedId: null,
+          data: JSON.stringify({ 
+            count: detectedSubscriptions.length, 
+            subscriptions: detectedSubscriptions.map(s => ({ merchant: s.merchant, amount: s.amount }))
+          })
+        };
+        
+        try {
+          await storage.createNotification(notificationData);
+        } catch (notificationError) {
+          console.warn('Failed to create subscription detection notification:', notificationError);
+        }
+      }
+      
       res.json({
         detected: detectedSubscriptions,
         count: detectedSubscriptions.length,
