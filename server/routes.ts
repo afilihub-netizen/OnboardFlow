@@ -1361,7 +1361,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error) {
       console.error("Error analyzing extract:", error);
-      res.status(500).json({ message: "Failed to analyze extract" });
+      
+      // Send more specific error messages to help with debugging
+      let errorMessage = "Falha ao analisar o extrato";
+      if (error instanceof Error) {
+        if (error.message.includes("AI analysis failed")) {
+          errorMessage = "A inteligência artificial não conseguiu processar o texto. Verifique se o arquivo contém transações bancárias visíveis.";
+        } else if (error.message.includes("API key")) {
+          errorMessage = "Erro de configuração da IA. Entre em contato com o suporte.";
+        } else if (error.message.includes("rate limit")) {
+          errorMessage = "Limite de uso da IA atingido. Tente novamente em alguns minutos.";
+        }
+      }
+      
+      res.status(500).json({ message: errorMessage, details: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 

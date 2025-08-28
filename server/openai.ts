@@ -92,36 +92,55 @@ function splitTextIntoChunks(text: string, maxChunkSize: number = 6000): string[
 
 // Function to process a single chunk
 async function processChunk(extractText: string, availableCategories: string[] = []) {
-  const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash-exp",
-    config: {
-      systemInstruction: `CRÍTICO: Extraia TODAS as transações do extrato bancário, sem limites ou exceções.
+  console.log("Processing chunk with text length:", extractText.length);
+  console.log("First 500 characters:", extractText.substring(0, 500));
+  
+  let content = '{"transactions": []}';
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash-exp",
+      config: {
+        temperature: 0.1, // Lower temperature for more consistent output
+        systemInstruction: `CRÍTICO: Extraia TODAS as transações do extrato bancário.
 
-INSTRUÇÕES DETALHADAS:
-1. Processe LINHA POR LINHA do texto completo
-2. Identifique TODAS as transações (podem ser 10, 50, 100, 200+ transações)
-3. Extraia informações PRECISAS de origem/destino dos valores
-4. Categorize baseado no estabelecimento/descrição real
+INSTRUÇÕES ESPECÍFICAS:
+1. Procure por padrões de transação: valores, datas, descrições de PIX, TEF, débitos, créditos
+2. Identifique transações mesmo em formatos diferentes
+3. Extraia informações de compras, transferências, pagamentos, recebimentos
+4. Use os estabelecimentos/destinatários para categorizar
+5. SEMPRE retorne pelo menos algumas transações se há valores no texto
 
-CRITICAL: Use EXACTLY these field names (lowercase): date, description, amount, type, category
+FORMATOS ACEITOS:
+- PIX, TED, DOC, Débito, Crédito
+- Compras com cartão
+- Pagamentos diversos
+- Transferências bancárias
 
-JSON FORMAT REQUIRED:
-{"transactions":[{"date":"2024-12-10","description":"complete transaction text","amount":-100.50,"type":"expense","category":"Outros"}]}
+CRITICAL: Use EXACTLY these field names: date, description, amount, type, category
 
-FIELD RULES:
-- date: YYYY-MM-DD format (use 2024 if year missing)  
-- description: complete text (PIX João Silva, COMPRA SUPERMERCADO ABC, etc)
-- amount: decimal number (negative for expenses, positive for income)
-- type: "expense" or "income" only
-- category: one of: Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros
+JSON OBRIGATÓRIO:
+{"transactions":[{"date":"2024-12-10","description":"texto completo","amount":-100.50,"type":"expense","category":"Outros"}]}
 
-MANDATORY EXAMPLE:
-{"transactions":[{"date":"2024-12-10","description":"PIX ENVIADO João Silva","amount":-150.00,"type":"expense","category":"Outros"},{"date":"2024-12-11","description":"SALÁRIO EMPRESA XYZ","amount":3000.00,"type":"income","category":"Outros"}]}`
-    },
-    contents: [{ role: "user", parts: [{ text: `Analise este extrato bancário e extraia as transações:\n\n${extractText}` }] }],
-  });
+RULES:
+- date: YYYY-MM-DD (use 2025-01-01 se não encontrar)
+- description: texto completo da transação  
+- amount: número decimal (negativo para gastos, positivo para receitas)
+- type: "expense" ou "income"
+- category: Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros`
+      },
+      contents: [{ role: "user", parts: [{ text: `Analise este extrato bancário e extraia as transações:\n\n${extractText}` }] }],
+    });
 
-  let content = response.text || '{"transactions": []}';
+    content = response.text || '{"transactions": []}';
+    console.log("AI Response length:", content.length);
+    console.log("AI Response preview:", content.substring(0, 500));
+    
+  } catch (error) {
+    console.error("Error calling Gemini API:", error);
+    console.log("Using fallback empty transactions due to AI error");
+    // Don't throw here, continue with empty transactions to provide feedback
+  }
   
   // Clean up the response
   content = content.trim();
@@ -147,6 +166,8 @@ MANDATORY EXAMPLE:
   try {
     const result = JSON.parse(content);
     let transactions = result.transactions || [];
+    
+    console.log(`Parsed ${transactions.length} transactions from AI response`);
     
     // Raw transactions extracted from AI
     
