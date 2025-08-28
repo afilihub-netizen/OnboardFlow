@@ -67,7 +67,7 @@ export function FinancialOverview() {
               </p>
             </div>
             <div className="bg-blue-400/30 rounded-xl p-3 backdrop-blur-sm">
-              <Wallet className="w-6 h-6 icon-breathe" />
+              <Wallet className="w-6 h-6 icon-pulse-smooth" />
             </div>
           </div>
           <div className="flex items-center text-blue-100 text-sm font-medium">
@@ -88,7 +88,7 @@ export function FinancialOverview() {
               </p>
             </div>
             <div className="bg-green-100 dark:bg-green-900 rounded-xl p-3">
-              <TrendingUp className="w-6 h-6 text-green-600 icon-pulse" />
+              <TrendingUp className="w-6 h-6 text-green-600 icon-float" />
             </div>
           </div>
           <div className="flex items-center text-green-600 text-sm font-medium">
@@ -109,7 +109,7 @@ export function FinancialOverview() {
               </p>
             </div>
             <div className="bg-red-100 dark:bg-red-900 rounded-xl p-3">
-              <TrendingDown className="w-6 h-6 text-red-600 icon-breathe" />
+              <TrendingDown className="w-6 h-6 text-red-600 icon-bounce-target" />
             </div>
           </div>
           <div className="flex items-center text-red-600 text-sm font-medium">
@@ -130,7 +130,7 @@ export function FinancialOverview() {
               </p>
             </div>
             <div className="bg-purple-100 dark:bg-purple-900 rounded-xl p-3">
-              <PieChart className="w-6 h-6 text-purple-600 icon-rotate" />
+              <PieChart className="w-6 h-6 text-purple-600 icon-shield-glow" />
             </div>
           </div>
           <div className="flex items-center text-purple-600 text-sm font-medium">

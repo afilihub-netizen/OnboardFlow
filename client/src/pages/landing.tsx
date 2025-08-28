@@ -138,35 +138,31 @@ export default function Landing() {
                 icon: BarChart3,
                 title: "Transações",
                 description: "Registre receitas e despesas com categorização automática e relatórios detalhados.",
-                color: "bg-blue-50 text-blue-600",
-                animation: "icon-pulse-smooth"
+                color: "bg-blue-50 text-blue-600"
               },
               {
                 icon: PieChart,
                 title: "Investimentos",
                 description: "Acompanhe o desempenho dos seus investimentos com gráficos interativos.",
-                color: "bg-green-50 text-green-600", 
-                animation: "icon-float"
+                color: "bg-green-50 text-green-600"
               },
               {
                 icon: Target,
                 title: "Metas",
                 description: "Defina metas orçamentárias e acompanhe seu progresso em tempo real.",
-                color: "bg-purple-50 text-purple-600",
-                animation: "icon-bounce-target"
+                color: "bg-purple-50 text-purple-600"
               },
               {
                 icon: Shield,
                 title: "Segurança",
                 description: "Seus dados estão protegidos com autenticação segura e criptografia.",
-                color: "bg-orange-50 text-orange-600",
-                animation: "icon-shield-glow"
+                color: "bg-orange-50 text-orange-600"
               }
             ].map((feature, index) => (
               <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 group bg-white">
                 <CardContent className="p-8 text-center">
                   <div className={`w-16 h-16 ${feature.color} rounded-2xl flex items-center justify-center mb-6 mx-auto group-hover:scale-110 transition-transform`}>
-                    <feature.icon className={`w-8 h-8 ${feature.animation}`} />
+                    <feature.icon className={`w-8 h-8`} />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">{feature.title}</h3>
                   <p className="text-gray-600 leading-relaxed">{feature.description}</p>
