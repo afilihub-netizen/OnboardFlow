@@ -285,6 +285,9 @@ function sendProgressUpdate(sessionId: string, progress: number, message: string
 export async function analyzeExtractWithAI(extractText: string, availableCategories: string[] = [], sessionId?: string, enableCNPJCategorization: boolean = true) {
   try {
     console.log("Processing extract with length:", extractText.length);
+    console.log("First 1000 characters of extract:", extractText.substring(0, 1000));
+    console.log("Contains common transaction keywords:", 
+      /PIX|TED|DOC|débito|crédito|transferência|pagamento|compra|saque/i.test(extractText));
     
     // Progress tracking available via global sessions
     
@@ -394,6 +397,15 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
       sendProgressUpdate(sessionId, 100, `Análise concluída! ${finalTransactions.length} transações encontradas`);
     }
     
+    console.log(`Final result: ${finalTransactions.length} transactions found`);
+    console.log("Sample transactions:", finalTransactions.slice(0, 3));
+    
+    // If no transactions found, try a simpler fallback analysis
+    if (finalTransactions.length === 0 && extractText.length > 100) {
+      console.log("No transactions found, creating fallback transactions");
+      finalTransactions = createFallbackTransactions(extractText);
+    }
+    
     return {
       transactions: finalTransactions
     };
@@ -402,4 +414,74 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     console.error("Error analyzing extract with AI:", error);
     throw new Error("Failed to analyze extract with AI");
   }
+}
+
+// Fallback function to create basic transactions when AI fails
+function createFallbackTransactions(extractText: string): any[] {
+  console.log("Creating fallback transactions from text patterns");
+  
+  const transactions: any[] = [];
+  const lines = extractText.split('\n');
+  
+  // Look for lines with monetary values and dates
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (trimmedLine.length < 10) continue;
+    
+    // Look for common patterns with monetary values
+    const monetaryPattern = /(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/;
+    const datePattern = /(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/;
+    
+    const hasMonetary = monetaryPattern.test(trimmedLine);
+    const hasDate = datePattern.test(trimmedLine);
+    
+    if (hasMonetary && (hasDate || /PIX|TED|DOC|débito|crédito|compra|pagamento/i.test(trimmedLine))) {
+      const monetaryMatch = trimmedLine.match(monetaryPattern);
+      const dateMatch = trimmedLine.match(datePattern);
+      
+      if (monetaryMatch) {
+        const amountStr = monetaryMatch[0].replace(/\./g, '').replace(',', '.');
+        const amount = parseFloat(amountStr);
+        
+        if (amount > 0) {
+          // Try to determine if it's income or expense based on context
+          const isIncome = /crédito|depósito|recebido|salário|pix recebido/i.test(trimmedLine);
+          
+          let date = "2025-01-01";
+          if (dateMatch) {
+            try {
+              // Convert Brazilian date format to ISO
+              const dateParts = dateMatch[0].split(/[\/\-\.]/);
+              if (dateParts.length === 3) {
+                const day = dateParts[0].padStart(2, '0');
+                const month = dateParts[1].padStart(2, '0');
+                let year = dateParts[2];
+                if (year.length === 2) {
+                  year = '20' + year;
+                }
+                date = `${year}-${month}-${day}`;
+              }
+            } catch (e) {
+              console.log("Date parsing error:", e);
+            }
+          }
+          
+          transactions.push({
+            date: date,
+            description: trimmedLine.substring(0, 100), // Limit description length
+            amount: isIncome ? amount : -amount,
+            type: isIncome ? "income" : "expense",
+            category: "Outros",
+            confidence: 0.5
+          });
+          
+          // Limit to avoid too many transactions
+          if (transactions.length >= 20) break;
+        }
+      }
+    }
+  }
+  
+  console.log(`Fallback created ${transactions.length} transactions`);
+  return transactions;
 }

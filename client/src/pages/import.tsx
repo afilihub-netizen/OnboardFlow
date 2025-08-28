@@ -312,16 +312,22 @@ export default function Import() {
       const result = await response.json();
       const analyzedTransactions = result.transactions || [];
       
-      // Transactions received successfully from AI analysis
+      // Check if any transactions were found
+      if (analyzedTransactions.length === 0) {
+        throw new Error("Nenhuma transação foi identificada no extrato");
+      }
       
+      // Transactions received successfully from AI analysis
       setParsedTransactions(analyzedTransactions);
       // Seleciona todas as transações por padrão
       setSelectedTransactions(new Set(Array.from({ length: analyzedTransactions.length }, (_, i) => i)));
       setCurrentStep(3);
       
+      const variant = analyzedTransactions.length > 0 ? "success" : "warning";
       toast({
+        variant,
         title: "Análise concluída",
-        description: `${analyzedTransactions.length} transações foram identificadas.`,
+        description: `${analyzedTransactions.length} transações foram identificadas${analyzedTransactions.length < 5 ? ' (algumas podem ter sido criadas automaticamente)' : ''}.`,
       });
     } catch (error) {
       toast({
