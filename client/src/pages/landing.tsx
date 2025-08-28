@@ -65,16 +65,16 @@ export default function Landing() {
                 </Badge>
                 
                 <h1 className="text-5xl lg:text-7xl font-bold leading-tight font-heading">
-                  Controle suas
+                  Transforme suas
                   <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent block">
                     finanças
                   </span>
-                  como nunca
+                  para sempre
                 </h1>
                 
                 <p className="text-xl text-gray-300 leading-relaxed max-w-lg">
-                  Inteligência artificial, análise preditiva e gestão patrimonial completa. 
-                  Tudo em uma plataforma simples e poderosa.
+                  Descubra o poder da inteligência artificial aplicada às suas finanças. 
+                  Gestão completa, insights preditivos e controle total em suas mãos.
                 </p>
               </div>
 
@@ -106,7 +106,7 @@ export default function Landing() {
                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-green-400"></div>
                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-yellow-400 to-orange-400"></div>
                   </div>
-                  <span className="text-sm text-gray-400">10k+ usuários confiantes</span>
+                  <span className="text-sm text-gray-400">Mais de 10 mil usuários</span>
                 </div>
                 
                 <div className="flex items-center space-x-1">
@@ -181,11 +181,11 @@ export default function Landing() {
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl lg:text-5xl font-bold mb-6 font-heading">
-              Recursos que fazem a
-              <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent"> diferença</span>
+              Recursos que 
+              <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">revolucionam</span> suas finanças
             </h2>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Tecnologia de ponta para transformar sua relação com o dinheiro
+              Tecnologia avançada e inteligência artificial trabalhando para o seu crescimento financeiro
             </p>
           </div>
 
@@ -193,26 +193,26 @@ export default function Landing() {
             {[
               {
                 icon: Brain,
-                title: "Cérebro Analítico",
-                description: "IA avançada prevê seus gastos e sugere otimizações inteligentes",
+                title: "Inteligência Preditiva",
+                description: "Nossa IA analisa seus padrões e antecipa suas necessidades financeiras com precisão",
                 gradient: "from-purple-500 to-pink-500"
               },
               {
                 icon: Building2,
-                title: "Patrimônio 360º",
-                description: "Acompanhe todos seus ativos em tempo real com valorização automática",
+                title: "Visão Patrimonial 360º",
+                description: "Monitore todos os seus investimentos e ativos em tempo real, onde quer que estejam",
                 gradient: "from-blue-500 to-cyan-500"
               },
               {
                 icon: Target,
-                title: "Metas Inteligentes",
-                description: "Objetivos financeiros com acompanhamento automático e insights",
+                title: "Objetivos Personalizados",
+                description: "Defina suas metas e acompanhe o progresso com orientações inteligentes",
                 gradient: "from-green-500 to-teal-500"
               },
               {
                 icon: Shield,
-                title: "Segurança Total",
-                description: "Criptografia bancária e proteção de dados de nível militar",
+                title: "Proteção Máxima",
+                description: "Segurança bancária avançada protege seus dados com tecnologia de ponta",
                 gradient: "from-orange-500 to-red-500"
               }
             ].map((feature, index) => (
@@ -235,8 +235,8 @@ export default function Landing() {
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl lg:text-5xl font-bold mb-6 font-heading">
-              Simples de usar,
-              <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent"> poderoso por natureza</span>
+              Simplicidade que 
+              <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">potencializa</span> resultados
             </h2>
           </div>
 
@@ -244,18 +244,18 @@ export default function Landing() {
             {[
               {
                 step: "01",
-                title: "Conecte suas contas",
-                description: "Sincronize automaticamente com seus bancos e cartões de forma segura"
+                title: "Conecte e sincronize",
+                description: "Integre todas as suas contas financeiras de forma segura e automática"
               },
               {
                 step: "02", 
-                title: "IA analisa tudo",
-                description: "Nossa inteligência artificial categoriza e analisa seus dados financeiros"
+                title: "Deixe a IA trabalhar",
+                description: "Nossa tecnologia organiza, categoriza e analisa seus dados em tempo real"
               },
               {
                 step: "03",
-                title: "Tome decisões inteligentes",
-                description: "Receba insights personalizados e gerencie seu patrimônio com confiança"
+                title: "Conquiste seus objetivos",
+                description: "Receba orientações personalizadas e tome decisões financeiras mais inteligentes"
               }
             ].map((step, index) => (
               <div key={index} className="text-center">
@@ -275,10 +275,10 @@ export default function Landing() {
         <div className="container mx-auto">
           <div className="bg-gradient-to-r from-green-500 to-blue-500 rounded-3xl p-12 text-center">
             <h2 className="text-4xl lg:text-5xl font-bold mb-6 font-heading">
-              Pronto para transformar suas finanças?
+              Sua jornada financeira começa agora
             </h2>
             <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
-              Junte-se a milhares de pessoas que já descobriram uma nova forma de gerenciar dinheiro
+              Milhares de pessoas já descobriram como a tecnologia pode revolucionar sua vida financeira
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -295,9 +295,9 @@ export default function Landing() {
 
             <div className="flex items-center justify-center space-x-8 mt-8 pt-8 border-t border-white/20">
               {[
-                "✓ Grátis para sempre",
-                "✓ Sem cartão de crédito",
-                "✓ Setup em 5 minutos"
+                "✓ Gratuito para começar",
+                "✓ Sem compromisso inicial",
+                "✓ Configuração em minutos"
               ].map((benefit, index) => (
                 <div key={index} className="flex items-center space-x-2 text-sm opacity-90">
                   <CheckCircle className="w-4 h-4" />
