@@ -858,6 +858,43 @@ h1, h2, h3, h4, h5, h6,
   font-weight: 600;
 }
 
+/* Animações para ícones dos recursos */
+@keyframes float-icon {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulse-icon {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes rotate-icon {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes wobble-icon {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+.icon-float {
+  animation: float-icon 3s ease-in-out infinite;
+}
+
+.icon-pulse-smooth {
+  animation: pulse-icon 2.5s ease-in-out infinite;
+}
+
+.icon-rotate-slow {
+  animation: rotate-icon 8s linear infinite;
+}
+
+.icon-wobble {
+  animation: wobble-icon 2s ease-in-out infinite;
+}
+
 /* Botões Dinâmicos */
 .dynamic-button {
   position: relative;

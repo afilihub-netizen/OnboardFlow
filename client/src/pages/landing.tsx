@@ -195,31 +195,35 @@ export default function Landing() {
                 icon: Brain,
                 title: "Inteligência Preditiva",
                 description: "Nossa IA analisa seus padrões e antecipa suas necessidades financeiras com precisão",
-                gradient: "from-purple-500 to-pink-500"
+                gradient: "from-purple-500 to-pink-500",
+                animation: "icon-pulse-smooth"
               },
               {
                 icon: Building2,
                 title: "Visão Patrimonial 360º",
                 description: "Monitore todos os seus investimentos e ativos em tempo real, onde quer que estejam",
-                gradient: "from-blue-500 to-cyan-500"
+                gradient: "from-blue-500 to-cyan-500",
+                animation: "icon-float"
               },
               {
                 icon: Target,
                 title: "Objetivos Personalizados",
                 description: "Defina suas metas e acompanhe o progresso com orientações inteligentes",
-                gradient: "from-green-500 to-teal-500"
+                gradient: "from-green-500 to-teal-500",
+                animation: "icon-wobble"
               },
               {
                 icon: Shield,
                 title: "Proteção Máxima",
                 description: "Segurança bancária avançada protege seus dados com tecnologia de ponta",
-                gradient: "from-orange-500 to-red-500"
+                gradient: "from-orange-500 to-red-500",
+                animation: "icon-rotate-slow"
               }
             ].map((feature, index) => (
               <Card key={index} className="bg-white/5 border-gray-700 hover:bg-white/10 transition-all duration-300 group">
                 <CardContent className="p-6">
                   <div className={`w-12 h-12 bg-gradient-to-r ${feature.gradient} rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                    <feature.icon className="w-6 h-6 text-white" />
+                    <feature.icon className={`w-6 h-6 text-white ${feature.animation}`} />
                   </div>
                   <h3 className="text-xl font-semibold mb-3 font-heading">{feature.title}</h3>
                   <p className="text-gray-400">{feature.description}</p>
