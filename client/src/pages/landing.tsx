@@ -64,7 +64,7 @@ export default function Landing() {
                   Sistema Nexo Avançado
                 </Badge>
                 
-                <h1 className="text-5xl lg:text-7xl font-bold leading-tight">
+                <h1 className="text-5xl lg:text-7xl font-bold leading-tight font-heading">
                   Controle suas
                   <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent block">
                     finanças
@@ -123,7 +123,7 @@ export default function Landing() {
                 <div className="bg-gradient-to-br from-gray-900 to-black border border-gray-700 rounded-3xl p-8 shadow-2xl">
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">Patrimônio Total</h3>
+                      <h3 className="text-lg font-semibold font-heading">Patrimônio Total</h3>
                       <Badge className="bg-green-500/20 text-green-400">+12.5%</Badge>
                     </div>
                     
@@ -180,7 +180,7 @@ export default function Landing() {
       <section id="features" className="py-20 px-6">
         <div className="container mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold mb-6">
+            <h2 className="text-4xl lg:text-5xl font-bold mb-6 font-heading">
               Recursos que fazem a
               <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent"> diferença</span>
             </h2>
@@ -221,7 +221,7 @@ export default function Landing() {
                   <div className={`w-12 h-12 bg-gradient-to-r ${feature.gradient} rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                     <feature.icon className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
+                  <h3 className="text-xl font-semibold mb-3 font-heading">{feature.title}</h3>
                   <p className="text-gray-400">{feature.description}</p>
                 </CardContent>
               </Card>
@@ -234,7 +234,7 @@ export default function Landing() {
       <section id="how-it-works" className="py-20 px-6 bg-white/5">
         <div className="container mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold mb-6">
+            <h2 className="text-4xl lg:text-5xl font-bold mb-6 font-heading">
               Simples de usar,
               <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent"> poderoso por natureza</span>
             </h2>
@@ -262,7 +262,7 @@ export default function Landing() {
                 <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl font-bold">
                   {step.step}
                 </div>
-                <h3 className="text-2xl font-semibold mb-4">{step.title}</h3>
+                <h3 className="text-2xl font-semibold mb-4 font-heading">{step.title}</h3>
                 <p className="text-gray-400 text-lg">{step.description}</p>
               </div>
             ))}
@@ -274,7 +274,7 @@ export default function Landing() {
       <section className="py-20 px-6">
         <div className="container mx-auto">
           <div className="bg-gradient-to-r from-green-500 to-blue-500 rounded-3xl p-12 text-center">
-            <h2 className="text-4xl lg:text-5xl font-bold mb-6">
+            <h2 className="text-4xl lg:text-5xl font-bold mb-6 font-heading">
               Pronto para transformar suas finanças?
             </h2>
             <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
