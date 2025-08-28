@@ -1080,83 +1080,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // PDF text extraction route using OCR.space API
+  // Store PDF processing sessions
+  const pdfProcessingSessions = new Map<string, any>();
+
+  // Helper function to process single PDF chunk
+  async function processPDFChunk(base64Data: string, startPage: number = 1, endPage: number = 3) {
+    const formData = new FormData();
+    formData.append('base64Image', `data:application/pdf;base64,${base64Data}`);
+    formData.append('language', 'por');
+    formData.append('apikey', process.env.OCR_SPACE_API_KEY || 'helloworld');
+    formData.append('detectOrientation', 'true');
+    formData.append('scale', 'true');
+    formData.append('OCREngine', '2');
+    formData.append('filetype', 'PDF');
+    if (startPage > 1) {
+      formData.append('pages', `${startPage}-${endPage}`);
+    }
+
+    const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!ocrResponse.ok) {
+      throw new Error(`OCR API error: ${ocrResponse.status}`);
+    }
+
+    const ocrResult = await ocrResponse.json();
+    
+    let extractedText = '';
+    if (ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0) {
+      extractedText = ocrResult.ParsedResults
+        .map((result: any) => result.ParsedText)
+        .join('\n\n');
+    }
+
+    return {
+      text: extractedText,
+      pages: ocrResult.ParsedResults?.length || 0,
+      hasMore: ocrResult.ErrorMessage?.includes('maximum page limit') || false
+    };
+  }
+
+  // PDF text extraction route with progressive processing
   app.post("/api/extract-pdf-text", isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "Arquivo PDF é obrigatório" });
       }
 
-      // Convert buffer to base64 for OCR.space API
-      const base64File = req.file.buffer.toString('base64');
+      // Generate session ID for progress tracking
+      const sessionId = `pdf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // OCR.space API call
-      const formData = new FormData();
-      formData.append('base64Image', `data:application/pdf;base64,${base64File}`);
-      formData.append('language', 'por'); // Portuguese
-      formData.append('apikey', process.env.OCR_SPACE_API_KEY || 'helloworld');
-      formData.append('detectOrientation', 'true');
-      formData.append('scale', 'true');
-      formData.append('OCREngine', '2'); // OCR Engine 2 is better for documents
-      formData.append('filetype', 'PDF');
-
-      const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
-        method: 'POST',
-        body: formData
+      // Store session
+      pdfProcessingSessions.set(sessionId, {
+        status: 'processing',
+        progress: 0,
+        message: 'Iniciando processamento...',
+        fullText: '',
+        totalPages: 0
       });
 
-      if (!ocrResponse.ok) {
-        throw new Error(`OCR API error: ${ocrResponse.status}`);
-      }
+      // Start async processing
+      processPDFProgressively(sessionId, req.file.buffer);
 
-      const ocrResult = await ocrResponse.json();
-      
-      // Check for critical errors (but allow page limit warnings)
-      if (ocrResult.IsErroredOnProcessing && 
-          !ocrResult.ErrorMessage?.includes('maximum page limit')) {
-        throw new Error(`OCR processing error: ${ocrResult.ErrorMessage}`);
-      }
-
-      // Extract text from all available pages
-      let extractedText = '';
-      let pageCount = 0;
-      let isPartialResult = false;
-      
-      if (ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0) {
-        extractedText = ocrResult.ParsedResults
-          .map((result: any) => result.ParsedText)
-          .join('\n\n');
-        pageCount = ocrResult.ParsedResults.length;
-        
-        // Check if page limit was reached
-        if (ocrResult.ErrorMessage?.includes('maximum page limit')) {
-          isPartialResult = true;
-        }
-      }
-
-      if (!extractedText.trim()) {
-        return res.status(400).json({ 
-          message: "Não foi possível extrair texto do PDF. Verifique se o documento contém texto legível." 
-        });
-      }
-      
       res.json({ 
-        text: extractedText,
-        pages: pageCount,
-        isPartialResult,
-        confidence: ocrResult.ParsedResults?.[0]?.TextOrientation || 'N/A',
-        processingTime: ocrResult.ProcessingTimeInMilliseconds,
-        message: isPartialResult 
-          ? `Texto extraído com sucesso das primeiras ${pageCount} páginas (limite da API gratuita)`
-          : `Texto extraído com sucesso de ${pageCount} página(s)`
+        sessionId,
+        message: "Processamento iniciado. Use o sessionId para acompanhar o progresso."
       });
 
     } catch (error) {
       console.error("PDF extraction error:", error);
       res.status(500).json({ 
-        message: "Falha ao extrair texto do PDF. Tente novamente ou cole o texto manualmente." 
+        message: "Falha ao iniciar processamento do PDF." 
       });
     }
+  });
+
+  // Progressive PDF processing function
+  async function processPDFProgressively(sessionId: string, buffer: Buffer) {
+    const session = pdfProcessingSessions.get(sessionId);
+    if (!session) return;
+
+    try {
+      const base64File = buffer.toString('base64');
+      let currentPage = 1;
+      let hasMorePages = true;
+      let fullText = '';
+      let totalPages = 0;
+
+      session.message = 'Processando PDF...';
+      session.progress = 10;
+
+      while (hasMorePages) {
+        session.message = `Processando páginas ${currentPage}-${currentPage + 2}...`;
+        
+        const chunkResult = await processPDFChunk(base64File, currentPage, currentPage + 2);
+        
+        if (chunkResult.text.trim()) {
+          fullText += (fullText ? '\n\n' : '') + chunkResult.text;
+          totalPages += chunkResult.pages;
+        }
+
+        // Update progress
+        session.progress = Math.min(30 + (currentPage / 10) * 60, 90);
+        session.message = `Páginas ${currentPage}-${currentPage + chunkResult.pages - 1} processadas...`;
+
+        currentPage += 3;
+        
+        // Check if we need to continue (simulate page detection)
+        hasMorePages = chunkResult.hasMore && currentPage <= 30; // Limit to 30 pages max
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // Final result
+      session.status = 'completed';
+      session.progress = 100;
+      session.fullText = fullText;
+      session.totalPages = totalPages;
+      session.message = `Processamento concluído! ${totalPages} páginas processadas.`;
+
+    } catch (error) {
+      console.error("Progressive PDF processing error:", error);
+      session.status = 'error';
+      session.message = 'Erro durante o processamento do PDF.';
+    }
+  }
+
+  // PDF processing progress endpoint
+  app.get("/api/pdf-progress/:sessionId", isAuthenticated, (req: any, res) => {
+    const sessionId = req.params.sessionId;
+    const session = pdfProcessingSessions.get(sessionId);
+    
+    if (!session) {
+      return res.status(404).json({ message: "Sessão não encontrada" });
+    }
+
+    res.json(session);
+  });
+
+  // PDF processing result endpoint
+  app.get("/api/pdf-result/:sessionId", isAuthenticated, (req: any, res) => {
+    const sessionId = req.params.sessionId;
+    const session = pdfProcessingSessions.get(sessionId);
+    
+    if (!session) {
+      return res.status(404).json({ message: "Sessão não encontrada" });
+    }
+
+    if (session.status !== 'completed') {
+      return res.status(202).json({ message: "Processamento ainda em andamento" });
+    }
+
+    // Clean up session after returning result
+    pdfProcessingSessions.delete(sessionId);
+
+    res.json({
+      text: session.fullText,
+      pages: session.totalPages,
+      message: session.message
+    });
   });
 
   // Test OpenAI API route

@@ -136,9 +136,12 @@ export default function Import() {
       };
       reader.readAsText(selectedFile);
     } 
-    // For PDF files, send to server for text extraction
+    // For PDF files, send to server for progressive text extraction
     else if (selectedFile.type === 'application/pdf') {
       setIsAnalyzing(true);
+      setCurrentStep(2);
+      setAnalysisProgress(0);
+      setProgressMessage("Iniciando processamento do PDF...");
       
       const formData = new FormData();
       formData.append('file', selectedFile);
@@ -155,28 +158,77 @@ export default function Import() {
         }
         
         const result = await response.json();
-        setExtractText(result.text);
+        const sessionId = result.sessionId;
         
-        toast({
-          title: "PDF processado",
-          description: result.message || "Texto extraído com sucesso. Iniciando análise...",
-          variant: result.isPartialResult ? "default" : "default"
-        });
-        
-        // Automatically analyze after PDF text extraction
-        setTimeout(() => {
-          if (result.text.trim()) {
-            analyzeExtractWithAI();
+        // Poll for progress
+        const pollProgress = async () => {
+          try {
+            const progressResponse = await fetch(`/api/pdf-progress/${sessionId}`, {
+              credentials: 'include'
+            });
+            
+            if (!progressResponse.ok) {
+              throw new Error('Falha ao obter progresso');
+            }
+            
+            const progressData = await progressResponse.json();
+            setAnalysisProgress(progressData.progress);
+            setProgressMessage(progressData.message);
+            
+            if (progressData.status === 'completed') {
+              // Get final result
+              const resultResponse = await fetch(`/api/pdf-result/${sessionId}`, {
+                credentials: 'include'
+              });
+              
+              if (resultResponse.ok) {
+                const finalResult = await resultResponse.json();
+                setExtractText(finalResult.text);
+                
+                toast({
+                  title: "PDF processado completamente",
+                  description: finalResult.message,
+                });
+                
+                // Automatically analyze after PDF text extraction
+                setTimeout(() => {
+                  if (finalResult.text.trim()) {
+                    analyzeExtractWithAI();
+                  }
+                }, 500);
+              }
+              
+              return; // Stop polling
+            } else if (progressData.status === 'error') {
+              throw new Error(progressData.message);
+            }
+            
+            // Continue polling
+            setTimeout(pollProgress, 2000);
+            
+          } catch (error) {
+            console.error('Error polling progress:', error);
+            toast({
+              title: "Erro no processamento",
+              description: "Falha durante o processamento do PDF.",
+              variant: "destructive",
+            });
+            setIsAnalyzing(false);
+            setCurrentStep(1);
           }
-        }, 500);
+        };
+        
+        // Start polling
+        setTimeout(pollProgress, 1000);
         
       } catch (error) {
         toast({
           title: "Erro ao processar PDF",
-          description: "Não foi possível extrair o texto. Cole o texto manualmente na área ao lado.",
+          description: "Não foi possível iniciar o processamento. Tente novamente.",
           variant: "destructive",
         });
         setIsAnalyzing(false);
+        setCurrentStep(1);
       }
     }
   };
