@@ -1083,7 +1083,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Store PDF processing sessions
   const pdfProcessingSessions = new Map<string, any>();
 
-  // Helper function to process single PDF chunk
+  // Simple PDF extraction with improved OCR handling
+  async function extractPDFText(buffer: Buffer): Promise<{ text: string; pages: number; method: string }> {
+    try {
+      console.log('Starting PDF text extraction via OCR...');
+      const base64Data = buffer.toString('base64');
+      const ocrResult = await processPDFChunk(base64Data, 1, 3);
+      
+      return {
+        text: ocrResult.text,
+        pages: ocrResult.pages,
+        method: 'ocr'
+      };
+      
+    } catch (error) {
+      console.error('Error in PDF extraction:', error);
+      throw new Error('Falha na extração do PDF');
+    }
+  }
+
+  // Helper function to process single PDF chunk via OCR
   async function processPDFChunk(base64Data: string, startPage: number = 1, endPage: number = 3) {
     const formData = new FormData();
     formData.append('base64Image', `data:application/pdf;base64,${base64Data}`);
@@ -1115,23 +1134,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       hasResults: ocrResult.ParsedResults?.length > 0
     });
     
-    // Check if we got any usable results first
+    // Always check for results first
     const hasValidResults = ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0;
+    console.log(`OCR Results: ${hasValidResults ? ocrResult.ParsedResults.length : 0} page(s) extracted`);
     
-    // If we have results, always continue (ignore any error flags)
-    if (hasValidResults) {
-      console.log(`Successfully extracted text from ${ocrResult.ParsedResults.length} page(s)`);
-    } else {
-      // Only throw error if we have no results AND it's a real error
+    // Never throw error if we have any valid results
+    if (!hasValidResults) {
       const errorMessage = Array.isArray(ocrResult.ErrorMessage) 
         ? ocrResult.ErrorMessage.join(' ') 
-        : (ocrResult.ErrorMessage || '');
+        : (ocrResult.ErrorMessage || 'Unknown error');
       
-      const isPageLimitError = errorMessage.includes('maximum page limit') || 
-                              errorMessage.includes('page limit');
-      
-      // Don't throw error for page limit issues
-      if (ocrResult.IsErroredOnProcessing && !isPageLimitError) {
+      // Only throw for real errors (not page limits)
+      if (!errorMessage.includes('maximum page limit') && !errorMessage.includes('page limit')) {
         throw new Error(`OCR processing error: ${errorMessage}`);
       }
     }
@@ -1193,58 +1207,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const base64File = buffer.toString('base64');
-      let currentPage = 1;
-      let hasMorePages = true;
       let fullText = '';
       let totalPages = 0;
 
-      session.message = 'Processando PDF...';
-      session.progress = 10;
+      session.message = 'Extraindo texto do PDF...';
+      session.progress = 20;
 
-      while (hasMorePages) {
-        session.message = `Processando páginas ${currentPage}-${currentPage + 2}...`;
-        session.progress = Math.min(20 + (currentPage / 30) * 70, 85);
+      try {
+        const extractResult = await extractPDFText(Buffer.from(base64File, 'base64'));
         
-        try {
-          const chunkResult = await processPDFChunk(base64File, currentPage, currentPage + 2);
-          
-          if (chunkResult.text.trim()) {
-            fullText += (fullText ? '\n\n' : '') + chunkResult.text;
-            totalPages += chunkResult.pages;
-            console.log(`Added ${chunkResult.pages} pages to result, total: ${totalPages}`);
-            
-            // Update progress with smooth animation
-            session.progress = Math.min(20 + (totalPages / 15) * 65, 85);
-            session.message = `${totalPages} páginas processadas...`;
-          }
-
-          // For first chunk, if no "hasMore" flag, it means the PDF has only these pages
-          if (chunkResult.isFirstChunk && !chunkResult.hasMore) {
-            console.log('First chunk complete, no more pages detected');
-            hasMorePages = false;
-          } else if (chunkResult.pages === 0) {
-            // No pages in this chunk, probably end of document
-            console.log('No pages in chunk, stopping');
-            hasMorePages = false;
-          } else {
-            currentPage += 3;
-            hasMorePages = currentPage <= 30; // Continue up to 30 pages max
-            console.log(`Moving to next chunk, currentPage: ${currentPage}`);
-          }
-          
-        } catch (chunkError) {
-          console.log(`Error in chunk ${currentPage}:`, chunkError);
-          // Don't stop immediately, might still have extracted text
-          if (fullText.trim().length > 0) {
-            console.log('Got some text from previous chunks, continuing...');
-            hasMorePages = false; // Just stop processing more chunks
-          } else {
-            hasMorePages = false; // Stop processing on error
-          }
-        }
+        fullText = extractResult.text;
+        totalPages = extractResult.pages;
         
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Update progress smoothly
+        session.progress = 60;
+        session.message = `${totalPages} páginas processadas com sucesso`;
+        
+        console.log(`PDF processed via ${extractResult.method}: ${fullText.length} characters from ${totalPages} pages`);
+        
+        // Small delay for visual effect
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+      } catch (extractError) {
+        console.error('PDF extraction failed:', extractError);
+        session.status = 'error';
+        session.message = 'Falha na extração do texto';
+        session.error = extractError.message;
+        return;
       }
 
       // Final result

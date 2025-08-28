@@ -1,0 +1,217 @@
+Perfeito — para fugir do limite de 3 páginas do OCR.Space e fazer tudo dentro do seu sistema, monte um pipeline de extração híbrida (texto nativo quando existir + OCR só nas páginas-imagem). Isso dá mais qualidade, fica 100% “in-house” e sem limite de páginas.
+
+Abaixo deixo um guia direto ao ponto com arquitetura, passo a passo e código pronto (Docker + FastAPI + Tesseract), além de uma alternativa em Node.js.
+
+Visão geral (pipeline “híbrido”)
+
+Detectar páginas com texto nativo
+
+Use um parser de PDF: pdfplumber/pdfminer.six (Python) ou pdf-parse (Node).
+
+Para cada página: se tiver texto → extrai texto direto (é mais fiel e rápido).
+
+Só fazer OCR nas páginas-imagem
+
+Converter a página para imagem (200–300 DPI)
+
+Python: pdf2image (Poppler)
+
+Node: pdfjs-dist + canvas/sharp
+
+Rodar OCR local: Tesseract (com por + eng treinados).
+
+Juntar o texto OCR dessas páginas ao corpus.
+
+Persistir por página
+
+Salvar text/{file_hash}/{page}.txt (e metadados) para reuso/caching.
+
+Se reprocessar o mesmo arquivo, você não refaz o OCR.
+
+(Opcional) Tabelas
+
+Para PDFs com tabelas, use pdfplumber (digital) e camelot/tabula.
+
+Se vier via OCR, dá para passar --psm 6 e usar heurísticas para linhas.
+
+Requisitos e dicas de qualidade
+
+Idiomas no Tesseract: instale eng e por (tesseract-ocr-por).
+
+PSM/OEM: para textos corridos, --oem 1 --psm 6 funciona muito bem.
+
+Pré-processamento: binarizar, aumentar contraste e DPI=300 melhora a acurácia.
+
+Concorrência: limite workers (ex.: 2–4 por CPU) e use fila para PDFs grandes.
+
+LGPD: armazene apenas o necessário; criptografe se houver dados sensíveis.
+
+Entrega pronta (Python + FastAPI + Docker)
+1) Dockerfile (com Tesseract + Poppler)
+FROM python:3.11-slim
+
+# Dependências do Poppler (pdf2image) e Tesseract
+RUN apt-get update && apt-get install -y \
+  tesseract-ocr tesseract-ocr-por tesseract-ocr-eng \
+  poppler-utils libglib2.0-0 libsm6 libxext6 libxrender1 \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+EXPOSE 8000
+CMD ["uvicorn", "ocr_api:app", "--host", "0.0.0.0", "--port", "8000"]
+
+2) requirements.txt
+fastapi==0.112.0
+uvicorn[standard]==0.30.0
+pydantic==2.8.2
+pdfplumber==0.11.0
+pdf2image==1.17.0
+pytesseract==0.3.10
+
+3) ocr_api.py (API REST com extração híbrida)
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+import pdfplumber, pytesseract, hashlib, os, io, tempfile
+from pdf2image import convert_from_bytes
+
+app = FastAPI(title="Nexo OCR Service", version="1.0")
+
+# Ajustes do tesseract
+TESS_LANG = "por+eng"
+TESS_CONFIG = "--oem 1 --psm 6"  # bom para blocos de texto
+
+class OCRResult(BaseModel):
+    pages: int
+    text: str
+
+def ensure_dir(path: str):
+    os.makedirs(path, exist_ok=True)
+
+def file_hash(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+@app.post("/extract", response_model=OCRResult)
+async def extract_text(file: UploadFile = File(...)):
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Envie um PDF")
+
+    data = await file.read()
+    fh = file_hash(data)
+    cache_dir = f"/tmp/nexo_ocr/{fh}"
+    ensure_dir(cache_dir)
+
+    # Se já existe cache consolidado, retorna
+    consolidated = os.path.join(cache_dir, "full.txt")
+    if os.path.exists(consolidated):
+        with open(consolidated, "r", encoding="utf-8") as f:
+            txt = f.read()
+        pages = sum(1 for _ in pdfplumber.open(io.BytesIO(data)).pages)
+        return OCRResult(pages=pages, text=txt)
+
+    text_pages = []
+    # 1) Tentar extrair texto nativo página a página
+    with pdfplumber.open(io.BytesIO(data)) as pdf:
+        total_pages = len(pdf.pages)
+        native_flags = []
+        for i, page in enumerate(pdf.pages):
+            t = page.extract_text() or ""
+            # Heurística: se vazio ou muito curto, vamos fazer OCR
+            native_flags.append(len(t.strip()) > 15)
+            p_cache = os.path.join(cache_dir, f"{i+1}.txt")
+            if native_flags[-1]:
+                with open(p_cache, "w", encoding="utf-8") as f:
+                    f.write(t)
+
+    # 2) Fazer OCR apenas nas páginas sem texto nativo
+    if not all(native_flags):
+        # Converter todas as páginas para imagem para aproveitar cache de render
+        images = convert_from_bytes(data, dpi=300, fmt="png") # usa Poppler
+        for i, img in enumerate(images):
+            p_cache = os.path.join(cache_dir, f"{i+1}.txt")
+            if os.path.exists(p_cache):  # já extraído nativo
+                continue
+            # Pré-processamento leve (opcional): converter para PB melhora OCR
+            with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
+                img.save(tmp.name, format="PNG")
+                ocr_text = pytesseract.image_to_string(tmp.name, lang=TESS_LANG, config=TESS_CONFIG)
+                with open(p_cache, "w", encoding="utf-8") as f:
+                    f.write(ocr_text)
+
+    # 3) Consolidar em ordem
+    for i in range(1, total_pages + 1):
+        with open(os.path.join(cache_dir, f"{i}.txt"), "r", encoding="utf-8") as f:
+            text_pages.append(f.read())
+
+    full_text = "\n\n".join(text_pages)
+    with open(consolidated, "w", encoding="utf-8") as f:
+        f.write(full_text)
+    return OCRResult(pages=total_pages, text=full_text)
+
+
+Como usar no seu webapp (Next.js, por exemplo):
+
+// client-side
+async function uploadPdf(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch("/ocr/extract", { // reverse proxy p/ o serviço
+    method: "POST",
+    body: fd,
+  });
+  if (!res.ok) throw new Error("Falha no OCR");
+  return await res.json(); // { pages, text }
+}
+
+
+Escala: para PDFs muito grandes, troque o retorno text por stream por página ou grave no seu storage e devolva um jobId + webhook/polling de status.
+
+Alternativa em Node.js (tudo JS)
+
+Se você prefere ficar em JS:
+
+Texto nativo: pdf-parse
+
+Render de página: pdfjs-dist (render em canvas/headless) ou pdf-poppler
+
+OCR: tesseract.js-node (ou node-tesseract-ocr)
+
+Exemplo (simplificado; foca no fluxo):
+
+import fs from "node:fs/promises";
+import pdf from "pdf-parse";
+import { createWorker } from "tesseract.js"; // use a variante Node
+import { getDocument } from "pdfjs-dist";
+
+async function extractHybrid(buffer) {
+  const native = await pdf(buffer);
+  // Se veio texto global, ótimo. Senão, processa por página:
+  const doc = await getDocument({ data: buffer }).promise;
+  const pages = doc.numPages;
+  const worker = await createWorker("por+eng"); // baixe os traineddata
+
+  let out = [];
+  for (let i = 1; i <= pages; i++) {
+    const page = await doc.getPage(i);
+    const txtContent = await page.getTextContent();
+    const text = txtContent.items.map(it => it.str).join(" ").trim();
+
+    if (text.length > 15) {
+      out.push(text);
+      continue;
+    }
+    // Render para imagem (precisa canvas/headless; em server use node-canvas)
+    // ... gerar PNG em memória ...
+    // const { data: { text: ocrText } } = await worker.recognize(pngBuffer, { tessedit_pageseg_mode: 6 });
+    // out.push(ocrText);
+  }
+  await worker.terminate();
+  return out.join("\n\n");
+}
+
+
+Em Node puro, o render da página para PNG é a parte mais chata. Em produção, Python + Poppler costuma ser mais simples e veloz para OCR. O mix Next.js (app) + microserviço Python é um combo excelente.
