@@ -156,9 +156,9 @@ export default function Dashboard() {
               <BusinessDashboardHeader />
               
               {/* Toggle de Visualização - Modo Executivo vs Completo */}
-              <div className="flex items-center justify-between bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+              <div className="flex items-center justify-between bg-white rounded-2xl p-6 shadow-sm hover:shadow-lg border border-slate-200 transition-all duration-300">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-blue-100 rounded-2xl flex items-center justify-center">
                     <BarChart3 className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
@@ -177,7 +177,7 @@ export default function Dashboard() {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <Badge className={`px-3 py-1 ${viewMode === 'executive' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                  <Badge className={`px-4 py-2 rounded-full ${viewMode === 'executive' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                     {viewMode === 'executive' ? 'Modo Executivo' : 'Modo Completo'}
                   </Badge>
                   {userPreferences && (

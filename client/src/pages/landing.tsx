@@ -9,14 +9,14 @@ export default function Landing() {
       <header className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">FinanceFlow</h1>
           </div>
           <Button 
             onClick={() => window.location.href = '/login'}
-            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5"
             data-testid="button-login"
           >
             Entrar
@@ -39,7 +39,7 @@ export default function Landing() {
             <Button 
               size="lg"
               onClick={() => window.location.href = '/login'}
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 px-8 py-3"
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5"
               data-testid="button-start"
             >
               Começar Agora
@@ -47,7 +47,7 @@ export default function Landing() {
             <Button 
               size="lg"
               variant="outline"
-              className="px-8 py-3 border-blue-200 text-blue-600 hover:bg-blue-50"
+              className="px-8 py-4 border-blue-200 text-blue-600 hover:bg-blue-50 rounded-2xl border-2 hover:border-blue-300 transition-all duration-200"
               data-testid="button-learn-more"
             >
               Saiba Mais
@@ -68,10 +68,10 @@ export default function Landing() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-2xl border-0 shadow-sm bg-white/70 backdrop-blur-sm">
             <CardHeader>
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
-                <BarChart3 className="w-6 h-6 text-blue-600" />
+              <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                <BarChart3 className="w-7 h-7 text-blue-600" />
               </div>
               <CardTitle>Dashboard Inteligente</CardTitle>
               <CardDescription>
@@ -80,10 +80,10 @@ export default function Landing() {
             </CardHeader>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-2xl border-0 shadow-sm bg-white/70 backdrop-blur-sm">
             <CardHeader>
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mb-4">
-                <PiggyBank className="w-6 h-6 text-green-600" />
+              <div className="w-14 h-14 bg-green-100 dark:bg-green-900 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                <PiggyBank className="w-7 h-7 text-green-600" />
               </div>
               <CardTitle>Controle de Gastos</CardTitle>
               <CardDescription>
@@ -92,10 +92,10 @@ export default function Landing() {
             </CardHeader>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-2xl border-0 shadow-sm bg-white/70 backdrop-blur-sm">
             <CardHeader>
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-4">
-                <TrendingUp className="w-6 h-6 text-purple-600" />
+              <div className="w-14 h-14 bg-purple-100 dark:bg-purple-900 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                <TrendingUp className="w-7 h-7 text-purple-600" />
               </div>
               <CardTitle>Investimentos</CardTitle>
               <CardDescription>
@@ -104,10 +104,10 @@ export default function Landing() {
             </CardHeader>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-2xl border-0 shadow-sm bg-white/70 backdrop-blur-sm">
             <CardHeader>
-              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center mb-4">
-                <Target className="w-6 h-6 text-orange-600" />
+              <div className="w-14 h-14 bg-orange-100 dark:bg-orange-900 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                <Target className="w-7 h-7 text-orange-600" />
               </div>
               <CardTitle>Metas e Objetivos</CardTitle>
               <CardDescription>
@@ -116,10 +116,10 @@ export default function Landing() {
             </CardHeader>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-2xl border-0 shadow-sm bg-white/70 backdrop-blur-sm">
             <CardHeader>
-              <div className="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center mb-4">
-                <Shield className="w-6 h-6 text-red-600" />
+              <div className="w-14 h-14 bg-red-100 dark:bg-red-900 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                <Shield className="w-7 h-7 text-red-600" />
               </div>
               <CardTitle>Segurança Total</CardTitle>
               <CardDescription>
@@ -128,10 +128,10 @@ export default function Landing() {
             </CardHeader>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
+          <Card className="hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-2xl border-0 shadow-sm bg-white/70 backdrop-blur-sm">
             <CardHeader>
-              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center mb-4">
-                <Users className="w-6 h-6 text-indigo-600" />
+              <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                <Users className="w-7 h-7 text-indigo-600" />
               </div>
               <CardTitle>Controle Familiar</CardTitle>
               <CardDescription>
@@ -154,7 +154,7 @@ export default function Landing() {
           <Button 
             size="lg"
             onClick={() => window.location.href = '/api/login'}
-            className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3"
+            className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5"
             data-testid="button-cta-start"
           >
             Começar Gratuitamente
@@ -167,7 +167,7 @@ export default function Landing() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center space-x-3 mb-4 md:mb-0">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-sm">
                 <TrendingUp className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold text-white">FinanceFlow</span>
