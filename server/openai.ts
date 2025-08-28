@@ -261,7 +261,7 @@ function sendProgressUpdate(sessionId: string, progress: number, message: string
   }
 }
 
-export async function analyzeExtractWithAI(extractText: string, availableCategories: string[] = [], sessionId?: string) {
+export async function analyzeExtractWithAI(extractText: string, availableCategories: string[] = [], sessionId?: string, enableCNPJCategorization: boolean = false) {
   try {
     console.log("Processing extract with length:", extractText.length);
     
@@ -301,18 +301,66 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
       sendProgressUpdate(sessionId, 95, "Finalizando análise...");
     }
     
-    // Força normalização final - garantir que todos os campos estejam corretos
-    const finalTransactions = allTransactions.map((t: any, index: number) => {      
+    // Apply CNPJ categorization if enabled
+    let finalTransactions = allTransactions.map((t: any, index: number) => {      
       const normalized = {
         date: t.date || t.Date || t.DATA || "2024-12-10",
         description: t.description || t.Description || t.DESCRIPTION || `Transação ${index + 1}`,
         amount: parseFloat(t.amount || t.Amount || t.AMOUNT || 0),
         type: (t.type || t.Type || t.TYPE || "expense").toLowerCase(),
-        category: t.category || t.Category || t.CATEGORY || "Outros"
+        category: t.category || t.Category || t.CATEGORY || "Outros",
+        confidence: t.confidence || 0.9
       };
       
       return normalized;
     });
+
+    // Apply CNPJ categorization if enabled
+    if (enableCNPJCategorization) {
+      if (sessionId) {
+        sendProgressUpdate(sessionId, 97, "Aplicando categorização via CNPJ...");
+      }
+      
+      const { extractCNPJ, queryCNPJ, categorizeByCNPJ, extractCompanyName } = await import("./utils/cnpj");
+      
+      finalTransactions = await Promise.all(finalTransactions.map(async (transaction: any) => {
+        try {
+          // Extract CNPJ from transaction description
+          const cnpj = extractCNPJ(transaction.description);
+          
+          if (cnpj) {
+            // Query CNPJ information
+            const cnpjInfo = await queryCNPJ(cnpj);
+            
+            if (cnpjInfo) {
+              // Update category based on CNPJ
+              const newCategory = categorizeByCNPJ(cnpjInfo);
+              
+              if (newCategory !== "Outros") {
+                transaction.category = newCategory;
+                transaction.confidence = 0.95; // Higher confidence for CNPJ-based categorization
+                transaction.cnpjInfo = {
+                  cnpj,
+                  companyName: cnpjInfo.nome,
+                  activity: cnpjInfo.atividade_principal[0]?.text || ''
+                };
+              }
+            }
+          } else {
+            // Try to extract company name for better categorization
+            const companyName = extractCompanyName(transaction.description);
+            if (companyName) {
+              transaction.companyName = companyName;
+            }
+          }
+        } catch (error) {
+          console.error("Error in CNPJ categorization for transaction:", error);
+          // Continue with original categorization on error
+        }
+        
+        return transaction;
+      }));
+    }
     
     if (sessionId) {
       sendProgressUpdate(sessionId, 100, `Análise concluída! ${finalTransactions.length} transações encontradas`);

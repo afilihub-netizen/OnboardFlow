@@ -32,6 +32,19 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 // Store SSE connections for progress tracking
 export const extractProgressSessions = new Map<string, any>();
 
+// Configure multer for file uploads
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Apenas arquivos PDF são permitidos'));
+    }
+  }
+});
+
 // Helper function to get user ID from request (compatible with both auth systems)
 function getUserId(req: any): string {
   return req.user?.id || req.user?.claims?.sub;
@@ -1067,6 +1080,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+  // PDF text extraction route
+  app.post("/api/extract-pdf-text", isAuthenticated, upload.single('file'), async (req: any, res) => {
+    try {
+      const pdfParse = require('pdf-parse');
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "Arquivo PDF é obrigatório" });
+      }
+
+      const buffer = req.file.buffer;
+      const data = await pdfParse(buffer);
+      
+      res.json({ 
+        text: data.text,
+        pages: data.numpages,
+        info: data.info
+      });
+    } catch (error) {
+      console.error("PDF extraction error:", error);
+      res.status(500).json({ message: "Falha ao extrair texto do PDF" });
+    }
+  });
+
   // Test OpenAI API route
   app.post("/api/test-openai", isAuthenticated, async (req: any, res) => {
     try {
@@ -1079,7 +1115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Extract analysis route
+  // Extract analysis route with CNPJ categorization
   app.post("/api/analyze-extract", isAuthenticated, async (req: any, res) => {
     try {
       const { extractText, availableCategories, sessionId } = req.body;
@@ -1089,7 +1125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Process large texts by splitting into chunks with progress tracking
-      const result = await analyzeExtractWithAI(extractText, availableCategories || [], sessionId);
+      const result = await analyzeExtractWithAI(extractText, availableCategories || [], sessionId, true);
       
       // Final result processed successfully
       res.json(result);
