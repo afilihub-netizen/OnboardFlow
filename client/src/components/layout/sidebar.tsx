@@ -148,8 +148,8 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 mt-8">
-          <div className="px-6 space-y-2">
+        <nav className="flex-1 mt-8 overflow-y-auto">
+          <div className="px-6 space-y-2 pb-6">
             {navigation.map((item) => {
               const Icon = item.icon;
               const isActive = location === item.href;
@@ -178,8 +178,8 @@ export function Sidebar() {
           </div>
 
           {/* Settings Section */}
-          <div className="px-6 mt-8 pt-8">
-            <div className="space-y-2">
+          <div className="px-6 mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+            <div className="space-y-2 pb-6">
               <Link
                 href="/profile"
                 className={cn(

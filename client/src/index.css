@@ -164,7 +164,7 @@
   }
 
   .sidebar-item {
-    @apply flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 rounded-xl cursor-pointer relative min-h-[48px] transition-colors duration-200 overflow-hidden;
+    @apply flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 rounded-xl cursor-pointer relative min-h-[48px] transition-colors duration-200;
     width: 100%;
     white-space: nowrap;
   }
