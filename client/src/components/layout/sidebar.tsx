@@ -90,11 +90,20 @@ export function Sidebar() {
       {/* Mobile menu button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-lg bg-white dark:bg-gray-800"
+        className="fixed top-4 left-4 z-50 md:hidden p-3 rounded-lg bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         data-testid="button-mobile-menu"
+        aria-label={isOpen ? "Fechar menu" : "Abrir menu"}
       >
-        {isOpen ? <X className="w-5 h-5 text-gray-600 dark:text-gray-300" /> : <Menu className="w-5 h-5 text-gray-600 dark:text-gray-300" />}
+        {isOpen ? <X className="w-6 h-6 text-gray-600 dark:text-gray-300" /> : <Menu className="w-6 h-6 text-gray-600 dark:text-gray-300" />}
       </button>
+      
+      {/* Menu indicator for desktop - always visible */}
+      <div className="hidden md:block fixed top-4 left-4 z-30 pointer-events-none">
+        <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+          <Menu className="w-4 h-4" />
+          <span>Menu</span>
+        </div>
+      </div>
 
       {/* Sidebar overlay for mobile */}
       {isOpen && (
@@ -106,12 +115,12 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed md:static inset-y-0 left-0 z-40 w-64 md:w-64 h-screen md:h-full flex flex-col transition-transform duration-300 ease-in-out",
+        "fixed md:static inset-y-0 left-0 z-40 w-64 md:w-64 h-screen md:h-full flex flex-col transition-transform duration-300 ease-in-out shadow-lg md:shadow-none",
         "md:translate-x-0 md:flex-shrink-0",
         isOpen ? "translate-x-0" : "-translate-x-full",
         isBusinessAccount 
-          ? "bg-gradient-to-b from-white to-slate-50" 
-          : "bg-white dark:bg-gray-800"
+          ? "bg-gradient-to-b from-white to-slate-50 border-r border-slate-200" 
+          : "bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
       )}>
         {/* Logo */}
         <div className="p-6">
