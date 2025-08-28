@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { TrendingUp, Mail, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { TrendingUp, Mail, Eye, EyeOff, AlertCircle, User, Users, Building } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,6 +16,7 @@ export default function Login() {
     password: '',
     firstName: '',
     lastName: '',
+    accountType: 'individual' as 'individual' | 'family' | 'business',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -44,7 +46,7 @@ export default function Login() {
         } else {
           setSuccess(data.message);
           setIsLogin(true);
-          setFormData({ email: '', password: '', firstName: '', lastName: '' });
+          setFormData({ email: '', password: '', firstName: '', lastName: '', accountType: 'individual' });
         }
       } else {
         setError(data.message);
@@ -148,28 +150,78 @@ export default function Login() {
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">Nome</Label>
-                    <Input
-                      id="firstName"
-                      type="text"
-                      value={formData.firstName}
-                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                      required
-                    />
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">Nome</Label>
+                      <Input
+                        id="firstName"
+                        type="text"
+                        value={formData.firstName}
+                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Sobrenome</Label>
+                      <Input
+                        id="lastName"
+                        type="text"
+                        value={formData.lastName}
+                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                        required
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Sobrenome</Label>
-                    <Input
-                      id="lastName"
-                      type="text"
-                      value={formData.lastName}
-                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                      required
-                    />
+
+                  <div className="space-y-3">
+                    <Label>Tipo de Conta</Label>
+                    <RadioGroup
+                      value={formData.accountType}
+                      onValueChange={(value) => setFormData({ ...formData, accountType: value as any })}
+                      className="space-y-3"
+                    >
+                      <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                        <RadioGroupItem value="individual" id="individual" />
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                            <User className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <Label htmlFor="individual" className="font-medium cursor-pointer">Individual</Label>
+                            <p className="text-sm text-gray-500">Para uso pessoal</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                        <RadioGroupItem value="family" id="family" />
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                            <Users className="w-4 h-4 text-green-600" />
+                          </div>
+                          <div>
+                            <Label htmlFor="family" className="font-medium cursor-pointer">Familiar</Label>
+                            <p className="text-sm text-gray-500">Para gerenciar finanças da família</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+                        <RadioGroupItem value="business" id="business" />
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                            <Building className="w-4 h-4 text-purple-600" />
+                          </div>
+                          <div>
+                            <Label htmlFor="business" className="font-medium cursor-pointer">Empresarial</Label>
+                            <p className="text-sm text-gray-500">Para gestão financeira de empresas</p>
+                          </div>
+                        </div>
+                      </div>
+                    </RadioGroup>
                   </div>
-                </div>
+                </>
               )}
 
               <div className="space-y-2">

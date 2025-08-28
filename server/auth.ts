@@ -145,11 +145,19 @@ export async function setupAuth(app: Express) {
   // Register with email/password
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const { email, password, firstName, lastName } = req.body;
+      const { email, password, firstName, lastName, accountType } = req.body;
 
       if (!email || !password || !firstName) {
         return res.status(400).json({ 
           message: "Email, senha e nome são obrigatórios" 
+        });
+      }
+
+      // Validate account type
+      const validAccountTypes = ['individual', 'family', 'business'];
+      if (accountType && !validAccountTypes.includes(accountType)) {
+        return res.status(400).json({ 
+          message: "Tipo de conta inválido" 
         });
       }
 
@@ -171,7 +179,8 @@ export async function setupAuth(app: Express) {
         firstName,
         lastName,
         authProvider: 'email',
-        emailVerified: false
+        emailVerified: false,
+        accountType: accountType || 'individual'
       });
 
       // TODO: Send verification email
