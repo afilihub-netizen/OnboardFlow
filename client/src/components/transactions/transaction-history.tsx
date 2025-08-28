@@ -40,6 +40,18 @@ export function TransactionHistory() {
     },
   });
 
+  // Funções auxiliares definidas antes dos hooks que as usam
+  const getCategoryName = (categoryId: string) => {
+    if (!categoryId || !categories) return 'Sem categoria';
+    const category = categories.find((c: any) => c.id === categoryId);
+    return category?.name || 'Sem categoria';
+  };
+
+  const getPaymentMethodLabel = (method: string) => {
+    const paymentMethod = PAYMENT_METHODS.find(p => p.value === method);
+    return paymentMethod?.label || method;
+  };
+
   const getFilterParams = () => {
     const params = new URLSearchParams();
     
@@ -329,17 +341,6 @@ export function TransactionHistory() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
-  };
-
-  const getPaymentMethodLabel = (method: string) => {
-    const paymentMethod = PAYMENT_METHODS.find(p => p.value === method);
-    return paymentMethod?.label || method;
-  };
-
-  const getCategoryName = (categoryId: string) => {
-    if (!categoryId || !categories) return 'Sem categoria';
-    const category = categories.find(c => c.id === categoryId);
-    return category?.name || 'Sem categoria';
   };
 
   const clearAllFilters = () => {
