@@ -80,6 +80,14 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   
+  // Authentication operations
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByGoogleId(googleId: string): Promise<User | undefined>;
+  createUser(userData: Partial<User>): Promise<User>;
+  createUserWithGoogle(userData: Partial<User>): Promise<User>;
+  linkGoogleAccount(userId: string, googleId: string): Promise<void>;
+  updateUserLastLogin(userId: string): Promise<void>;
+  
   // Category operations
   getCategories(userId: string): Promise<Category[]>;
   createCategory(category: InsertCategory): Promise<Category>;
@@ -218,6 +226,73 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  // Authentication methods
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
+    return user;
+  }
+
+  async createUser(userData: Partial<User>): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: userData.email || '',
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        passwordHash: userData.passwordHash,
+        authProvider: userData.authProvider || 'email',
+        emailVerified: userData.emailVerified || false,
+        profileImageUrl: userData.profileImageUrl,
+        accountType: userData.accountType || 'individual',
+        isActive: true,
+      })
+      .returning();
+    return user;
+  }
+
+  async createUserWithGoogle(userData: Partial<User>): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: userData.email || '',
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        googleId: userData.googleId,
+        authProvider: 'google',
+        emailVerified: userData.emailVerified || true,
+        profileImageUrl: userData.profileImageUrl,
+        accountType: userData.accountType || 'individual',
+        isActive: true,
+      })
+      .returning();
+    return user;
+  }
+
+  async linkGoogleAccount(userId: string, googleId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        googleId,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async updateUserLastLogin(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        lastLoginAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
   }
 
   async updateUserProfile(userId: string, updateData: {

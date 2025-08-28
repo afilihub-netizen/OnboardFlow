@@ -9,6 +9,7 @@ import { useBusinessTheme } from "@/hooks/useBusinessTheme";
 import { AIChatButton } from "@/components/ai/ai-chat-assistant";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Transactions from "@/pages/transactions";
 import Investments from "@/pages/investments";
@@ -31,7 +32,10 @@ function Router() {
     <>
       <Switch>
         {isLoading || !isAuthenticated ? (
-          <Route path="/" component={Landing} />
+          <>
+            <Route path="/" component={Landing} />
+            <Route path="/login" component={Login} />
+          </>
         ) : (
           <>
             <Route path="/" component={Dashboard} />

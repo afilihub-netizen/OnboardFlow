@@ -55,13 +55,26 @@ export const familyGroups = pgTable("family_groups", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// User storage table for Replit Auth
+// Authentication provider enum
+export const authProviderEnum = pgEnum('auth_provider', ['email', 'google', 'replit']);
+
+// User storage table with support for multiple auth providers
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
+  email: varchar("email").unique().notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  // Authentication fields
+  passwordHash: varchar("password_hash"), // For email/password auth
+  authProvider: authProviderEnum("auth_provider").default("email"),
+  googleId: varchar("google_id").unique(), // For Google OAuth
+  replitId: varchar("replit_id").unique(), // For existing Replit auth (backward compatibility)
+  emailVerified: boolean("email_verified").default(false),
+  emailVerificationToken: varchar("email_verification_token"),
+  passwordResetToken: varchar("password_reset_token"),
+  passwordResetExpires: timestamp("password_reset_expires"),
+  // Account settings
   accountType: accountTypeEnum("account_type").default("individual"),
   // Campos opcionais para empresas (CPF também pode usar funcionalidades empresariais)
   companyName: varchar("company_name", { length: 200 }),
@@ -75,6 +88,7 @@ export const users = pgTable("users", {
   subscriptionStatus: subscriptionStatusEnum("subscription_status").default("free"),
   onboardingCompleted: boolean("onboarding_completed").default(false),
   isActive: boolean("is_active").default(true),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
