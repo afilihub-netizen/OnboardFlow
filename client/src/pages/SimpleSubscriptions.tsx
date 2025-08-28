@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, DollarSign, Calendar } from "lucide-react";
+import { Plus, DollarSign, Calendar, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -130,13 +130,25 @@ export default function SimpleSubscriptions() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Assinaturas & Serviços
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Monitore todas as suas assinaturas e gastos recorrentes
-          </p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.history.back()}
+            className="flex items-center gap-2"
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Voltar
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Assinaturas & Serviços
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Monitore todas as suas assinaturas e gastos recorrentes
+            </p>
+          </div>
         </div>
         
         <div className="flex gap-3">

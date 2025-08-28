@@ -1714,9 +1714,14 @@ export class DatabaseStorage implements IStorage {
     const detectedSubscriptions: Subscription[] = [];
 
     // Look for patterns (3+ transactions)
-    for (const [key, transactionGroup] of grouped) {
+    for (const [key, transactionGroup] of Array.from(grouped.entries())) {
       if (transactionGroup.length >= 3) {
         const [description, amount] = key.split('-');
+        
+        // Validate against known subscription services
+        if (!this.isKnownSubscriptionService(description.trim())) {
+          continue; // Skip if not a known subscription service
+        }
         
         // Check if already exists
         const existing = await db
@@ -1750,6 +1755,43 @@ export class DatabaseStorage implements IStorage {
     }
 
     return detectedSubscriptions;
+  }
+
+  // Lista de serviços de assinatura conhecidos
+  private knownSubscriptionServices = [
+    // Streaming de Música
+    'spotify', 'deezer', 'amazon music', 'youtube music', 'apple music', 'tidal',
+    
+    // Streaming de Vídeo
+    'netflix', 'amazon prime', 'disney', 'disney+', 'disney plus', 'hbo max', 'hbo', 'globoplay', 
+    'paramount', 'paramount+', 'apple tv', 'apple tv+', 'crunchyroll', 'youtube premium',
+    
+    // Design e Criatividade
+    'canva', 'adobe', 'photoshop', 'illustrator', 'creative cloud', 'figma', 'sketch',
+    
+    // Produtividade e Desenvolvimento
+    'microsoft 365', 'office 365', 'google workspace', 'notion', 'trello', 'asana', 'slack',
+    'github', 'replit', 'vercel', 'netlify', 'heroku',
+    
+    // Educação
+    'coursera', 'udemy', 'skillshare', 'duolingo', 'linkedin learning',
+    
+    // Fitness e Saúde
+    'gym', 'academia', 'smartfit', 'nike run club', 'strava',
+    
+    // Outros Serviços Populares
+    'icloud', 'dropbox', 'google drive', 'onedrive', 'evernote', 'lastpass', 'dashlane',
+    '1password', 'nordvpn', 'expressvpn', 'uber', 'uber one', '99', 'ifood', 'rappi'
+  ];
+
+  // Função para verificar se um serviço é uma assinatura conhecida
+  private isKnownSubscriptionService(merchantName: string): boolean {
+    const name = merchantName.toLowerCase().trim();
+    
+    // Verifica se algum serviço conhecido está contido no nome do comerciante
+    return this.knownSubscriptionServices.some(service => 
+      name.includes(service) || service.includes(name)
+    );
   }
 
   // Goals and Vaults
