@@ -1394,6 +1394,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error(`Failed to create category ${categoryName}:`, error);
           }
         }
+
+        // Análise de assinaturas com IA Gemini
+        try {
+          const { analyzeSubscriptionPatterns } = await import('./openai');
+          const subscriptionAnalysis = await analyzeSubscriptionPatterns(result.transactions);
+          
+          if (subscriptionAnalysis && subscriptionAnalysis.length > 0) {
+            console.log(`IA detectou ${subscriptionAnalysis.length} possíveis assinaturas`);
+            result.detectedSubscriptions = subscriptionAnalysis;
+          }
+        } catch (subscriptionError) {
+          console.warn("Falha na análise de assinaturas:", subscriptionError);
+        }
       }
       
       // Final result processed successfully
@@ -2223,6 +2236,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error creating subscription:', error);
       res.status(500).json({ message: 'Failed to create subscription' });
+    }
+  });
+
+  // Novo endpoint para análise inteligente de assinaturas
+  app.post('/api/analyze-subscriptions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { transactions } = req.body;
+      
+      if (!transactions || !Array.isArray(transactions)) {
+        return res.status(400).json({ message: 'Transactions array is required' });
+      }
+
+      const { analyzeSubscriptionPatterns } = await import('./openai');
+      const detectedSubscriptions = await analyzeSubscriptionPatterns(transactions);
+      
+      // Auto-criar assinaturas detectadas com alta confiança
+      const createdSubscriptions = [];
+      for (const detected of detectedSubscriptions) {
+        if (detected.confidence > 0.8) {
+          try {
+            // Verificar se já existe
+            const existing = await storage.getSubscriptionsByUser(userId);
+            const exists = existing.some(sub => 
+              sub.merchant.toLowerCase().includes(detected.merchant.toLowerCase())
+            );
+            
+            if (!exists) {
+              const nextMonth = new Date();
+              nextMonth.setMonth(nextMonth.getMonth() + 1);
+              
+              const subscriptionData = insertSubscriptionSchema.parse({
+                userId,
+                merchant: detected.merchant,
+                amount: detected.amount.toString(),
+                frequency: 'monthly',
+                status: 'active',
+                nextChargeDate: nextMonth,
+                categoryId: null,
+                confirmedByUser: false,
+              });
+              
+              const subscription = await storage.createSubscription(subscriptionData);
+              createdSubscriptions.push(subscription);
+              console.log(`Auto-criou assinatura: ${detected.merchant}`);
+            }
+          } catch (createError) {
+            console.error(`Erro ao criar assinatura para ${detected.merchant}:`, createError);
+          }
+        }
+      }
+      
+      res.json({
+        detectedSubscriptions,
+        createdSubscriptions,
+        message: `IA analisou ${transactions.length} transações e detectou ${detectedSubscriptions.length} possíveis assinaturas. ${createdSubscriptions.length} foram criadas automaticamente.`
+      });
+    } catch (error) {
+      console.error('Error analyzing subscriptions with AI:', error);
+      res.status(500).json({ message: 'Failed to analyze subscriptions' });
     }
   });
 

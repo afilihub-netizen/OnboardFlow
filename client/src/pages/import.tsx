@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Brain, CheckCircle, AlertCircle, Download, Check, X } from "lucide-react";
+import { Upload, FileText, Brain, CheckCircle, AlertCircle, Download, Check, X, Zap, Star } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,6 +24,15 @@ interface ParsedTransaction {
   type: 'income' | 'expense';
   category: string;
   confidence: number;
+  isSubscription?: boolean;
+}
+
+interface DetectedSubscription {
+  merchant: string;
+  amount: string;
+  confidence: number;
+  category: string;
+  description: string;
 }
 
 export default function Import() {
@@ -40,6 +49,7 @@ export default function Import() {
   const [progressMessage, setProgressMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [autoProcessing, setAutoProcessing] = useState(false);
+  const [detectedSubscriptions, setDetectedSubscriptions] = useState<DetectedSubscription[]>([]);
 
   // Fetch categories for mapping
   const { data: categories = [] } = useQuery({
@@ -349,6 +359,7 @@ export default function Import() {
 
       const result = await response.json();
       const analyzedTransactions = result.transactions || [];
+      const subscriptions = result.detectedSubscriptions || [];
       
       // Always ensure at least one transaction for user feedback
       if (analyzedTransactions.length === 0) {
@@ -364,15 +375,17 @@ export default function Import() {
       
       // Transactions received successfully from AI analysis
       setParsedTransactions(analyzedTransactions);
+      setDetectedSubscriptions(subscriptions);
       // Seleciona todas as transações por padrão
       setSelectedTransactions(new Set(Array.from({ length: analyzedTransactions.length }, (_, i) => i)));
       setCurrentStep(3);
       
+      const subscriptionCount = subscriptions.length;
       const variant = analyzedTransactions.length > 0 ? "success" : "warning";
       toast({
         variant,
         title: "Análise concluída",
-        description: `${analyzedTransactions.length} transações foram identificadas${analyzedTransactions.length < 5 ? ' (algumas podem ter sido criadas automaticamente)' : ''}.`,
+        description: `${analyzedTransactions.length} transações identificadas${subscriptionCount > 0 ? ` e ${subscriptionCount} possível${subscriptionCount > 1 ? 'is' : ''} assinatura${subscriptionCount > 1 ? 's' : ''} detectada${subscriptionCount > 1 ? 's' : ''}` : ''}.`,
       });
     } catch (error) {
       toast({
@@ -696,6 +709,12 @@ export default function Import() {
                                   <AlertCircle className="w-4 h-4 ml-1 text-yellow-500" />
                                 )}
                               </span>
+                              {transaction.isSubscription && (
+                                <Badge variant="outline" className="text-blue-600 border-blue-200">
+                                  <Zap className="w-3 h-3 mr-1" />
+                                  Assinatura IA
+                                </Badge>
+                              )}
                               {(transaction as any).cnpjInfo && (
                                 <span className="text-xs text-blue-600">
                                   {(transaction as any).cnpjInfo.businessType}
@@ -714,6 +733,49 @@ export default function Import() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Seção de Assinaturas Detectadas pela IA */}
+          {detectedSubscriptions.length > 0 && (
+            <Card className="financial-card border-blue-200 bg-blue-50/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-blue-500" />
+                  Assinaturas Detectadas pela IA
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                  <p className="text-sm text-blue-800 mb-4">
+                    Nossa IA identificou {detectedSubscriptions.length} possível{detectedSubscriptions.length > 1 ? 'is' : ''} assinatura{detectedSubscriptions.length > 1 ? 's' : ''} no seu extrato:
+                  </p>
+                  <div className="space-y-3">
+                    {detectedSubscriptions.map((sub, index) => (
+                      <div key={index} className="flex items-center justify-between bg-white p-4 rounded-lg border border-blue-200">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <Star className="w-4 h-4 text-yellow-500" />
+                            <span className="font-medium text-gray-900">{sub.merchant}</span>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {sub.category}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold text-gray-700">R$ {sub.amount}</span>
+                          <Badge variant={sub.confidence > 0.8 ? "default" : "secondary"} className="text-xs">
+                            {Math.round(sub.confidence * 100)}% confiança
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 p-3 bg-blue-100 rounded-lg">
+                    <p className="text-xs text-blue-700">
+                      💡 <strong>Automático:</strong> Assinaturas com alta confiança (&gt;80%) serão automaticamente adicionadas ao seu controle de assinaturas após a importação.
+                    </p>
                 </div>
               </CardContent>
             </Card>

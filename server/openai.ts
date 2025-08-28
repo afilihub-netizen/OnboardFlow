@@ -67,6 +67,65 @@ Responda APENAS com JSON válido no formato:
   }
 }
 
+// Nova função para análise específica de assinaturas
+export async function analyzeSubscriptionPatterns(transactions: any[]) {
+  try {
+    const transactionsText = transactions.map(t => 
+      `${t.description || 'Sem descrição'} - R$ ${t.amount} - ${t.date}`
+    ).join('\n');
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash-exp",
+      config: {
+        temperature: 0.1,
+        systemInstruction: `Você é um especialista em detecção de assinaturas e serviços recorrentes.
+
+ANALISE as transações e identifique possíveis ASSINATURAS baseado em:
+
+1. SERVIÇOS CONHECIDOS DO MERCADO:
+   - Streaming: Netflix, Disney+, Amazon Prime, Spotify, Deezer, YouTube Premium, HBO Max, Globoplay, Paramount+
+   - Produtividade: Microsoft 365, Google Workspace, Adobe, Photoshop, Canva, Notion, Figma, Slack
+   - Desenvolvimento: GitHub, Replit, Vercel, Netlify, Heroku
+   - Cloud: iCloud, Dropbox, Google Drive, OneDrive
+   - Outros: Uber One, 99, iFOOD Pro, NordVPN, 1Password
+
+2. PADRÕES DE RECORRÊNCIA:
+   - Valores similares mensais
+   - Mesmo comerciante/descrição
+   - Frequência regular
+
+3. CRITÉRIOS RIGOROSOS:
+   - Apenas serviços realmente conhecidos no mercado
+   - Evitar PIX para pessoas físicas
+   - Focar em empresas/plataformas estabelecidas
+
+RESPONDA APENAS com JSON válido:
+{
+  "potentialSubscriptions": [
+    {
+      "merchant": "nome do serviço",
+      "amount": "valor mensal",
+      "confidence": 0.95,
+      "category": "Streaming" | "Produtividade" | "Desenvolvimento" | "Cloud" | "Outros",
+      "description": "descrição do serviço identificado"
+    }
+  ]
+}`
+      },
+      contents: [{ role: "user", parts: [{ text: `Analise estas transações e identifique possíveis assinaturas:\n\n${transactionsText}` }] }],
+    });
+
+    const content = response.text || '{"potentialSubscriptions": []}';
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{"potentialSubscriptions": []}');
+    
+    return result.potentialSubscriptions || [];
+  } catch (error: any) {
+    console.error("Error analyzing subscription patterns:", error);
+    return [];
+  }
+}
+
 // Function to split text into chunks
 function splitTextIntoChunks(text: string, maxChunkSize: number = 6000): string[] {
   const chunks: string[] = [];
@@ -103,7 +162,7 @@ async function processChunk(extractText: string, availableCategories: string[] =
       model: "gemini-2.0-flash-exp",
       config: {
         temperature: 0.1, // Lower temperature for more consistent output
-        systemInstruction: `CRÍTICO: Extraia TODAS as transações do extrato bancário.
+        systemInstruction: `CRÍTICO: Extraia TODAS as transações do extrato bancário e identifique ASSINATURAS.
 
 INSTRUÇÕES ESPECÍFICAS:
 1. Procure por padrões de transação: valores, datas, descrições de PIX, TEF, débitos, créditos
@@ -112,23 +171,33 @@ INSTRUÇÕES ESPECÍFICAS:
 4. Use os estabelecimentos/destinatários para categorizar
 5. SEMPRE retorne pelo menos algumas transações se há valores no texto
 
+DETECÇÃO DE ASSINATURAS - MUITO IMPORTANTE:
+Identifique automaticamente serviços de assinatura conhecidos:
+- Streaming: Netflix, Disney+, Amazon Prime, Spotify, Deezer, YouTube Premium, HBO Max, Globoplay
+- Produtividade: Microsoft 365, Google Workspace, Adobe, Canva, Notion, Figma
+- Desenvolvimento: GitHub, Replit, Vercel, Heroku
+- Outros: iCloud, Dropbox, Uber One, 99, iFOOD Pro
+
+Para transações de assinaturas, use categoria "Assinaturas" e adicione campo "isSubscription": true
+
 FORMATOS ACEITOS:
 - PIX, TED, DOC, Débito, Crédito
 - Compras com cartão
 - Pagamentos diversos
 - Transferências bancárias
 
-CRITICAL: Use EXACTLY these field names: date, description, amount, type, category
+CRITICAL: Use EXACTLY these field names: date, description, amount, type, category, isSubscription
 
 JSON OBRIGATÓRIO:
-{"transactions":[{"date":"2024-12-10","description":"texto completo","amount":-100.50,"type":"expense","category":"Outros"}]}
+{"transactions":[{"date":"2024-12-10","description":"texto completo","amount":-100.50,"type":"expense","category":"Outros","isSubscription":false}]}
 
 RULES:
 - date: YYYY-MM-DD (use 2025-01-01 se não encontrar)
 - description: texto completo da transação  
 - amount: número decimal (negativo para gastos, positivo para receitas)
 - type: "expense" ou "income"
-- category: Alimentação, Transporte, Casa, Saúde, Entretenimento, Outros`
+- category: Alimentação, Transporte, Casa, Saúde, Entretenimento, Assinaturas, Outros
+- isSubscription: true se for serviço de assinatura conhecida, false caso contrário`
       },
       contents: [{ role: "user", parts: [{ text: `Analise este extrato bancário e extraia as transações:\n\n${extractText}` }] }],
     });
