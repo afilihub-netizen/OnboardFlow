@@ -21,6 +21,10 @@ import Import from "@/pages/import";
 import Subscription from "@/pages/subscription";
 import Upgrade from "@/pages/upgrade";
 import AdvancedFeatures from "@/pages/advanced-features";
+import SimpleAssets from "@/pages/SimpleAssets";
+import SimpleSubscriptions from "@/pages/SimpleSubscriptions";
+import SimpleGoals from "@/pages/SimpleGoals";
+import PredictiveAnalytics from "@/pages/PredictiveAnalytics";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -49,6 +53,10 @@ function Router() {
             <Route path="/subscription" component={Subscription} />
             <Route path="/upgrade" component={Upgrade} />
             <Route path="/profile" component={Profile} />
+            <Route path="/assets" component={SimpleAssets} />
+            <Route path="/subscriptions" component={SimpleSubscriptions} />
+            <Route path="/nexo-goals" component={SimpleGoals} />
+            <Route path="/analytics" component={PredictiveAnalytics} />
           </>
         )}
         <Route component={NotFound} />

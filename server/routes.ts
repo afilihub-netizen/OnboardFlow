@@ -12,6 +12,12 @@ import {
   insertFixedExpenseSchema,
   insertInvestmentSchema,
   insertBudgetGoalSchema,
+  insertAssetSchema,
+  insertSubscriptionSchema,
+  insertGoalSchema,
+  insertVaultLinkSchema,
+  insertApprovalSchema,
+  insertAuditLogSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { emailService } from './email-service';
@@ -1783,6 +1789,239 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Erro ao reenviar verificação:', error);
       res.status(500).json({ message: 'Erro interno do servidor' });
+    }
+  });
+
+  // ===== NEXO ADVANCED FEATURES ROUTES =====
+
+  // Assets Management Routes
+  app.get('/api/assets', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { organizationId, familyGroupId } = req.query;
+      
+      const assets = await storage.getAssetsByUser(userId, organizationId, familyGroupId);
+      res.json(assets);
+    } catch (error) {
+      console.error('Error fetching assets:', error);
+      res.status(500).json({ message: 'Failed to fetch assets' });
+    }
+  });
+
+  app.post('/api/assets', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const validatedData = insertAssetSchema.parse({ ...req.body, userId });
+      
+      const asset = await storage.createAsset(validatedData);
+      res.status(201).json(asset);
+    } catch (error) {
+      console.error('Error creating asset:', error);
+      res.status(500).json({ message: 'Failed to create asset' });
+    }
+  });
+
+  app.put('/api/assets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const asset = await storage.updateAsset(id, req.body);
+      res.json(asset);
+    } catch (error) {
+      console.error('Error updating asset:', error);
+      res.status(500).json({ message: 'Failed to update asset' });
+    }
+  });
+
+  app.delete('/api/assets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteAsset(id);
+      res.json({ message: 'Asset deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting asset:', error);
+      res.status(500).json({ message: 'Failed to delete asset' });
+    }
+  });
+
+  // Subscriptions Management Routes
+  app.get('/api/subscriptions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { organizationId } = req.query;
+      
+      const subscriptions = await storage.getSubscriptionsByUser(userId, organizationId);
+      res.json(subscriptions);
+    } catch (error) {
+      console.error('Error fetching subscriptions:', error);
+      res.status(500).json({ message: 'Failed to fetch subscriptions' });
+    }
+  });
+
+  app.post('/api/subscriptions/detect', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      
+      const detectedSubscriptions = await storage.detectRecurringPayments(userId);
+      res.json({
+        detected: detectedSubscriptions,
+        count: detectedSubscriptions.length,
+        message: `Detected ${detectedSubscriptions.length} potential subscriptions`
+      });
+    } catch (error) {
+      console.error('Error detecting subscriptions:', error);
+      res.status(500).json({ message: 'Failed to detect subscriptions' });
+    }
+  });
+
+  app.post('/api/subscriptions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const validatedData = insertSubscriptionSchema.parse({ ...req.body, userId });
+      
+      const subscription = await storage.createSubscription(validatedData);
+      res.status(201).json(subscription);
+    } catch (error) {
+      console.error('Error creating subscription:', error);
+      res.status(500).json({ message: 'Failed to create subscription' });
+    }
+  });
+
+  // Goals Management Routes
+  app.get('/api/goals', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { organizationId, familyGroupId } = req.query;
+      
+      const goals = await storage.getGoalsByUser(userId, organizationId, familyGroupId);
+      res.json(goals);
+    } catch (error) {
+      console.error('Error fetching goals:', error);
+      res.status(500).json({ message: 'Failed to fetch goals' });
+    }
+  });
+
+  app.post('/api/goals', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const validatedData = insertGoalSchema.parse({ ...req.body, userId });
+      
+      const goal = await storage.createGoal(validatedData);
+      res.status(201).json(goal);
+    } catch (error) {
+      console.error('Error creating goal:', error);
+      res.status(500).json({ message: 'Failed to create goal' });
+    }
+  });
+
+  // Nexo Predictive Analytics Routes
+  app.get('/api/nexo/cashflow-prediction', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { days = 30 } = req.query;
+      
+      // Simple cashflow prediction based on recent transactions
+      const recentTransactions = await storage.getRecentTransactions(userId, 90);
+      
+      // Group by income and expenses
+      const income = recentTransactions.filter(t => t.type === 'income');
+      const expenses = recentTransactions.filter(t => t.type === 'expense');
+      
+      // Calculate averages
+      const avgMonthlyIncome = income.reduce((sum, t) => sum + parseFloat(t.amount), 0) / 3;
+      const avgMonthlyExpenses = expenses.reduce((sum, t) => sum + parseFloat(t.amount), 0) / 3;
+      
+      const predictedIncome = avgMonthlyIncome * (parseInt(days as string) / 30);
+      const predictedExpenses = avgMonthlyExpenses * (parseInt(days as string) / 30);
+      const netCashflow = predictedIncome - predictedExpenses;
+      
+      const currentBalance = await storage.getTotalBalance(userId);
+      const projectedBalance = currentBalance + netCashflow;
+      
+      res.json({
+        period: `${days} days`,
+        currentBalance,
+        predictedIncome,
+        predictedExpenses,
+        netCashflow,
+        projectedBalance,
+        risk: projectedBalance < 0 ? 'high' : projectedBalance < currentBalance * 0.1 ? 'medium' : 'low',
+        recommendations: [
+          projectedBalance < 0 && "⚠️ Predicted negative balance - consider reducing expenses",
+          netCashflow < 0 && "📉 Negative cashflow predicted - review recurring expenses",
+          projectedBalance > currentBalance * 1.1 && "💰 Positive outlook - consider increasing investments"
+        ].filter(Boolean)
+      });
+    } catch (error) {
+      console.error('Error generating cashflow prediction:', error);
+      res.status(500).json({ message: 'Failed to generate cashflow prediction' });
+    }
+  });
+
+  app.post('/api/nexo/scenario-simulation', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { incomeChange, expenseChanges, newExpenses } = req.body;
+      
+      const currentBalance = await storage.getTotalBalance(userId);
+      const recentTransactions = await storage.getRecentTransactions(userId, 90);
+      
+      // Calculate baseline
+      const currentIncome = recentTransactions
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + parseFloat(t.amount), 0) / 3; // Monthly average
+        
+      const currentExpenses = recentTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + parseFloat(t.amount), 0) / 3;
+      
+      // Apply changes
+      const newIncome = currentIncome * (1 + (incomeChange || 0) / 100);
+      const modifiedExpenses = currentExpenses * (1 + (expenseChanges || 0) / 100);
+      const additionalExpenses = (newExpenses || []).reduce((sum: number, exp: any) => sum + exp.amount, 0);
+      
+      const totalNewExpenses = modifiedExpenses + additionalExpenses;
+      const newNetCashflow = newIncome - totalNewExpenses;
+      
+      res.json({
+        scenario: 'Custom Simulation',
+        baseline: {
+          income: currentIncome,
+          expenses: currentExpenses,
+          netCashflow: currentIncome - currentExpenses,
+          balance: currentBalance
+        },
+        simulation: {
+          income: newIncome,
+          expenses: totalNewExpenses,
+          netCashflow: newNetCashflow,
+          projectedBalance: currentBalance + newNetCashflow
+        },
+        changes: {
+          incomeChange: newIncome - currentIncome,
+          expenseChange: totalNewExpenses - currentExpenses,
+          netChange: newNetCashflow - (currentIncome - currentExpenses)
+        },
+        recommendation: newNetCashflow > 0 ? 
+          'Positive scenario - good financial outlook' : 
+          'Negative scenario - consider adjusting expenses'
+      });
+    } catch (error) {
+      console.error('Error running scenario simulation:', error);
+      res.status(500).json({ message: 'Failed to run scenario simulation' });
+    }
+  });
+
+  // Educational Content Routes (Academy)
+  app.get('/api/academy/content', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { category } = req.query;
+      
+      const content = await storage.getEducationalContentForUser(userId, category);
+      res.json(content);
+    } catch (error) {
+      console.error('Error fetching educational content:', error);
+      res.status(500).json({ message: 'Failed to fetch educational content' });
     }
   });
 

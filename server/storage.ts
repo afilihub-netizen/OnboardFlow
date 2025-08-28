@@ -23,6 +23,14 @@ import {
   financialScores,
   aiInsights,
   anomalyDetections,
+  assets,
+  subscriptions,
+  goals,
+  vaultLinks,
+  approvals,
+  auditLogs,
+  educationalContent,
+  userEducationInteractions,
   type User,
   type UpsertUser,
   type Category,
@@ -71,6 +79,21 @@ import {
   type InsertAiInsight,
   type AnomalyDetection,
   type InsertAnomalyDetection,
+  type Asset,
+  type InsertAsset,
+  type Subscription,
+  type InsertSubscription,
+  type Goal,
+  type InsertGoal,
+  type VaultLink,
+  type InsertVaultLink,
+  type Approval,
+  type InsertApproval,
+  type AuditLog,
+  type InsertAuditLog,
+  type EducationalContent,
+  type InsertEducationalContent,
+  type UserEducationInteraction,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, or, gte, lte, sum, count, gt, isNotNull, isNull, sql } from "drizzle-orm";
@@ -204,6 +227,53 @@ export interface IStorage {
   getCategorySpendingForPeriod(userId: string, categoryId: string, timeframe: string, organizationId?: string): Promise<number>;
   getTotalBalance(userId: string, organizationId?: string): Promise<number>;
   updateTransactionCategory(transactionId: string, categoryId: string): Promise<Transaction | undefined>;
+
+  // ===== NEXO ADVANCED FEATURES =====
+
+  // Assets Management (Nexo)
+  createAsset(data: InsertAsset): Promise<Asset>;
+  getAssetsByUser(userId: string, organizationId?: string, familyGroupId?: string): Promise<Asset[]>;
+  getAsset(id: string): Promise<Asset | null>;
+  updateAsset(id: string, data: Partial<Asset>): Promise<Asset>;
+  deleteAsset(id: string): Promise<void>;
+  updateAssetValuation(id: string, currentValue: string, source: string): Promise<Asset>;
+
+  // Subscriptions Management (Nexo)
+  createSubscription(data: InsertSubscription): Promise<Subscription>;
+  getSubscriptionsByUser(userId: string, organizationId?: string): Promise<Subscription[]>;
+  getSubscription(id: string): Promise<Subscription | null>;
+  updateSubscription(id: string, data: Partial<Subscription>): Promise<Subscription>;
+  deleteSubscription(id: string): Promise<void>;
+  detectRecurringPayments(userId: string): Promise<Subscription[]>;
+
+  // Goals and Vaults (Nexo)
+  createGoal(data: InsertGoal): Promise<Goal>;
+  getGoalsByUser(userId: string, organizationId?: string, familyGroupId?: string): Promise<Goal[]>;
+  getGoal(id: string): Promise<Goal | null>;
+  updateGoal(id: string, data: Partial<Goal>): Promise<Goal>;
+  deleteGoal(id: string): Promise<void>;
+  
+  // Vault Links
+  createVaultLink(data: InsertVaultLink): Promise<VaultLink>;
+  getVaultLinksByGoal(goalId: string): Promise<VaultLink[]>;
+  deleteVaultLink(id: string): Promise<void>;
+
+  // Approvals (Business)
+  createApproval(data: InsertApproval): Promise<Approval>;
+  getApprovalsByOrganization(organizationId: string): Promise<Approval[]>;
+  getApprovalsPendingForUser(userId: string): Promise<Approval[]>;
+  updateApproval(id: string, data: Partial<Approval>): Promise<Approval>;
+  approveRequest(id: string, approverId: string, comments?: string): Promise<Approval>;
+  rejectRequest(id: string, approverId: string, comments?: string): Promise<Approval>;
+
+  // Audit Logs
+  createAuditLog(data: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogsByOrganization(organizationId: string, limit?: number): Promise<AuditLog[]>;
+
+  // Educational Content (Academy)
+  getEducationalContentForUser(userId: string, category?: string): Promise<EducationalContent[]>;
+  trackContentInteraction(userId: string, contentId: string, interactionType: string): Promise<UserEducationInteraction>;
+  getRecommendedContent(userId: string): Promise<EducationalContent[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1511,6 +1581,406 @@ export class DatabaseStorage implements IStorage {
       .where(eq(transactions.id, transactionId))
       .returning();
     return updated;
+  }
+
+  // ===== NEXO ADVANCED FEATURES IMPLEMENTATION =====
+
+  // Assets Management
+  async createAsset(data: InsertAsset): Promise<Asset> {
+    const [asset] = await db
+      .insert(assets)
+      .values(data)
+      .returning();
+    return asset;
+  }
+
+  async getAssetsByUser(userId: string, organizationId?: string, familyGroupId?: string): Promise<Asset[]> {
+    let conditions = eq(assets.userId, userId);
+    
+    if (organizationId) {
+      conditions = and(conditions, eq(assets.organizationId, organizationId));
+    } else if (familyGroupId) {
+      conditions = and(conditions, eq(assets.familyGroupId, familyGroupId));
+    } else {
+      // Personal assets only (no org or family group)
+      conditions = and(conditions, isNull(assets.organizationId), isNull(assets.familyGroupId));
+    }
+
+    return await db
+      .select()
+      .from(assets)
+      .where(conditions)
+      .orderBy(desc(assets.createdAt));
+  }
+
+  async getAsset(id: string): Promise<Asset | null> {
+    const [asset] = await db
+      .select()
+      .from(assets)
+      .where(eq(assets.id, id));
+    return asset || null;
+  }
+
+  async updateAsset(id: string, data: Partial<Asset>): Promise<Asset> {
+    const [asset] = await db
+      .update(assets)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(assets.id, id))
+      .returning();
+    return asset;
+  }
+
+  async deleteAsset(id: string): Promise<void> {
+    await db.delete(assets).where(eq(assets.id, id));
+  }
+
+  async updateAssetValuation(id: string, currentValue: string, source: string): Promise<Asset> {
+    const [asset] = await db
+      .update(assets)
+      .set({ 
+        currentValue,
+        valuationSource: source,
+        lastValuation: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(assets.id, id))
+      .returning();
+    return asset;
+  }
+
+  // Subscriptions Management
+  async createSubscription(data: InsertSubscription): Promise<Subscription> {
+    const [subscription] = await db
+      .insert(subscriptions)
+      .values(data)
+      .returning();
+    return subscription;
+  }
+
+  async getSubscriptionsByUser(userId: string, organizationId?: string): Promise<Subscription[]> {
+    let conditions = eq(subscriptions.userId, userId);
+    
+    if (organizationId) {
+      conditions = and(conditions, eq(subscriptions.organizationId, organizationId));
+    } else {
+      conditions = and(conditions, isNull(subscriptions.organizationId));
+    }
+
+    return await db
+      .select()
+      .from(subscriptions)
+      .where(conditions)
+      .orderBy(desc(subscriptions.nextChargeDate));
+  }
+
+  async getSubscription(id: string): Promise<Subscription | null> {
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.id, id));
+    return subscription || null;
+  }
+
+  async updateSubscription(id: string, data: Partial<Subscription>): Promise<Subscription> {
+    const [subscription] = await db
+      .update(subscriptions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(subscriptions.id, id))
+      .returning();
+    return subscription;
+  }
+
+  async deleteSubscription(id: string): Promise<void> {
+    await db.delete(subscriptions).where(eq(subscriptions.id, id));
+  }
+
+  async detectRecurringPayments(userId: string): Promise<Subscription[]> {
+    // Simple implementation - detect recurring patterns in transactions
+    const recentTransactions = await this.getRecentTransactions(userId, 90);
+    
+    // Group by similar merchant names and amounts
+    const grouped = new Map<string, Transaction[]>();
+    
+    for (const transaction of recentTransactions) {
+      if (transaction.type === 'expense') {
+        const key = `${transaction.description?.toLowerCase().trim()}-${transaction.amount}`;
+        if (!grouped.has(key)) {
+          grouped.set(key, []);
+        }
+        grouped.get(key)!.push(transaction);
+      }
+    }
+
+    const detectedSubscriptions: Subscription[] = [];
+
+    // Look for patterns (3+ transactions)
+    for (const [key, transactionGroup] of grouped) {
+      if (transactionGroup.length >= 3) {
+        const [description, amount] = key.split('-');
+        
+        // Check if already exists
+        const existing = await db
+          .select()
+          .from(subscriptions)
+          .where(and(
+            eq(subscriptions.userId, userId),
+            eq(subscriptions.merchant, description.trim())
+          ));
+
+        if (existing.length === 0) {
+          const mostRecent = transactionGroup[0];
+          const nextMonth = new Date();
+          nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+          const subscriptionData: InsertSubscription = {
+            userId,
+            merchant: description.trim(),
+            amount,
+            frequency: 'monthly',
+            status: 'active',
+            nextChargeDate: nextMonth,
+            categoryId: mostRecent.categoryId,
+            confirmedByUser: false,
+          };
+
+          const subscription = await this.createSubscription(subscriptionData);
+          detectedSubscriptions.push(subscription);
+        }
+      }
+    }
+
+    return detectedSubscriptions;
+  }
+
+  // Goals and Vaults
+  async createGoal(data: InsertGoal): Promise<Goal> {
+    const [goal] = await db
+      .insert(goals)
+      .values(data)
+      .returning();
+    return goal;
+  }
+
+  async getGoalsByUser(userId: string, organizationId?: string, familyGroupId?: string): Promise<Goal[]> {
+    let conditions = eq(goals.userId, userId);
+    
+    if (organizationId) {
+      conditions = and(conditions, eq(goals.organizationId, organizationId));
+    } else if (familyGroupId) {
+      conditions = and(conditions, eq(goals.familyGroupId, familyGroupId));
+    } else {
+      conditions = and(conditions, isNull(goals.organizationId), isNull(goals.familyGroupId));
+    }
+
+    return await db
+      .select()
+      .from(goals)
+      .where(conditions)
+      .orderBy(desc(goals.priority), desc(goals.createdAt));
+  }
+
+  async getGoal(id: string): Promise<Goal | null> {
+    const [goal] = await db
+      .select()
+      .from(goals)
+      .where(eq(goals.id, id));
+    return goal || null;
+  }
+
+  async updateGoal(id: string, data: Partial<Goal>): Promise<Goal> {
+    const [goal] = await db
+      .update(goals)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(goals.id, id))
+      .returning();
+    return goal;
+  }
+
+  async deleteGoal(id: string): Promise<void> {
+    await db.delete(vaultLinks).where(eq(vaultLinks.goalId, id));
+    await db.delete(goals).where(eq(goals.id, id));
+  }
+
+  // Vault Links
+  async createVaultLink(data: InsertVaultLink): Promise<VaultLink> {
+    const [vaultLink] = await db
+      .insert(vaultLinks)
+      .values(data)
+      .returning();
+    return vaultLink;
+  }
+
+  async getVaultLinksByGoal(goalId: string): Promise<VaultLink[]> {
+    return await db
+      .select()
+      .from(vaultLinks)
+      .where(eq(vaultLinks.goalId, goalId));
+  }
+
+  async deleteVaultLink(id: string): Promise<void> {
+    await db.delete(vaultLinks).where(eq(vaultLinks.id, id));
+  }
+
+  // Approvals (Business)
+  async createApproval(data: InsertApproval): Promise<Approval> {
+    const [approval] = await db
+      .insert(approvals)
+      .values(data)
+      .returning();
+
+    // Create audit log
+    await this.createAuditLog({
+      userId: data.requesterId,
+      organizationId: data.organizationId,
+      action: 'approval_requested',
+      entityType: data.entityType,
+      entityId: data.entityId,
+    });
+
+    return approval;
+  }
+
+  async getApprovalsByOrganization(organizationId: string): Promise<Approval[]> {
+    return await db
+      .select()
+      .from(approvals)
+      .where(eq(approvals.organizationId, organizationId))
+      .orderBy(desc(approvals.createdAt));
+  }
+
+  async getApprovalsPendingForUser(userId: string): Promise<Approval[]> {
+    return await db
+      .select()
+      .from(approvals)
+      .where(and(
+        eq(approvals.approverId, userId),
+        eq(approvals.status, 'pending')
+      ))
+      .orderBy(desc(approvals.createdAt));
+  }
+
+  async updateApproval(id: string, data: Partial<Approval>): Promise<Approval> {
+    const [approval] = await db
+      .update(approvals)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(approvals.id, id))
+      .returning();
+    return approval;
+  }
+
+  async approveRequest(id: string, approverId: string, comments?: string): Promise<Approval> {
+    const [approval] = await db
+      .update(approvals)
+      .set({
+        status: 'approved',
+        approverId,
+        approvedAt: new Date(),
+        comments,
+        updatedAt: new Date()
+      })
+      .where(eq(approvals.id, id))
+      .returning();
+
+    await this.createAuditLog({
+      userId: approverId,
+      organizationId: approval.organizationId,
+      action: 'approval_approved',
+      entityType: 'approval',
+      entityId: id,
+    });
+
+    return approval;
+  }
+
+  async rejectRequest(id: string, approverId: string, comments?: string): Promise<Approval> {
+    const [approval] = await db
+      .update(approvals)
+      .set({
+        status: 'rejected',
+        approverId,
+        rejectedAt: new Date(),
+        comments,
+        updatedAt: new Date()
+      })
+      .where(eq(approvals.id, id))
+      .returning();
+
+    await this.createAuditLog({
+      userId: approverId,
+      organizationId: approval.organizationId,
+      action: 'approval_rejected',
+      entityType: 'approval',
+      entityId: id,
+    });
+
+    return approval;
+  }
+
+  // Audit Logs
+  async createAuditLog(data: InsertAuditLog): Promise<AuditLog> {
+    const [auditLog] = await db
+      .insert(auditLogs)
+      .values(data)
+      .returning();
+    return auditLog;
+  }
+
+  async getAuditLogsByOrganization(organizationId: string, limit: number = 100): Promise<AuditLog[]> {
+    return await db
+      .select()
+      .from(auditLogs)
+      .where(eq(auditLogs.organizationId, organizationId))
+      .orderBy(desc(auditLogs.timestamp))
+      .limit(limit);
+  }
+
+  // Educational Content (Academy)
+  async getEducationalContentForUser(userId: string, category?: string): Promise<EducationalContent[]> {
+    let conditions = eq(educationalContent.isActive, true);
+    
+    if (category) {
+      conditions = and(conditions, eq(educationalContent.category, category));
+    }
+
+    return await db
+      .select()
+      .from(educationalContent)
+      .where(conditions)
+      .orderBy(desc(educationalContent.priority))
+      .limit(10);
+  }
+
+  async trackContentInteraction(userId: string, contentId: string, interactionType: string): Promise<UserEducationInteraction> {
+    // Update view count
+    if (interactionType === 'viewed') {
+      await db
+        .update(educationalContent)
+        .set({
+          viewCount: sql`${educationalContent.viewCount} + 1`,
+          updatedAt: new Date()
+        })
+        .where(eq(educationalContent.id, contentId));
+    }
+
+    const [interaction] = await db
+      .insert(userEducationInteractions)
+      .values({
+        userId,
+        contentId,
+        interactionType,
+      })
+      .returning();
+
+    return interaction;
+  }
+
+  async getRecommendedContent(userId: string): Promise<EducationalContent[]> {
+    return await db
+      .select()
+      .from(educationalContent)
+      .where(eq(educationalContent.isActive, true))
+      .orderBy(desc(educationalContent.priority))
+      .limit(5);
   }
 }
 

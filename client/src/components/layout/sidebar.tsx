@@ -6,7 +6,7 @@ import { useBusinessTheme } from "@/hooks/useBusinessTheme";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload, Crown, Building2, Users, Receipt, Package, Briefcase, LogOut, Brain } from "lucide-react";
+import { TrendingUp, Home, ArrowLeftRight, PieChart, FileText, Tags, User, Moon, Sun, Menu, X, Target, Upload, Crown, Building2, Users, Receipt, Package, Briefcase, LogOut, Brain, Zap, DollarSign, Calendar } from "lucide-react";
 
 const getNavigation = (isBusinessAccount: boolean) => {
   const baseNavigation = [
@@ -20,9 +20,18 @@ const getNavigation = (isBusinessAccount: boolean) => {
     { name: 'Categorias', href: '/categories', icon: Tags },
   ];
 
+  // Funcionalidades Nexo
+  const nexoFeatures = [
+    { name: 'Patrimônio 360º', href: '/assets', icon: Building2 },
+    { name: 'Assinaturas', href: '/subscriptions', icon: Calendar },
+    { name: 'Metas Nexo', href: '/nexo-goals', icon: Zap },
+    { name: 'Cérebro Analítico', href: '/analytics', icon: Brain },
+  ];
+
   if (isBusinessAccount) {
     return [
       ...baseNavigation,
+      ...nexoFeatures,
       { name: 'Fornecedores', href: '/suppliers', icon: Building2 },
       { name: 'Departamentos', href: '/departments', icon: Users },
       { name: 'Notas Fiscais', href: '/invoices', icon: Receipt },
@@ -32,6 +41,7 @@ const getNavigation = (isBusinessAccount: boolean) => {
 
   return [
     ...baseNavigation,
+    ...nexoFeatures,
     { name: 'Premium', href: '/subscription', icon: Crown },
   ];
 };

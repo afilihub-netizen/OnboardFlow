@@ -485,6 +485,11 @@ export const usersRelationsUpdated = relations(users, ({ many }) => ({
   notifications: many(notifications),
   workflowTriggers: many(workflowTriggers),
   emailPreferences: many(emailPreferences),
+  assets: many(assets),
+  subscriptions: many(subscriptions),
+  goals: many(goals),
+  approvals: many(approvals),
+  auditLogs: many(auditLogs),
 }));
 
 // Notification types
@@ -496,6 +501,69 @@ export type WorkflowTrigger = typeof workflowTriggers.$inferSelect;
 
 export type InsertEmailPreferences = typeof emailPreferences.$inferInsert;
 export type EmailPreferences = typeof emailPreferences.$inferSelect;
+
+// Approval workflows for business
+export const approvalStatusEnum = pgEnum('approval_status', ['draft', 'pending', 'approved', 'rejected', 'cancelled']);
+
+export const approvals = pgTable("approvals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").references(() => organizations.id).notNull(),
+  requesterId: varchar("requester_id").references(() => users.id).notNull(),
+  entityType: varchar("entity_type").notNull(), // transaction, expense, etc
+  entityId: varchar("entity_id").notNull(),
+  amount: decimal("amount", { precision: 14, scale: 2 }),
+  status: approvalStatusEnum("status").default('pending'),
+  currentStep: integer("current_step").default(1),
+  totalSteps: integer("total_steps").default(1),
+  approverId: varchar("approver_id").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectedAt: timestamp("rejected_at"),
+  comments: text("comments"),
+  policy: jsonb("policy"), // Approval policy rules
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Audit logs for compliance
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  action: varchar("action", { length: 100 }).notNull(),
+  entityType: varchar("entity_type", { length: 100 }),
+  entityId: varchar("entity_id"),
+  beforeData: jsonb("before_data"),
+  afterData: jsonb("after_data"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: varchar("user_agent", { length: 500 }),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+// Educational content for Nexus Academy
+export const educationalContent = pgTable("educational_content", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title", { length: 200 }).notNull(),
+  content: text("content").notNull(),
+  contentType: varchar("content_type").default('tip'), // tip, guide, warning, insight
+  triggerConditions: jsonb("trigger_conditions"), // When to show this content
+  targetAudience: varchar("target_audience").default('all'), // beginner, intermediate, advanced, all
+  category: varchar("category", { length: 100 }), // budgeting, investing, debt, etc
+  priority: integer("priority").default(3),
+  isActive: boolean("is_active").default(true),
+  clickThroughRate: decimal("click_through_rate", { precision: 5, scale: 4 }),
+  viewCount: integer("view_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User interactions with educational content
+export const userEducationInteractions = pgTable("user_education_interactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  contentId: varchar("content_id").references(() => educationalContent.id).notNull(),
+  interactionType: varchar("interaction_type").notNull(), // viewed, clicked, dismissed, saved
+  timestamp: timestamp("timestamp").defaultNow(),
+});
 
 // Insert schemas for notifications
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
@@ -517,7 +585,90 @@ export const insertEmailPreferencesSchema = createInsertSchema(emailPreferences)
   updatedAt: true,
 });
 
-// ===== NEW ADVANCED FEATURES SCHEMA =====
+// Relations will be defined at the end of the file
+
+// ===== NEXO ADVANCED FEATURES SCHEMA =====
+
+// Asset types for patrimony management
+export const assetTypeEnum = pgEnum('asset_type', ['vehicle', 'real_estate', 'crypto', 'bank_account', 'other']);
+export const assetStatusEnum = pgEnum('asset_status', ['active', 'sold', 'inactive']);
+
+// Assets table (vehicles, real estate, crypto, etc.)
+export const assets = pgTable("assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  familyGroupId: varchar("family_group_id").references(() => familyGroups.id),
+  name: varchar("name", { length: 200 }).notNull(),
+  type: assetTypeEnum("type").notNull(),
+  status: assetStatusEnum("status").default('active'),
+  purchaseValue: decimal("purchase_value", { precision: 14, scale: 2 }).notNull(),
+  currentValue: decimal("current_value", { precision: 14, scale: 2 }).notNull(),
+  valuationSource: varchar("valuation_source", { length: 100 }), // FIPE, manual, API
+  metadata: jsonb("metadata"), // JSON with asset-specific data (year, brand, model, etc.)
+  description: text("description"),
+  purchaseDate: timestamp("purchase_date").notNull(),
+  lastValuation: timestamp("last_valuation").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Subscription/recurring payments detector
+export const subscriptionActiveStatusEnum = pgEnum('subscription_active_status', ['active', 'cancelled', 'paused']);
+
+export const subscriptions = pgTable("subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  merchant: varchar("merchant", { length: 200 }).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).default('BRL'),
+  frequency: varchar("frequency").notNull(), // monthly, yearly, weekly
+  status: subscriptionActiveStatusEnum("status").default('active'),
+  nextChargeDate: timestamp("next_charge_date"),
+  lastChargeDate: timestamp("last_charge_date"),
+  categoryId: varchar("category_id").references(() => categories.id),
+  detectedAt: timestamp("detected_at").defaultNow(),
+  confirmedByUser: boolean("confirmed_by_user").default(false),
+  usageScore: integer("usage_score"), // 1-10 based on user activity
+  cancellationUrl: varchar("cancellation_url", { length: 500 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Goals and Vaults system
+export const goalStatusEnum = pgEnum('goal_status', ['active', 'completed', 'paused', 'cancelled']);
+export const goalTypeEnum = pgEnum('goal_type', ['emergency_fund', 'vacation', 'house_purchase', 'retirement', 'education', 'custom']);
+
+export const goals = pgTable("goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  organizationId: varchar("organization_id").references(() => organizations.id),
+  familyGroupId: varchar("family_group_id").references(() => familyGroups.id),
+  name: varchar("name", { length: 200 }).notNull(),
+  type: goalTypeEnum("type").notNull(),
+  status: goalStatusEnum("status").default('active'),
+  targetAmount: decimal("target_amount", { precision: 14, scale: 2 }).notNull(),
+  currentAmount: decimal("current_amount", { precision: 14, scale: 2 }).default('0'),
+  targetDate: timestamp("target_date"),
+  priority: integer("priority").default(3), // 1-5 scale
+  autoAllocation: boolean("auto_allocation").default(false),
+  allocationRules: jsonb("allocation_rules"), // Rules for automatic money allocation
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Vault links for multi-account goals
+export const vaultLinks = pgTable("vault_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  goalId: varchar("goal_id").references(() => goals.id).notNull(),
+  accountInfo: jsonb("account_info").notNull(), // {bank, account, allocation_percentage}
+  allocationPercentage: decimal("allocation_percentage", { precision: 5, scale: 2 }),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
 // Scenario status enum for simulation tracking
 export const scenarioStatusEnum = pgEnum('scenario_status', ['draft', 'active', 'completed', 'archived']);
@@ -895,3 +1046,114 @@ export const insertAnomalyDetectionSchema = createInsertSchema(anomalyDetections
   createdAt: true,
   resolvedAt: true,
 });
+
+// Insert schemas for Nexo tables
+export const insertAssetSchema = createInsertSchema(assets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertGoalSchema = createInsertSchema(goals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertVaultLinkSchema = createInsertSchema(vaultLinks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertApprovalSchema = createInsertSchema(approvals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertEducationalContentSchema = createInsertSchema(educationalContent).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// New types
+export type Asset = typeof assets.$inferSelect;
+export type InsertAsset = typeof assets.$inferInsert;
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+export type Goal = typeof goals.$inferSelect;
+export type InsertGoal = typeof goals.$inferInsert;
+
+export type VaultLink = typeof vaultLinks.$inferSelect;
+export type InsertVaultLink = typeof vaultLinks.$inferInsert;
+
+export type Approval = typeof approvals.$inferSelect;
+export type InsertApproval = typeof approvals.$inferInsert;
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = typeof auditLogs.$inferInsert;
+
+export type EducationalContent = typeof educationalContent.$inferSelect;
+export type InsertEducationalContent = typeof educationalContent.$inferInsert;
+
+export type UserEducationInteraction = typeof userEducationInteractions.$inferSelect;
+
+// ===== ALL RELATIONS (defined at the end) =====
+
+// Relations for new Nexo tables
+export const assetsRelations = relations(assets, ({ one }) => ({
+  user: one(users, { fields: [assets.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [assets.organizationId], references: [organizations.id] }),
+  familyGroup: one(familyGroups, { fields: [assets.familyGroupId], references: [familyGroups.id] }),
+}));
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  user: one(users, { fields: [subscriptions.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [subscriptions.organizationId], references: [organizations.id] }),
+  category: one(categories, { fields: [subscriptions.categoryId], references: [categories.id] }),
+}));
+
+export const goalsRelations = relations(goals, ({ one, many }) => ({
+  user: one(users, { fields: [goals.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [goals.organizationId], references: [organizations.id] }),
+  familyGroup: one(familyGroups, { fields: [goals.familyGroupId], references: [familyGroups.id] }),
+  vaultLinks: many(vaultLinks),
+}));
+
+export const vaultLinksRelations = relations(vaultLinks, ({ one }) => ({
+  goal: one(goals, { fields: [vaultLinks.goalId], references: [goals.id] }),
+}));
+
+export const approvalsRelations = relations(approvals, ({ one }) => ({
+  organization: one(organizations, { fields: [approvals.organizationId], references: [organizations.id] }),
+  requester: one(users, { fields: [approvals.requesterId], references: [users.id] }),
+  approver: one(users, { fields: [approvals.approverId], references: [users.id] }),
+}));
+
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  user: one(users, { fields: [auditLogs.userId], references: [users.id] }),
+  organization: one(organizations, { fields: [auditLogs.organizationId], references: [organizations.id] }),
+}));
+
+export const educationalContentRelations = relations(educationalContent, ({ many }) => ({
+  interactions: many(userEducationInteractions),
+}));
+
+export const userEducationInteractionsRelations = relations(userEducationInteractions, ({ one }) => ({
+  user: one(users, { fields: [userEducationInteractions.userId], references: [users.id] }),
+  content: one(educationalContent, { fields: [userEducationInteractions.contentId], references: [educationalContent.id] }),
+}));
