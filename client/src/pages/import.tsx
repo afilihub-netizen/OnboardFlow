@@ -548,13 +548,24 @@ export default function Import() {
                         <div className="flex items-center justify-between flex-1">
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
-                              <span className="font-medium">{transaction.description}</span>
+                              <span className="font-medium">
+                                {(transaction as any).enhancedDescription || transaction.description}
+                              </span>
                               <Badge variant={transaction.type === 'income' ? 'default' : 'secondary'}>
                                 {transaction.type === 'income' ? 'Receita' : 'Despesa'}
                               </Badge>
                               <Badge variant="outline">
                                 {transaction.category}
                               </Badge>
+                              {(transaction as any).paymentMethod && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {(transaction as any).paymentMethod === 'pix' ? 'PIX' :
+                                   (transaction as any).paymentMethod === 'credit_card' ? 'Cartão Crédito' :
+                                   (transaction as any).paymentMethod === 'debit_card' ? 'Cartão Débito' :
+                                   (transaction as any).paymentMethod === 'transfer' ? 'Transferência' :
+                                   (transaction as any).paymentMethod === 'cash' ? 'Dinheiro' : 'Outros'}
+                                </Badge>
+                              )}
                             </div>
                             <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
                               <span>{new Date(transaction.date).toLocaleDateString('pt-BR')}</span>
@@ -564,6 +575,11 @@ export default function Import() {
                                   <AlertCircle className="w-4 h-4 ml-1 text-yellow-500" />
                                 )}
                               </span>
+                              {(transaction as any).cnpjInfo && (
+                                <span className="text-xs text-blue-600">
+                                  {(transaction as any).cnpjInfo.businessType}
+                                </span>
+                              )}
                             </div>
                           </div>
                           <div className="text-right">

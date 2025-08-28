@@ -321,30 +321,37 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
         sendProgressUpdate(sessionId, 97, "Aplicando categorização via CNPJ...");
       }
       
-      const { extractCNPJ, queryCNPJ, categorizeByCNPJ, extractCompanyName } = await import("./utils/cnpj");
+      const { extractCNPJ, queryCNPJ, categorizeByCNPJ, extractCompanyName, detectPaymentMethod } = await import("./utils/cnpj");
       
       finalTransactions = await Promise.all(finalTransactions.map(async (transaction: any) => {
         try {
           // Extract CNPJ from transaction description
           const cnpj = extractCNPJ(transaction.description);
           
+          // Detect payment method from description
+          const paymentMethod = detectPaymentMethod(transaction.description);
+          transaction.paymentMethod = paymentMethod;
+          
           if (cnpj) {
             // Query CNPJ information
             const cnpjInfo = await queryCNPJ(cnpj);
             
             if (cnpjInfo) {
-              // Update category based on CNPJ
-              const newCategory = categorizeByCNPJ(cnpjInfo);
+              // Enhanced categorization with business intelligence
+              const businessInfo = categorizeByCNPJ(cnpjInfo);
               
-              if (newCategory !== "Outros") {
-                transaction.category = newCategory;
-                transaction.confidence = 0.95; // Higher confidence for CNPJ-based categorization
-                transaction.cnpjInfo = {
-                  cnpj,
-                  companyName: cnpjInfo.nome,
-                  activity: cnpjInfo.atividade_principal[0]?.text || ''
-                };
-              }
+              transaction.category = businessInfo.category;
+              transaction.confidence = 0.95; // Higher confidence for CNPJ-based categorization
+              transaction.cnpjInfo = {
+                cnpj,
+                companyName: cnpjInfo.nome,
+                activity: cnpjInfo.atividade_principal[0]?.text || '',
+                businessType: businessInfo.businessType,
+                description: businessInfo.description
+              };
+              
+              // Update transaction description with business context
+              transaction.enhancedDescription = `${businessInfo.description} - ${cnpjInfo.nome}`;
             }
           } else {
             // Try to extract company name for better categorization

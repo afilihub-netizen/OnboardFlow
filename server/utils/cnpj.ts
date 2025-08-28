@@ -65,72 +65,177 @@ export async function queryCNPJ(cnpj: string): Promise<CNPJInfo | null> {
   }
 }
 
-// Categorize based on CNPJ activity
-export function categorizeByCNPJ(cnpjInfo: CNPJInfo): string {
+// Enhanced categorization with detailed business analysis
+export function categorizeByCNPJ(cnpjInfo: CNPJInfo): {
+  category: string;
+  businessType: string;
+  description: string;
+} {
   const activity = cnpjInfo.atividade_principal[0]?.text?.toLowerCase() || '';
   const name = cnpjInfo.nome.toLowerCase();
   
-  // Healthcare
-  if (activity.includes('médic') || activity.includes('hospitalar') || activity.includes('saúde') ||
-      activity.includes('farmácia') || activity.includes('clínica') || activity.includes('dentário') ||
-      name.includes('hospital') || name.includes('clínica') || name.includes('médico')) {
-    return 'Saúde';
+  // Supermercados e Mercados
+  if (activity.includes('supermercado') || activity.includes('hipermercado') || activity.includes('mercado') ||
+      activity.includes('atacadista') || activity.includes('varejo alimentício') ||
+      name.includes('supermercado') || name.includes('mercado') || name.includes('atacadão') ||
+      name.includes('carrefour') || name.includes('pão de açúcar') || name.includes('extra')) {
+    return {
+      category: 'Alimentação',
+      businessType: 'Supermercado',
+      description: 'Compras em supermercado'
+    };
   }
   
-  // Education
-  if (activity.includes('educação') || activity.includes('ensino') || activity.includes('escola') ||
-      activity.includes('universidade') || activity.includes('curso') ||
-      name.includes('escola') || name.includes('faculdade') || name.includes('universidade')) {
-    return 'Educação';
+  // Postos de Combustível
+  if (activity.includes('combustível') || activity.includes('posto') || activity.includes('gasolina') ||
+      activity.includes('álcool') || activity.includes('etanol') || activity.includes('diesel') ||
+      name.includes('posto') || name.includes('petrobras') || name.includes('shell') ||
+      name.includes('ipiranga') || name.includes('ale')) {
+    return {
+      category: 'Transporte',
+      businessType: 'Posto de Combustível',
+      description: 'Abastecimento de combustível'
+    };
   }
   
-  // Transportation
-  if (activity.includes('transporte') || activity.includes('combustível') || activity.includes('posto') ||
-      activity.includes('gasolina') || activity.includes('táxi') || activity.includes('uber') ||
-      name.includes('posto') || name.includes('transport') || name.includes('combustível')) {
-    return 'Transporte';
+  // Farmácias
+  if (activity.includes('farmácia') || activity.includes('medicamento') || activity.includes('drogaria') ||
+      name.includes('farmácia') || name.includes('drogaria') || name.includes('droga') ||
+      name.includes('pague menos') || name.includes('extrafarma') || name.includes('drogasil')) {
+    return {
+      category: 'Saúde',
+      businessType: 'Farmácia',
+      description: 'Compra de medicamentos e produtos de saúde'
+    };
   }
   
-  // Food
-  if (activity.includes('alimentação') || activity.includes('restaurante') || activity.includes('lanchonete') ||
-      activity.includes('padaria') || activity.includes('supermercado') || activity.includes('mercado') ||
-      name.includes('restaurante') || name.includes('lanchonete') || name.includes('mercado') ||
-      name.includes('supermercado') || name.includes('padaria')) {
-    return 'Alimentação';
+  // Restaurantes e Alimentação
+  if (activity.includes('restaurante') || activity.includes('lanchonete') || activity.includes('pizzaria') ||
+      activity.includes('hamburgueria') || activity.includes('food') || activity.includes('alimentação') ||
+      name.includes('restaurante') || name.includes('lanchonete') || name.includes('mcdonald') ||
+      name.includes('burger') || name.includes('pizza') || name.includes('ifood')) {
+    return {
+      category: 'Alimentação',
+      businessType: 'Restaurante',
+      description: 'Gastos com alimentação fora de casa'
+    };
   }
   
-  // Shopping/Retail
-  if (activity.includes('comércio') || activity.includes('varejo') || activity.includes('loja') ||
-      activity.includes('vestuário') || activity.includes('calçados') || activity.includes('magazine') ||
-      name.includes('loja') || name.includes('magazine') || name.includes('shopping')) {
-    return 'Compras';
+  // Telecomunicações e Internet
+  if (activity.includes('telecomunicações') || activity.includes('telefonia') || activity.includes('internet') ||
+      activity.includes('celular') || activity.includes('banda larga') ||
+      name.includes('vivo') || name.includes('tim') || name.includes('claro') ||
+      name.includes('oi') || name.includes('nextel') || name.includes('sky')) {
+    return {
+      category: 'Serviços Essenciais',
+      businessType: 'Telecomunicações',
+      description: 'Serviços de telefonia e internet'
+    };
   }
   
-  // Entertainment
-  if (activity.includes('entretenimento') || activity.includes('cinema') || activity.includes('teatro') ||
-      activity.includes('shows') || activity.includes('diversão') ||
-      name.includes('cinema') || name.includes('teatro') || name.includes('show')) {
-    return 'Entretenimento';
+  // Energia Elétrica
+  if (activity.includes('energia elétrica') || activity.includes('distribuição de energia') ||
+      name.includes('energia') || name.includes('elétrica') || name.includes('copel') ||
+      name.includes('cemig') || name.includes('light') || name.includes('eletrobras')) {
+    return {
+      category: 'Serviços Essenciais',
+      businessType: 'Energia Elétrica',
+      description: 'Conta de luz'
+    };
   }
   
-  // Utilities
-  if (activity.includes('energia elétrica') || activity.includes('água') || activity.includes('telefonia') ||
-      activity.includes('internet') || activity.includes('gás') || activity.includes('telecomunicações') ||
-      name.includes('energia') || name.includes('telefônica') || name.includes('vivo') ||
-      name.includes('tim') || name.includes('claro') || name.includes('oi')) {
-    return 'Serviços Essenciais';
+  // Streaming e Assinaturas Digitais
+  if (activity.includes('streaming') || activity.includes('conteúdo digital') || activity.includes('software') ||
+      name.includes('netflix') || name.includes('spotify') || name.includes('amazon prime') ||
+      name.includes('disney') || name.includes('youtube') || name.includes('microsoft') ||
+      name.includes('adobe') || name.includes('google')) {
+    return {
+      category: 'Entretenimento',
+      businessType: 'Assinatura Digital',
+      description: 'Serviços de streaming e assinaturas digitais'
+    };
   }
   
-  // Financial Services
+  // Bancos e Serviços Financeiros
   if (activity.includes('banco') || activity.includes('financeiro') || activity.includes('crédito') ||
       activity.includes('investimento') || activity.includes('corretora') ||
       name.includes('banco') || name.includes('bradesco') || name.includes('itaú') ||
-      name.includes('santander') || name.includes('nubank') || name.includes('inter')) {
-    return 'Serviços Financeiros';
+      name.includes('santander') || name.includes('nubank') || name.includes('inter') ||
+      name.includes('caixa') || name.includes('bb ')) {
+    return {
+      category: 'Serviços Financeiros',
+      businessType: 'Banco',
+      description: 'Serviços bancários e financeiros'
+    };
+  }
+  
+  // Lojas e Varejo
+  if (activity.includes('comércio varejista') || activity.includes('loja') || activity.includes('varejo') ||
+      activity.includes('vestuário') || activity.includes('calçados') || activity.includes('magazine') ||
+      name.includes('magazine') || name.includes('americanas') || name.includes('casas bahia') ||
+      name.includes('riachuelo') || name.includes('c&a') || name.includes('renner')) {
+    return {
+      category: 'Compras',
+      businessType: 'Loja de Varejo',
+      description: 'Compras em lojas físicas ou online'
+    };
+  }
+  
+  // Transporte e Mobilidade
+  if (activity.includes('transporte') || activity.includes('táxi') || activity.includes('aplicativo') ||
+      name.includes('uber') || name.includes('99') || name.includes('taxi') ||
+      name.includes('metro') || name.includes('cptm') || name.includes('brt')) {
+    return {
+      category: 'Transporte',
+      businessType: 'Transporte',
+      description: 'Gastos com locomoção'
+    };
   }
   
   // Default category
-  return 'Outros';
+  return {
+    category: 'Outros',
+    businessType: 'Empresa',
+    description: 'Gasto não categorizado automaticamente'
+  };
+}
+
+// Detect payment method from transaction description
+export function detectPaymentMethod(description: string): string {
+  const desc = description.toLowerCase();
+  
+  if (desc.includes('pix') || desc.includes('transferencia pix')) {
+    return 'pix';
+  }
+  
+  if (desc.includes('cartao credito') || desc.includes('compra cartao') || 
+      desc.includes('cc ') || desc.includes('credit')) {
+    return 'credit_card';
+  }
+  
+  if (desc.includes('cartao debito') || desc.includes('debito') || 
+      desc.includes('cd ') || desc.includes('debit')) {
+    return 'debit_card';
+  }
+  
+  if (desc.includes('ted') || desc.includes('doc') || desc.includes('transferencia')) {
+    return 'transfer';
+  }
+  
+  if (desc.includes('dinheiro') || desc.includes('especie')) {
+    return 'cash';
+  }
+  
+  if (desc.includes('saque') || desc.includes('atm')) {
+    return 'cash';
+  }
+  
+  // Default based on common patterns
+  if (desc.includes('compra') || desc.includes('pagto')) {
+    return 'debit_card'; // Most common for purchases
+  }
+  
+  return 'other';
 }
 
 // Extract company name from transaction description
