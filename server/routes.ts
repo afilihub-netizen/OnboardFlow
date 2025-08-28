@@ -1116,19 +1116,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
     
     // Check for critical errors (ignore page limit warnings)
-    const errorMessage = ocrResult.ErrorMessage || '';
+    const errorMessage = Array.isArray(ocrResult.ErrorMessage) 
+      ? ocrResult.ErrorMessage.join(' ') 
+      : (ocrResult.ErrorMessage || '');
+    
     const hasPageLimitError = errorMessage.includes('maximum page limit') || 
                              errorMessage.includes('page limit') ||
                              errorMessage.includes('limit');
     
-    // Only throw error if it's a real processing error, not a page limit issue
-    if (ocrResult.IsErroredOnProcessing && !hasPageLimitError) {
-      throw new Error(`OCR processing error: ${ocrResult.ErrorMessage}`);
+    // If we have results, always treat as success regardless of error flags
+    const hasValidResults = ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0;
+    
+    // Only throw error if it's a real processing error AND we have no results
+    if (ocrResult.IsErroredOnProcessing && !hasPageLimitError && !hasValidResults) {
+      throw new Error(`OCR processing error: ${errorMessage}`);
     }
     
-    // If we have page limit error but also have results, treat as success
-    if (hasPageLimitError && ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0) {
-      console.log('Page limit reached but got results, treating as success');
+    // Log success case
+    if (hasValidResults) {
+      console.log(`Successfully extracted text from ${ocrResult.ParsedResults.length} page(s)`);
     }
     
     let extractedText = '';
@@ -1205,19 +1211,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (chunkResult.text.trim()) {
             fullText += (fullText ? '\n\n' : '') + chunkResult.text;
             totalPages += chunkResult.pages;
+            console.log(`Added ${chunkResult.pages} pages to result, total: ${totalPages}`);
           }
 
-          // Update progress
-          const progressPercent = Math.min(30 + (currentPage / 10) * 60, 90);
+          // Update progress based on actual processing
+          const progressPercent = Math.min(30 + (totalPages / 15) * 60, 90);
           session.progress = progressPercent;
-          session.message = `Páginas ${currentPage}-${currentPage + chunkResult.pages - 1} processadas...`;
+          session.message = `${totalPages} páginas processadas, continuando...`;
 
           // For first chunk, if no "hasMore" flag, it means the PDF has only these pages
           if (chunkResult.isFirstChunk && !chunkResult.hasMore) {
+            console.log('First chunk complete, no more pages detected');
+            hasMorePages = false;
+          } else if (chunkResult.pages === 0) {
+            // No pages in this chunk, probably end of document
+            console.log('No pages in chunk, stopping');
             hasMorePages = false;
           } else {
             currentPage += 3;
             hasMorePages = currentPage <= 30; // Continue up to 30 pages max
+            console.log(`Moving to next chunk, currentPage: ${currentPage}`);
           }
           
         } catch (chunkError) {
