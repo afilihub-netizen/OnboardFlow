@@ -59,14 +59,14 @@ export function FinancialOverview() {
       {/* Balance Card */}
       <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border border-blue-400/20 shadow-xl rounded-2xl animate-scale-in hover:shadow-2xl transition-all duration-300 overflow-hidden">
         <CardContent className="p-6">
-          <div className="flex items-start justify-between mb-4 gap-3">
-            <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1 pr-4">
               <p className="text-blue-100 text-sm font-medium uppercase tracking-wide mb-3">Saldo Total</p>
-              <p className="text-3xl font-bold tracking-tight leading-none modern-large-value" data-testid="balance-total">
+              <p className="text-3xl font-bold tracking-tight leading-tight modern-large-value" data-testid="balance-total">
                 {formatCurrency(balance)}
               </p>
             </div>
-            <div className="bg-blue-400/30 rounded-xl p-3 backdrop-blur-sm flex-shrink-0">
+            <div className="bg-blue-400/30 rounded-xl p-3 backdrop-blur-sm flex-shrink-0 self-start">
               <Wallet className="w-6 h-6 icon-pulse-smooth" />
             </div>
           </div>
@@ -80,14 +80,14 @@ export function FinancialOverview() {
       {/* Income Card */}
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-2xl animate-scale-in hover:shadow-2xl transition-all duration-300 overflow-hidden" style={{animationDelay: '0.1s'}}>
         <CardContent className="p-6">
-          <div className="flex items-start justify-between mb-4 gap-3">
-            <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1 pr-4">
               <p className="text-gray-600 dark:text-gray-400 text-sm font-medium uppercase tracking-wide mb-3">Receitas</p>
-              <p className="text-3xl font-bold text-green-600 tracking-tight leading-none modern-large-value" data-testid="income-total">
+              <p className="text-3xl font-bold text-green-600 tracking-tight leading-tight modern-large-value" data-testid="income-total">
                 {formatCurrency(totalIncome)}
               </p>
             </div>
-            <div className="bg-green-100 dark:bg-green-900 rounded-xl p-3 flex-shrink-0">
+            <div className="bg-green-100 dark:bg-green-900 rounded-xl p-3 flex-shrink-0 self-start">
               <TrendingUp className="w-6 h-6 text-green-600 icon-float" />
             </div>
           </div>
@@ -101,14 +101,14 @@ export function FinancialOverview() {
       {/* Expenses Card */}
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-2xl animate-scale-in hover:shadow-2xl transition-all duration-300 overflow-hidden" style={{animationDelay: '0.2s'}}>
         <CardContent className="p-6">
-          <div className="flex items-start justify-between mb-4 gap-3">
-            <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1 pr-4">
               <p className="text-gray-600 dark:text-gray-400 text-sm font-medium uppercase tracking-wide mb-3">Gastos</p>
-              <p className="text-3xl font-bold text-red-600 tracking-tight leading-none modern-large-value" data-testid="expenses-total">
+              <p className="text-3xl font-bold text-red-600 tracking-tight leading-tight modern-large-value" data-testid="expenses-total">
                 {formatCurrency(totalExpenses)}
               </p>
             </div>
-            <div className="bg-red-100 dark:bg-red-900 rounded-xl p-3 flex-shrink-0">
+            <div className="bg-red-100 dark:bg-red-900 rounded-xl p-3 flex-shrink-0 self-start">
               <TrendingDown className="w-6 h-6 text-red-600 icon-bounce-target" />
             </div>
           </div>
@@ -122,14 +122,14 @@ export function FinancialOverview() {
       {/* Investments Card */}
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-2xl animate-scale-in hover:shadow-2xl transition-all duration-300 overflow-hidden" style={{animationDelay: '0.3s'}}>
         <CardContent className="p-6">
-          <div className="flex items-start justify-between mb-4 gap-3">
-            <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1 pr-4">
               <p className="text-gray-600 dark:text-gray-400 text-sm font-medium uppercase tracking-wide mb-3">Investimentos</p>
-              <p className="text-3xl font-bold text-purple-600 tracking-tight leading-none modern-large-value" data-testid="investments-total">
+              <p className="text-3xl font-bold text-purple-600 tracking-tight leading-tight modern-large-value" data-testid="investments-total">
                 {formatCurrency(investmentValue)}
               </p>
             </div>
-            <div className="bg-purple-100 dark:bg-purple-900 rounded-xl p-3 flex-shrink-0">
+            <div className="bg-purple-100 dark:bg-purple-900 rounded-xl p-3 flex-shrink-0 self-start">
               <PieChart className="w-6 h-6 text-purple-600 icon-shield-glow" />
             </div>
           </div>
