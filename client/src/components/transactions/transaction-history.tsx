@@ -23,6 +23,8 @@ export function TransactionHistory() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{type: 'single' | 'multiple', id?: string}>({type: 'single'});
 
   const { data: categories } = useQuery({
     queryKey: ['/api/categories'],
@@ -159,17 +161,28 @@ export function TransactionHistory() {
   });
 
   const handleDelete = (id: string) => {
-    if (confirm("Tem certeza que deseja excluir esta transação?")) {
-      deleteTransactionMutation.mutate(id);
-    }
+    setDeleteTarget({ type: 'single', id });
+    setIsDeleteModalOpen(true);
   };
 
   const handleMultipleDelete = () => {
     if (selectedTransactions.size === 0) return;
-    
-    if (confirm(`Tem certeza que deseja excluir ${selectedTransactions.size} transação${selectedTransactions.size !== 1 ? 'ões' : ''}?`)) {
+    setDeleteTarget({ type: 'multiple' });
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteTarget.type === 'single' && deleteTarget.id) {
+      deleteTransactionMutation.mutate(deleteTarget.id);
+    } else if (deleteTarget.type === 'multiple') {
       deleteMultipleTransactionsMutation.mutate(Array.from(selectedTransactions));
     }
+    setIsDeleteModalOpen(false);
+  };
+
+  const cancelDelete = () => {
+    setIsDeleteModalOpen(false);
+    setDeleteTarget({ type: 'single' });
   };
 
   const toggleTransactionSelection = (id: string) => {
@@ -527,6 +540,44 @@ export function TransactionHistory() {
               onSuccess={handleEditClose}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-red-600">
+              <Trash2 className="w-5 h-5 mr-2" />
+              Confirmar Exclusão
+            </DialogTitle>
+            <DialogDescription>
+              {deleteTarget.type === 'single' 
+                ? "Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita."
+                : `Tem certeza que deseja excluir ${selectedTransactions.size} transação${selectedTransactions.size !== 1 ? 'ões' : ''}? Esta ação não pode ser desfeita.`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-end space-x-3 mt-6">
+            <Button 
+              variant="outline" 
+              onClick={cancelDelete}
+              data-testid="button-cancel-delete"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Cancelar
+            </Button>
+            <Button 
+              onClick={confirmDelete}
+              disabled={deleteTransactionMutation.isPending || deleteMultipleTransactionsMutation.isPending}
+              className="bg-red-500 hover:bg-red-600 text-white"
+              data-testid="button-confirm-delete"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {deleteTarget.type === 'single' ? 'Excluir Transação' : `Excluir ${selectedTransactions.size}`}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </Card>
