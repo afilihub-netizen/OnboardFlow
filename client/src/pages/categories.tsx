@@ -208,10 +208,10 @@ export default function Categories() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
       <Sidebar />
       
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto min-w-0">
         <Header 
           title="Categorias" 
           subtitle="Organize seus gastos e receitas" 

@@ -106,8 +106,8 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed md:static inset-y-0 left-0 z-40 w-64 h-screen flex flex-col transition-transform duration-300 ease-in-out",
-        "md:translate-x-0",
+        "fixed md:static inset-y-0 left-0 z-40 w-64 md:w-64 h-screen md:h-full flex flex-col transition-transform duration-300 ease-in-out",
+        "md:translate-x-0 md:flex-shrink-0",
         isOpen ? "translate-x-0" : "-translate-x-full",
         isBusinessAccount 
           ? "bg-gradient-to-b from-white to-slate-50" 

@@ -139,10 +139,10 @@ export default function Dashboard() {
   }
 
   return (
-    <div className={`flex h-screen ${isBusinessAccount ? '' : 'bg-gray-50 dark:bg-gray-900'}`}>
+    <div className={`flex h-screen overflow-hidden ${isBusinessAccount ? '' : 'bg-gray-50 dark:bg-gray-900'}`}>
       <Sidebar />
       
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto min-w-0">
         <Header 
           title={isBusinessAccount ? "Painel Corporativo" : "Dashboard"} 
           subtitle={isBusinessAccount ? "Controle financeiro empresarial" : "Visão geral das suas finanças"} 

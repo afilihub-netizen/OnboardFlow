@@ -183,10 +183,10 @@ export default function Reports() {
   const totalExpenses = summary ? parseFloat(summary.totalExpenses) : 0;
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
       <Sidebar />
       
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto min-w-0">
         <Header 
           title="Relatórios" 
           subtitle="Análises detalhadas das suas finanças" 
