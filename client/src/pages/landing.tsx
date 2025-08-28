@@ -92,7 +92,7 @@ export default function Landing() {
                 <Button 
                   variant="outline" 
                   size="lg"
-                  className="border-gray-700 text-white hover:bg-white/10 px-8 py-6 text-lg rounded-2xl w-full sm:w-auto"
+                  className="border-gray-600 bg-transparent text-white hover:bg-white/10 hover:border-gray-500 px-8 py-6 text-lg rounded-2xl w-full sm:w-auto"
                 >
                   <PlayCircle className="w-5 h-5 mr-2" />
                   Ver Demo
