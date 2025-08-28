@@ -204,7 +204,11 @@ export default function Import() {
                   if (finalResult.text.trim()) {
                     setIsModalOpen(true);
                     setAutoProcessing(true);
-                    analyzeExtractWithAI();
+                    
+                    // Small delay to ensure modal is rendered
+                    setTimeout(() => {
+                      analyzeExtractWithAI();
+                    }, 500);
                   }
                 }, 1000);
               }
@@ -772,16 +776,11 @@ export default function Import() {
             
             {!isAnalyzing && parsedTransactions.length === 0 && (
               <div className="text-center space-y-4">
-                <AlertCircle className="w-12 h-12 mx-auto text-red-500" />
+                <Brain className="w-12 h-12 mx-auto text-blue-500 animate-pulse" />
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Não foi possível identificar transações no extrato.
+                  Processando análise inteligente do extrato...
                 </p>
-                <Button 
-                  variant="outline"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Fechar
-                </Button>
+                <div className="animate-spin mx-auto w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full"></div>
               </div>
             )}
           </div>
