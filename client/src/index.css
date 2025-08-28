@@ -158,20 +158,19 @@
   }
 
   .sidebar-item {
-    @apply flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 rounded-xl cursor-pointer relative min-h-[48px];
+    @apply flex items-center px-4 py-3 text-gray-600 dark:text-gray-300 rounded-xl cursor-pointer relative min-h-[48px] transition-colors duration-200;
+  }
+  
+  .sidebar-item:hover {
+    @apply bg-gray-50 dark:bg-gray-800/50;
     display: flex;
     align-items: center;
   }
   
   .sidebar-item.active {
-    @apply bg-gradient-to-r from-blue-500/10 to-blue-600/5 dark:from-blue-400/15 dark:to-blue-500/10 text-blue-700 dark:text-blue-300 font-semibold;
-    box-shadow: inset 3px 0 0 0 rgb(59 130 246), 0 1px 3px rgba(59, 130, 246, 0.1);
+    @apply bg-blue-500 text-white font-semibold;
   }
   
-  .sidebar-item.active::before {
-    content: '';
-    @apply absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-blue-500 to-blue-600 rounded-r-full;
-  }
   
   .sidebar-icon {
     @apply flex-shrink-0 w-5 h-5;
@@ -184,7 +183,7 @@
   }
   
   .sidebar-icon-active {
-    @apply text-blue-600 dark:text-blue-300;
+    @apply text-white;
   }
   
   .sidebar-item span {
@@ -657,10 +656,12 @@ canvas {
   @apply text-slate-700;
 }
 
+.business-theme .sidebar-item:hover {
+  @apply bg-slate-100;
+}
+
 .business-theme .sidebar-item.active {
-  @apply bg-slate-200 text-slate-900 border-r-4 border-slate-700;
-  background: linear-gradient(to right, #e2e8f0, #f1f5f9);
-  box-shadow: inset 2px 0 4px rgba(51, 65, 85, 0.1);
+  @apply bg-slate-700 text-white;
 }
 
 .business-theme .gradient-card {

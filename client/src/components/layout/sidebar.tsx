@@ -160,7 +160,7 @@ export function Sidebar() {
                   <Icon className={cn(
                     "w-5 h-5 sidebar-icon", 
                     isActive ? "sidebar-icon-active" : "",
-                    item.name === "Premium" ? "text-yellow-500" : "text-gray-600 dark:text-gray-300"
+                    item.name === "Premium" ? "text-yellow-500" : isActive ? "text-white" : "text-gray-600 dark:text-gray-300"
                   )} />
                   <span className={item.name === "Premium" ? "font-semibold text-yellow-600 dark:text-yellow-500" : ""}>{item.name}</span>
                 </Link>
@@ -180,7 +180,7 @@ export function Sidebar() {
                 data-testid="nav-profile"
                 onClick={() => setIsOpen(false)}
               >
-                <User className={cn("w-5 h-5 sidebar-icon", location === "/profile" ? "sidebar-icon-active" : "text-gray-600 dark:text-gray-300")} />
+                <User className={cn("w-5 h-5 sidebar-icon", location === "/profile" ? "sidebar-icon-active text-white" : "text-gray-600 dark:text-gray-300")} />
                 <span>Perfil</span>
               </Link>
               
