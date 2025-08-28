@@ -22,6 +22,8 @@ export function TransactionHistory() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [searchFilter, setSearchFilter] = useState("");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
@@ -92,11 +94,15 @@ export function TransactionHistory() {
       params.append("endDate", endDate.toISOString());
     }
 
+    // Add pagination parameters
+    params.append("limit", itemsPerPage.toString());
+    params.append("offset", ((currentPage - 1) * itemsPerPage).toString());
+
     return params.toString();
   };
 
-  const { data: allTransactions, isLoading } = useQuery({
-    queryKey: ['/api/transactions', categoryFilter, periodFilter, typeFilter],
+  const { data: transactionData, isLoading } = useQuery({
+    queryKey: ['/api/transactions', categoryFilter, periodFilter, typeFilter, currentPage, itemsPerPage],
     queryFn: async () => {
       const filterParams = getFilterParams();
       const url = filterParams ? `/api/transactions?${filterParams}` : '/api/transactions';
@@ -104,9 +110,51 @@ export function TransactionHistory() {
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to fetch transactions');
-      return response.json();
+      const transactions = await response.json();
+      
+      // Get total count for pagination by removing limit/offset
+      const countParams = new URLSearchParams();
+      if (categoryFilter !== "all") countParams.append("categoryId", categoryFilter);
+      if (typeFilter !== "all") countParams.append("type", typeFilter);
+      
+      const now = new Date();
+      let startDate, endDate;
+      switch (periodFilter) {
+        case "current-month":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          break;
+        case "last-3-months":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          break;
+        case "current-year":
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now.getFullYear(), 11, 31);
+          break;
+      }
+      
+      if (startDate && endDate) {
+        countParams.append("startDate", startDate.toISOString());
+        countParams.append("endDate", endDate.toISOString());
+      }
+      
+      countParams.append("limit", "99999");
+      const countResponse = await fetch(`/api/transactions?${countParams.toString()}`, {
+        credentials: 'include',
+      });
+      const allTransactions = countResponse.ok ? await countResponse.json() : [];
+      
+      return {
+        transactions,
+        totalCount: allTransactions.length
+      };
     },
   });
+
+  const allTransactions = transactionData?.transactions || [];
+  const totalCount = transactionData?.totalCount || 0;
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   // Filtros locais para busca e método de pagamento (mais responsivo)
   const transactions = useMemo(() => {
@@ -133,6 +181,23 @@ export function TransactionHistory() {
     
     return filtered;
   }, [allTransactions, searchFilter, paymentMethodFilter, categories]);
+
+  // Reset page when filters change
+  const resetPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(1);
+    }
+  };
+
+  // Functions for pagination control
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(parseInt(value));
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   const deleteTransactionMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -351,15 +416,16 @@ export function TransactionHistory() {
   const clearAllFilters = () => {
     setCategoryFilter("all");
     setTypeFilter("all");
-    setPeriodFilter("current-month");
+    setPeriodFilter("all");
     setSearchFilter("");
     setPaymentMethodFilter("all");
+    setCurrentPage(1);
   };
 
   const hasActiveFilters = () => {
     return categoryFilter !== "all" || 
            typeFilter !== "all" || 
-           periodFilter !== "current-month" || 
+           periodFilter !== "all" || 
            searchFilter.trim() !== "" || 
            paymentMethodFilter !== "all";
   };
@@ -454,8 +520,23 @@ export function TransactionHistory() {
             </Select>
           </div>
           
-          {/* Ações */}
-          <div className="flex flex-wrap gap-3 justify-end">
+          {/* Configurações de paginação e ações */}
+          <div className="flex flex-wrap gap-3 justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Itens por página:</span>
+              <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+                <SelectTrigger className="w-20" data-testid="select-items-per-page">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex gap-3">
             <Button 
               onClick={handleExport}
               className="bg-blue-500 hover:bg-blue-600 text-white"
@@ -496,6 +577,7 @@ export function TransactionHistory() {
                 </Button>
               </div>
             )}
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -638,6 +720,65 @@ export function TransactionHistory() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        
+        {/* Paginação */}
+        {totalCount > itemsPerPage && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Mostrando {Math.min((currentPage - 1) * itemsPerPage + 1, totalCount)} a {Math.min(currentPage * itemsPerPage, totalCount)} de {totalCount} transações
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                data-testid="button-previous-page"
+              >
+                Anterior
+              </Button>
+              
+              <div className="flex items-center gap-1">
+                {[...Array(Math.min(5, totalPages))].map((_, index) => {
+                  let pageNumber;
+                  if (totalPages <= 5) {
+                    pageNumber = index + 1;
+                  } else if (currentPage <= 3) {
+                    pageNumber = index + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNumber = totalPages - 4 + index;
+                  } else {
+                    pageNumber = currentPage - 2 + index;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNumber}
+                      variant={currentPage === pageNumber ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNumber)}
+                      className="w-8 h-8 p-0"
+                      data-testid={`button-page-${pageNumber}`}
+                    >
+                      {pageNumber}
+                    </Button>
+                  );
+                })}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                data-testid="button-next-page"
+              >
+                Próxima
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>
