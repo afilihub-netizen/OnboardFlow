@@ -117,7 +117,7 @@ export function Sidebar() {
         <div className="p-6">
           <div className="flex items-center space-x-3">
             <div className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center card-hover",
+              "w-10 h-10 rounded-lg flex items-center justify-center",
               isBusinessAccount 
                 ? "bg-gradient-to-r from-slate-700 to-slate-800" 
                 : "bg-gradient-to-r from-blue-500 to-blue-600"
@@ -150,7 +150,7 @@ export function Sidebar() {
                   key={item.name}
                   href={item.href}
                   className={cn(
-                    "sidebar-item micro-interaction border-animated",
+                    "sidebar-item",
                     isActive && "active",
                     item.name === "Premium" && "premium-nav-item"
                   )}
@@ -186,7 +186,7 @@ export function Sidebar() {
               
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="sidebar-item w-full text-left micro-interaction dynamic-button"
+                className="sidebar-item w-full text-left"
                 data-testid="button-theme-toggle"
               >
                 {theme === "dark" ? <Sun className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300" /> : <Moon className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300" />}
