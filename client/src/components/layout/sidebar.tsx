@@ -122,7 +122,7 @@ export function Sidebar() {
                 ? "bg-gradient-to-r from-slate-700 to-slate-800" 
                 : "bg-gradient-to-r from-blue-500 to-blue-600"
             )}>
-              <TrendingUp className="text-white text-lg icon-pulse" />
+              <TrendingUp className="text-white text-lg" />
             </div>
             <div>
               <h1 className={cn(
@@ -158,10 +158,9 @@ export function Sidebar() {
                   onClick={() => setIsOpen(false)}
                 >
                   <Icon className={cn(
-                    "w-5 h-5 sidebar-icon icon-hover", 
-                    isActive ? "sidebar-icon-active icon-breathe" : "icon-animated",
-                    item.name === "Premium" ? "text-yellow-500 icon-pulse" : "text-gray-600 dark:text-gray-300",
-                    item.name === "IA Avançada" && "icon-rotate"
+                    "w-5 h-5 sidebar-icon", 
+                    isActive ? "sidebar-icon-active" : "",
+                    item.name === "Premium" ? "text-yellow-500" : "text-gray-600 dark:text-gray-300"
                   )} />
                   <span className={item.name === "Premium" ? "font-semibold text-yellow-600 dark:text-yellow-500" : ""}>{item.name}</span>
                 </Link>
@@ -190,7 +189,7 @@ export function Sidebar() {
                 className="sidebar-item w-full text-left micro-interaction dynamic-button"
                 data-testid="button-theme-toggle"
               >
-                {theme === "dark" ? <Sun className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300 icon-rotate" /> : <Moon className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300 icon-animated" />}
+                {theme === "dark" ? <Sun className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300" /> : <Moon className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300" />}
                 <span>{theme === "dark" ? "Modo Claro" : "Modo Escuro"}</span>
               </button>
 
