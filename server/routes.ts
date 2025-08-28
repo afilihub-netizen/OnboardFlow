@@ -421,10 +421,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Default categories that are created automatically for new users
+  const DEFAULT_CATEGORIES = [
+    { name: 'Alimentação', icon: 'shopping-cart', color: '#2563eb' },
+    { name: 'Transporte', icon: 'car', color: '#dc2626' },
+    { name: 'Lazer', icon: 'music', color: '#f59e0b' },
+    { name: 'Saúde', icon: 'activity', color: '#10b981' },
+    { name: 'Educação', icon: 'book', color: '#6366f1' },
+    { name: 'Casa', icon: 'home', color: '#8b5cf6' },
+    { name: 'Trabalho', icon: 'briefcase', color: '#059669' },
+    { name: 'Investimentos', icon: 'trending-up', color: '#7c3aed' },
+    { name: 'Serviços', icon: 'settings', color: '#6b7280' },
+    { name: 'Outros', icon: 'folder', color: '#6b7280' },
+  ];
+
+  // Helper function to create default categories for a user
+  async function ensureDefaultCategories(userId: string) {
+    try {
+      const existingCategories = await storage.getCategories(userId);
+      if (existingCategories.length === 0) {
+        console.log(`Creating default categories for user ${userId}`);
+        for (const defaultCategory of DEFAULT_CATEGORIES) {
+          await storage.createCategory({
+            name: defaultCategory.name,
+            icon: defaultCategory.icon,
+            color: defaultCategory.color,
+            userId: userId
+          });
+        }
+        console.log(`Created ${DEFAULT_CATEGORIES.length} default categories for user ${userId}`);
+      }
+    } catch (error) {
+      console.error('Error ensuring default categories:', error);
+    }
+  }
+
   // Category routes
   app.get("/api/categories", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
+      
+      // Ensure user has default categories
+      await ensureDefaultCategories(userId);
+      
       const categories = await storage.getCategories(userId);
       res.json(categories);
     } catch (error) {
