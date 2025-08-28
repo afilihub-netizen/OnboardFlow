@@ -312,9 +312,16 @@ export default function Import() {
       const result = await response.json();
       const analyzedTransactions = result.transactions || [];
       
-      // Check if any transactions were found
+      // Always ensure at least one transaction for user feedback
       if (analyzedTransactions.length === 0) {
-        throw new Error("Nenhuma transação foi identificada no extrato");
+        // Create a placeholder transaction that user can edit
+        analyzedTransactions.push({
+          date: "2025-01-01",
+          description: "Nenhuma transação automática foi detectada - edite este exemplo",
+          amount: -100.00,
+          type: "expense",
+          category: "Outros"
+        });
       }
       
       // Transactions received successfully from AI analysis
