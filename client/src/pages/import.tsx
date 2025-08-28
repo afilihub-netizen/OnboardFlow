@@ -205,9 +205,9 @@ export default function Import() {
                     setIsModalOpen(true);
                     setAutoProcessing(true);
                     
-                    // Small delay to ensure modal is rendered
+                    // Small delay to ensure modal is rendered and state is updated
                     setTimeout(() => {
-                      analyzeExtractWithAI();
+                      analyzeExtractWithAIWithText(finalResult.text);
                     }, 500);
                   }
                 }, 1000);
@@ -275,8 +275,25 @@ export default function Import() {
     return eventSource;
   };
 
-  const analyzeExtractWithAI = async () => {
-    if (!extractText.trim()) {
+  // Version that accepts text parameter to avoid race conditions
+  const analyzeExtractWithAIWithText = async (textToAnalyze: string) => {
+    if (!textToAnalyze.trim()) {
+      toast({
+        title: "Texto vazio",
+        description: "Por favor, adicione o texto do extrato bancário.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Call the main function with the provided text
+    await analyzeExtractWithAI(textToAnalyze);
+  };
+
+  const analyzeExtractWithAI = async (textToAnalyze?: string) => {
+    const textToUse = textToAnalyze || extractText;
+    
+    if (!textToUse.trim()) {
       toast({
         title: "Texto vazio",
         description: "Por favor, adicione o texto do extrato bancário.",
@@ -302,7 +319,7 @@ export default function Import() {
         method: "POST",
         credentials: 'include',
         body: JSON.stringify({ 
-          extractText,
+          extractText: textToUse,
           availableCategories: categories.map((cat: any) => cat.name),
           sessionId
         }),
