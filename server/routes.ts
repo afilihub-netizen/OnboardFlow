@@ -1160,7 +1160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return {
       text: extractedText,
       pages: ocrResult.ParsedResults?.length || 0,
-      hasMore: hasPageLimitError,
+      hasMore: false,
       isFirstChunk: startPage === 1
     };
   }
