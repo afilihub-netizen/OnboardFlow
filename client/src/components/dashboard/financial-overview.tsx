@@ -55,9 +55,9 @@ export function FinancialOverview() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
       {/* Balance Card */}
-      <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg card-hover animate-scale-in">
+      <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border border-blue-400/20 shadow-xl rounded-2xl animate-scale-in">
         <CardContent className="p-6">
           <div className="flex items-start justify-between mb-6">
             <div className="flex-1">
@@ -78,7 +78,7 @@ export function FinancialOverview() {
       </Card>
 
       {/* Income Card */}
-      <Card className="modern-card shadow-lg card-hover animate-scale-in" style={{animationDelay: '0.1s'}}>
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-2xl animate-scale-in" style={{animationDelay: '0.1s'}}>
         <CardContent className="p-6">
           <div className="flex items-start justify-between mb-6">
             <div className="flex-1">
@@ -99,7 +99,7 @@ export function FinancialOverview() {
       </Card>
 
       {/* Expenses Card */}
-      <Card className="modern-card shadow-lg card-hover animate-scale-in" style={{animationDelay: '0.2s'}}>
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-2xl animate-scale-in" style={{animationDelay: '0.2s'}}>
         <CardContent className="p-6">
           <div className="flex items-start justify-between mb-6">
             <div className="flex-1">
@@ -120,7 +120,7 @@ export function FinancialOverview() {
       </Card>
 
       {/* Investments Card */}
-      <Card className="modern-card shadow-lg card-hover animate-scale-in" style={{animationDelay: '0.3s'}}>
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-2xl animate-scale-in" style={{animationDelay: '0.3s'}}>
         <CardContent className="p-6">
           <div className="flex items-start justify-between mb-6">
             <div className="flex-1">
