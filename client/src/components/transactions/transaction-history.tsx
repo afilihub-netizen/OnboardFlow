@@ -94,6 +94,7 @@ export function TransactionHistory() {
     },
     onSuccess: () => {
       toast({
+        variant: "success",
         title: "Sucesso",
         description: "Transação excluída com sucesso!",
       });
@@ -130,6 +131,7 @@ export function TransactionHistory() {
     },
     onSuccess: () => {
       toast({
+        variant: "success",
         title: "Sucesso",
         description: `${selectedTransactions.size} transações excluídas com sucesso!`,
       });
