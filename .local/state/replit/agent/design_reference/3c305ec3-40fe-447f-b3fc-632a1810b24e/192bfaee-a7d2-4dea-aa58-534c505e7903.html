@@ -1,0 +1,657 @@
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanceFlow - Controle Financeiro Pessoal e Familiar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#EFF6FF',
+                            500: '#2563EB',
+                            600: '#1D4ED8',
+                            700: '#1E40AF'
+                        },
+                        success: {
+                            50: '#ECFDF5',
+                            500: '#059669',
+                            600: '#047857'
+                        },
+                        danger: {
+                            50: '#FEF2F2',
+                            500: '#DC2626',
+                            600: '#B91C1C'
+                        },
+                        warning: {
+                            50: '#FFFBEB',
+                            500: '#D97706',
+                            600: '#C2410C'
+                        }
+                    }
+                }
+            },
+            darkMode: 'class'
+        }
+    </script>
+    <style>
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .dark .glass-morphism {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .sidebar-transition {
+            transition: transform 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 font-sans transition-colors duration-200">
+    <!-- @COMPONENT: AppLayout [main layout wrapper] -->
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- @COMPONENT: Sidebar [navigation sidebar] -->
+        <div id="sidebar" class="sidebar-transition w-64 bg-white dark:bg-gray-800 shadow-xl border-r border-gray-200 dark:border-gray-700 flex flex-col">
+            <!-- Logo Section -->
+            <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-lg"></i>
+                    </div>
+                    <h1 class="ml-3 text-xl font-bold text-gray-900 dark:text-white">FinanceFlow</h1>
+                </div>
+                <button id="theme-toggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-moon text-gray-600 dark:text-gray-300"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="flex-1 p-4">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="#dashboard" class="flex items-center p-3 text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 rounded-lg font-medium">
+                            <i class="fas fa-tachometer-alt w-5"></i>
+                            <span class="ml-3">Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#transactions" class="flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                            <i class="fas fa-exchange-alt w-5"></i>
+                            <span class="ml-3">Lançamentos</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#categories" class="flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                            <i class="fas fa-tags w-5"></i>
+                            <span class="ml-3">Categorias</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#investments" class="flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                            <i class="fas fa-chart-pie w-5"></i>
+                            <span class="ml-3">Investimentos</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#reports" class="flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                            <i class="fas fa-file-chart-column w-5"></i>
+                            <span class="ml-3">Relatórios</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#fixed-expenses" class="flex items-center p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                            <i class="fas fa-calendar-check w-5"></i>
+                            <span class="ml-3">Contas Fixas</span>
+                        </a>
+                    </li>
+                </ul>
+                
+                <!-- AI Insights Section -->
+                <div class="mt-8 p-4 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl border border-purple-100 dark:border-purple-800">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-robot text-purple-600 dark:text-purple-400"></i>
+                        <h3 class="ml-2 font-semibold text-gray-900 dark:text-white">IA Financeira</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">Suas sugestões personalizadas estão prontas!</p>
+                    <button class="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 px-3 rounded-lg transition-colors">
+                        Ver Insights
+                    </button>
+                </div>
+            </nav>
+
+            <!-- User Profile -->
+            <div class="border-t border-gray-200 dark:border-gray-700 p-4">
+                <div class="flex items-center">
+                    <!-- Profile image placeholder -->
+                    <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100" alt="User Avatar" class="w-10 h-10 rounded-full" data-mock="true">
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white" data-bind="user.name">João Silva</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Perfil Familiar</p>
+                    </div>
+                    <button class="ml-auto p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                        <i class="fas fa-cog text-gray-500 dark:text-gray-400"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: Sidebar -->
+
+        <!-- @COMPONENT: MainContent [main dashboard content] -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Dashboard Financeiro</h2>
+                        <p class="text-gray-600 dark:text-gray-400">Visão geral das suas finanças em <span data-bind="currentDate">Dezembro 2024</span></p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <!-- Quick Actions -->
+                        <button class="flex items-center px-4 py-2 bg-success-500 hover:bg-success-600 text-white rounded-lg transition-colors" data-event="click:addIncome">
+                            <i class="fas fa-plus mr-2"></i>
+                            Receita
+                        </button>
+                        <button class="flex items-center px-4 py-2 bg-danger-500 hover:bg-danger-600 text-white rounded-lg transition-colors" data-event="click:addExpense">
+                            <i class="fas fa-minus mr-2"></i>
+                            Despesa
+                        </button>
+                        <button class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                            <i class="fas fa-bell text-gray-600 dark:text-gray-300"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Dashboard Content -->
+            <main class="flex-1 overflow-y-auto p-6">
+                
+                <!-- Financial Overview Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <!-- Current Balance Card -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                <i class="fas fa-wallet text-blue-600 dark:text-blue-400"></i>
+                            </div>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Total</span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white" data-bind="currentBalance">R$ 15.847,32</h3>
+                        <p class="text-sm text-success-600 dark:text-success-400 flex items-center mt-2">
+                            <i class="fas fa-arrow-up mr-1"></i>
+                            +8.2% este mês
+                        </p>
+                    </div>
+
+                    <!-- Monthly Income Card -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="p-2 bg-success-100 dark:bg-success-900/30 rounded-lg">
+                                <i class="fas fa-arrow-up text-success-600 dark:text-success-400"></i>
+                            </div>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Receitas</span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white" data-bind="monthlyIncome">R$ 8.500,00</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Dezembro 2024</p>
+                    </div>
+
+                    <!-- Monthly Expenses Card -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="p-2 bg-danger-100 dark:bg-danger-900/30 rounded-lg">
+                                <i class="fas fa-arrow-down text-danger-600 dark:text-danger-400"></i>
+                            </div>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Despesas</span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white" data-bind="monthlyExpenses">R$ 6.347,68</h3>
+                        <p class="text-sm text-danger-600 dark:text-danger-400 flex items-center mt-2">
+                            <i class="fas fa-arrow-up mr-1"></i>
+                            +3.1% este mês
+                        </p>
+                    </div>
+
+                    <!-- Investments Card -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                                <i class="fas fa-chart-line text-purple-600 dark:text-purple-400"></i>
+                            </div>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Investido</span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white" data-bind="totalInvestments">R$ 42.350,00</h3>
+                        <p class="text-sm text-success-600 dark:text-success-400 flex items-center mt-2">
+                            <i class="fas fa-arrow-up mr-1"></i>
+                            +12.4% este ano
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- Income vs Expenses Chart -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Receitas vs Despesas</h3>
+                        <div class="chart-container">
+                            <canvas id="incomeExpensesChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Category Spending Chart -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Gastos por Categoria</h3>
+                        <div class="chart-container">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions & AI Insights -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <!-- Recent Transactions -->
+                    <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Transações Recentes</h3>
+                                <button class="text-primary-600 dark:text-primary-400 text-sm font-medium hover:underline">Ver todas</button>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <!-- @MAP: recentTransactions.map(transaction => ( -->
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors" data-mock="true">
+                                    <div class="flex items-center">
+                                        <div class="w-10 h-10 bg-success-100 dark:bg-success-900/30 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-briefcase text-success-600 dark:text-success-400"></i>
+                                        </div>
+                                        <div class="ml-4">
+                                            <p class="font-medium text-gray-900 dark:text-white">Salário Dezembro</p>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400">Hoje • Pix</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-success-600 dark:text-success-400 font-semibold">+R$ 7.500,00</span>
+                                </div>
+
+                                <div class="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors" data-mock="true">
+                                    <div class="flex items-center">
+                                        <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-shopping-cart text-orange-600 dark:text-orange-400"></i>
+                                        </div>
+                                        <div class="ml-4">
+                                            <p class="font-medium text-gray-900 dark:text-white">Supermercado Extra</p>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400">Ontem • Cartão de Débito</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-danger-600 dark:text-danger-400 font-semibold">-R$ 347,89</span>
+                                </div>
+
+                                <div class="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors" data-mock="true">
+                                    <div class="flex items-center">
+                                        <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-car text-blue-600 dark:text-blue-400"></i>
+                                        </div>
+                                        <div class="ml-4">
+                                            <p class="font-medium text-gray-900 dark:text-white">Combustível</p>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400">2 dias atrás • Cartão de Crédito</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-danger-600 dark:text-danger-400 font-semibold">-R$ 180,00</span>
+                                </div>
+
+                                <div class="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors" data-mock="true">
+                                    <div class="flex items-center">
+                                        <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                                            <i class="fas fa-chart-pie text-purple-600 dark:text-purple-400"></i>
+                                        </div>
+                                        <div class="ml-4">
+                                            <p class="font-medium text-gray-900 dark:text-white">Investimento CDB</p>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400">3 dias atrás • TED</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-danger-600 dark:text-danger-400 font-semibold">-R$ 1.000,00</span>
+                                </div>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+
+                    <!-- AI Financial Insights -->
+                    <div class="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-2xl shadow-lg border border-purple-200 dark:border-purple-800 p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-robot text-white"></i>
+                            </div>
+                            <h3 class="ml-3 text-lg font-semibold text-gray-900 dark:text-white">Insights IA</h3>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div class="bg-white/50 dark:bg-gray-800/50 p-4 rounded-lg">
+                                <div class="flex items-start">
+                                    <i class="fas fa-lightbulb text-yellow-500 mt-1"></i>
+                                    <div class="ml-3">
+                                        <h4 class="font-medium text-gray-900 dark:text-white text-sm">Oportunidade de Economia</h4>
+                                        <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Você gastou 23% a mais em transporte este mês. Considere usar mais o transporte público.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white/50 dark:bg-gray-800/50 p-4 rounded-lg">
+                                <div class="flex items-start">
+                                    <i class="fas fa-chart-line text-green-500 mt-1"></i>
+                                    <div class="ml-3">
+                                        <h4 class="font-medium text-gray-900 dark:text-white text-sm">Meta de Investimento</h4>
+                                        <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Você está 15% acima da meta de investimentos! Continue assim.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white/50 dark:bg-gray-800/50 p-4 rounded-lg">
+                                <div class="flex items-start">
+                                    <i class="fas fa-exclamation-triangle text-orange-500 mt-1"></i>
+                                    <div class="ml-3">
+                                        <h4 class="font-medium text-gray-900 dark:text-white text-sm">Alerta de Categoria</h4>
+                                        <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Gastos com lazer ultrapassaram o orçamento em R$ 150,00.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="w-full mt-4 bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 px-4 rounded-lg transition-colors">
+                            Ver Relatório Completo
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Fixed Monthly Expenses -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Contas Fixas do Mês</h3>
+                        <button class="text-primary-600 dark:text-primary-400 text-sm font-medium hover:underline" data-event="click:manageFixedExpenses">Gerenciar</button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- @MAP: fixedExpenses.map(expense => ( -->
+                        <div class="p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:border-primary-300 dark:hover:border-primary-600 transition-colors" data-mock="true">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center">
+                                    <i class="fas fa-home text-blue-600 dark:text-blue-400"></i>
+                                    <span class="ml-2 font-medium text-gray-900 dark:text-white text-sm">Aluguel</span>
+                                </div>
+                                <span class="text-xs text-success-600 dark:text-success-400 bg-success-50 dark:bg-success-900/20 px-2 py-1 rounded-full">Pago</span>
+                            </div>
+                            <p class="text-lg font-semibold text-gray-900 dark:text-white">R$ 2.200,00</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Venc: 10/12</p>
+                        </div>
+
+                        <div class="p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:border-primary-300 dark:hover:border-primary-600 transition-colors" data-mock="true">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center">
+                                    <i class="fas fa-bolt text-yellow-600 dark:text-yellow-400"></i>
+                                    <span class="ml-2 font-medium text-gray-900 dark:text-white text-sm">Energia</span>
+                                </div>
+                                <span class="text-xs text-warning-600 dark:text-warning-400 bg-warning-50 dark:bg-warning-900/20 px-2 py-1 rounded-full">Pendente</span>
+                            </div>
+                            <p class="text-lg font-semibold text-gray-900 dark:text-white">R$ 180,45</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Venc: 15/12</p>
+                        </div>
+
+                        <div class="p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:border-primary-300 dark:hover:border-primary-600 transition-colors" data-mock="true">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center">
+                                    <i class="fas fa-wifi text-purple-600 dark:text-purple-400"></i>
+                                    <span class="ml-2 font-medium text-gray-900 dark:text-white text-sm">Internet</span>
+                                </div>
+                                <span class="text-xs text-success-600 dark:text-success-400 bg-success-50 dark:bg-success-900/20 px-2 py-1 rounded-full">Pago</span>
+                            </div>
+                            <p class="text-lg font-semibold text-gray-900 dark:text-white">R$ 129,90</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Venc: 05/12</p>
+                        </div>
+
+                        <div class="p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:border-primary-300 dark:hover:border-primary-600 transition-colors" data-mock="true">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center">
+                                    <i class="fas fa-car text-red-600 dark:text-red-400"></i>
+                                    <span class="ml-2 font-medium text-gray-900 dark:text-white text-sm">Seguro Auto</span>
+                                </div>
+                                <span class="text-xs text-warning-600 dark:text-warning-400 bg-warning-50 dark:bg-warning-900/20 px-2 py-1 rounded-full">Pendente</span>
+                            </div>
+                            <p class="text-lg font-semibold text-gray-900 dark:text-white">R$ 245,00</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Venc: 20/12</p>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+                </div>
+
+            </main>
+        </div>
+        <!-- @END_COMPONENT: MainContent -->
+
+    </div>
+    <!-- @END_COMPONENT: AppLayout -->
+
+    <!-- @COMPONENT: AddTransactionModal [modal for adding transactions] -->
+    <div id="transactionModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center z-50" data-implementation="Toggle visibility with JavaScript">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Nova Transação</h3>
+                <button id="closeModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                    <i class="fas fa-times text-gray-500 dark:text-gray-400"></i>
+                </button>
+            </div>
+            
+            <form class="space-y-4" data-implementation="Form validation and submission logic needed">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" class="p-3 border-2 border-success-200 bg-success-50 text-success-700 rounded-lg font-medium transition-colors">
+                            <i class="fas fa-plus mr-2"></i>Receita
+                        </button>
+                        <button type="button" class="p-3 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors hover:border-danger-200 hover:bg-danger-50">
+                            <i class="fas fa-minus mr-2"></i>Despesa
+                        </button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descrição</label>
+                    <input type="text" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white" placeholder="Ex: Salário, Supermercado...">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Valor</label>
+                        <input type="number" step="0.01" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white" placeholder="0,00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Data</label>
+                        <input type="date" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Categoria</label>
+                    <select class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                        <option>Selecione uma categoria</option>
+                        <option>Alimentação</option>
+                        <option>Transporte</option>
+                        <option>Moradia</option>
+                        <option>Lazer</option>
+                        <option>Saúde</option>
+                        <option>Investimentos</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Forma de Pagamento</label>
+                    <select class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                        <option>Selecione</option>
+                        <option>Pix</option>
+                        <option>Cartão de Débito</option>
+                        <option>Cartão de Crédito</option>
+                        <option>Dinheiro</option>
+                        <option>TED/DOC</option>
+                    </select>
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button type="button" id="cancelTransaction" class="flex-1 py-3 px-4 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="flex-1 py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: AddTransactionModal -->
+
+    <script>
+        (function() {
+            // Theme Toggle Functionality
+            const themeToggle = document.getElementById('theme-toggle');
+            const html = document.documentElement;
+            
+            // Check for saved theme preference or default to light
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            html.classList.toggle('dark', currentTheme === 'dark');
+            
+            themeToggle.addEventListener('click', () => {
+                const isDark = html.classList.contains('dark');
+                html.classList.toggle('dark');
+                localStorage.setItem('theme', isDark ? 'light' : 'dark');
+                
+                // Update icon
+                const icon = themeToggle.querySelector('i');
+                icon.className = isDark ? 'fas fa-sun text-gray-600 dark:text-gray-300' : 'fas fa-moon text-gray-600 dark:text-gray-300';
+            });
+
+            // Modal Functionality
+            const transactionModal = document.getElementById('transactionModal');
+            const closeModal = document.getElementById('closeModal');
+            const cancelTransaction = document.getElementById('cancelTransaction');
+            
+            function openModal() {
+                transactionModal.classList.remove('hidden');
+                transactionModal.classList.add('flex');
+            }
+            
+            function closeModalFunc() {
+                transactionModal.classList.add('hidden');
+                transactionModal.classList.remove('flex');
+            }
+            
+            // Event listeners for opening modal
+            document.querySelector('[data-event="click:addIncome"]').addEventListener('click', openModal);
+            document.querySelector('[data-event="click:addExpense"]').addEventListener('click', openModal);
+            
+            // Event listeners for closing modal
+            closeModal.addEventListener('click', closeModalFunc);
+            cancelTransaction.addEventListener('click', closeModalFunc);
+            
+            // Close modal when clicking outside
+            transactionModal.addEventListener('click', (e) => {
+                if (e.target === transactionModal) {
+                    closeModalFunc();
+                }
+            });
+
+            // Initialize Charts
+            const ctx1 = document.getElementById('incomeExpensesChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+                    datasets: [{
+                        label: 'Receitas',
+                        data: [7500, 8200, 7800, 8500, 9000, 8800, 8500, 9200, 8700, 8900, 8300, 8500],
+                        borderColor: '#059669',
+                        backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Despesas',
+                        data: [6200, 6800, 6500, 7100, 6900, 7200, 6800, 7000, 6600, 6400, 6100, 6347],
+                        borderColor: '#DC2626',
+                        backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'R$ ' + value.toLocaleString('pt-BR');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const ctx2 = document.getElementById('categoryChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Alimentação', 'Transporte', 'Moradia', 'Lazer', 'Saúde', 'Outros'],
+                    datasets: [{
+                        data: [1200, 800, 2200, 450, 300, 1397],
+                        backgroundColor: [
+                            '#059669',
+                            '#2563EB', 
+                            '#DC2626',
+                            '#D97706',
+                            '#7C3AED',
+                            '#6B7280'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        }
+                    }
+                }
+            });
+
+            // TODO: Implement business logic for:
+            // - Form validation and submission
+            // - API calls for transaction data
+            // - Real-time chart updates
+            // - User authentication
+            // - Role-based access controls
+            // - AI insights generation
+            // - File upload for bank statements
+            // - Export functionality
+
+        })();
+    </script>
+</body>
+</html>
