@@ -1083,7 +1083,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PDF text extraction route
   app.post("/api/extract-pdf-text", isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
-      const pdfParse = require('pdf-parse');
+      // Use dynamic import for pdf-parse in ESM context
+      const pdfParse = (await import('pdf-parse')).default;
       
       if (!req.file) {
         return res.status(400).json({ message: "Arquivo PDF é obrigatório" });
