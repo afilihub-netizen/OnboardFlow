@@ -223,7 +223,7 @@ MANDATORY EXAMPLE:
     });
     
     // Filter out invalid transactions
-    transactions = transactions.filter(t => 
+    transactions = transactions.filter((t: any) => 
       t.date && 
       t.date !== "Invalid Date" && 
       !isNaN(t.amount) && 

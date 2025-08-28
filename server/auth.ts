@@ -19,7 +19,7 @@ export function getSession() {
   });
   
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET || 'replit-session-secret-' + Math.random().toString(36).substring(2, 15),
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
