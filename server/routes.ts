@@ -1080,27 +1080,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // PDF text extraction route
+  // PDF text extraction route using OCR.space API
   app.post("/api/extract-pdf-text", isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
-      // Use dynamic import for pdf-parse in ESM context
-      const pdfParse = (await import('pdf-parse')).default;
-      
       if (!req.file) {
         return res.status(400).json({ message: "Arquivo PDF é obrigatório" });
       }
 
-      const buffer = req.file.buffer;
-      const data = await pdfParse(buffer);
+      // Convert buffer to base64 for OCR.space API
+      const base64File = req.file.buffer.toString('base64');
+      
+      // OCR.space API call
+      const formData = new FormData();
+      formData.append('base64Image', `data:application/pdf;base64,${base64File}`);
+      formData.append('language', 'por'); // Portuguese
+      formData.append('apikey', 'helloworld'); // Free tier API key
+      formData.append('detectOrientation', 'true');
+      formData.append('scale', 'true');
+      formData.append('OCREngine', '2'); // OCR Engine 2 is better for documents
+      formData.append('filetype', 'PDF');
+
+      const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!ocrResponse.ok) {
+        throw new Error(`OCR API error: ${ocrResponse.status}`);
+      }
+
+      const ocrResult = await ocrResponse.json();
+      
+      if (ocrResult.IsErroredOnProcessing) {
+        throw new Error(`OCR processing error: ${ocrResult.ErrorMessage}`);
+      }
+
+      // Extract text from all pages
+      let extractedText = '';
+      if (ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0) {
+        extractedText = ocrResult.ParsedResults
+          .map((result: any) => result.ParsedText)
+          .join('\n\n');
+      }
+
+      if (!extractedText.trim()) {
+        return res.status(400).json({ 
+          message: "Não foi possível extrair texto do PDF. Verifique se o documento contém texto legível." 
+        });
+      }
       
       res.json({ 
-        text: data.text,
-        pages: data.numpages,
-        info: data.info
+        text: extractedText,
+        pages: ocrResult.ParsedResults?.length || 1,
+        confidence: ocrResult.ParsedResults?.[0]?.TextOrientation || 'N/A',
+        processingTime: ocrResult.ProcessingTimeInMilliseconds
       });
+
     } catch (error) {
       console.error("PDF extraction error:", error);
-      res.status(500).json({ message: "Falha ao extrair texto do PDF" });
+      res.status(500).json({ 
+        message: "Falha ao extrair texto do PDF. Tente novamente ou cole o texto manualmente." 
+      });
     }
   });
 
