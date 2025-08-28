@@ -1094,7 +1094,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const formData = new FormData();
       formData.append('base64Image', `data:application/pdf;base64,${base64File}`);
       formData.append('language', 'por'); // Portuguese
-      formData.append('apikey', 'helloworld'); // Free tier API key
+      formData.append('apikey', process.env.OCR_SPACE_API_KEY || 'helloworld');
       formData.append('detectOrientation', 'true');
       formData.append('scale', 'true');
       formData.append('OCREngine', '2'); // OCR Engine 2 is better for documents
