@@ -410,7 +410,7 @@ export default function Import() {
                     3. Revisão e Importação
                   </span>
                 </div>
-                <Progress value={getStepProgress()} className="h-2" />
+                <Progress value={getStepProgress()} className="h-2 transition-all duration-300 ease-out" />
               </div>
             </CardContent>
           </Card>
@@ -508,7 +508,7 @@ export default function Import() {
                     <span>Progresso da análise</span>
                     <span>{analysisProgress}%</span>
                   </div>
-                  <Progress value={analysisProgress} className="h-3" data-testid="progress-analysis" />
+                  <Progress value={analysisProgress} className="h-3 transition-all duration-500 ease-out" data-testid="progress-analysis" />
                   {progressMessage && (
                     <p className="text-sm text-muted-foreground mt-2" data-testid="text-progress-message">
                       {progressMessage}

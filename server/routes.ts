@@ -1128,8 +1128,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const hasValidResults = ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0;
     
     // Only throw error if it's a real processing error AND we have no results
-    if (ocrResult.IsErroredOnProcessing && !hasPageLimitError && !hasValidResults) {
-      throw new Error(`OCR processing error: ${errorMessage}`);
+    if (ocrResult.IsErroredOnProcessing && !hasValidResults) {
+      // But if it's just a page limit error and we have results, don't throw
+      if (!hasPageLimitError) {
+        throw new Error(`OCR processing error: ${errorMessage}`);
+      }
     }
     
     // Log success case
@@ -1204,6 +1207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       while (hasMorePages) {
         session.message = `Processando páginas ${currentPage}-${currentPage + 2}...`;
+        session.progress = Math.min(20 + (currentPage / 30) * 70, 85);
         
         try {
           const chunkResult = await processPDFChunk(base64File, currentPage, currentPage + 2);
@@ -1212,12 +1216,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             fullText += (fullText ? '\n\n' : '') + chunkResult.text;
             totalPages += chunkResult.pages;
             console.log(`Added ${chunkResult.pages} pages to result, total: ${totalPages}`);
+            
+            // Update progress with smooth animation
+            session.progress = Math.min(20 + (totalPages / 15) * 65, 85);
+            session.message = `${totalPages} páginas processadas...`;
           }
-
-          // Update progress based on actual processing
-          const progressPercent = Math.min(30 + (totalPages / 15) * 60, 90);
-          session.progress = progressPercent;
-          session.message = `${totalPages} páginas processadas, continuando...`;
 
           // For first chunk, if no "hasMore" flag, it means the PDF has only these pages
           if (chunkResult.isFirstChunk && !chunkResult.hasMore) {
@@ -1234,8 +1237,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
         } catch (chunkError) {
-          console.log(`Error in chunk ${currentPage}, stopping processing:`, chunkError);
-          hasMorePages = false; // Stop processing on error
+          console.log(`Error in chunk ${currentPage}:`, chunkError);
+          // Don't stop immediately, might still have extracted text
+          if (fullText.trim().length > 0) {
+            console.log('Got some text from previous chunks, continuing...');
+            hasMorePages = false; // Just stop processing more chunks
+          } else {
+            hasMorePages = false; // Stop processing on error
+          }
         }
         
         // Small delay to avoid rate limiting
