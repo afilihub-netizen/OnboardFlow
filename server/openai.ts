@@ -261,7 +261,7 @@ function sendProgressUpdate(sessionId: string, progress: number, message: string
   }
 }
 
-export async function analyzeExtractWithAI(extractText: string, availableCategories: string[] = [], sessionId?: string, enableCNPJCategorization: boolean = false) {
+export async function analyzeExtractWithAI(extractText: string, availableCategories: string[] = [], sessionId?: string, enableCNPJCategorization: boolean = true) {
   try {
     console.log("Processing extract with length:", extractText.length);
     
