@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { processarLoteTransacoes, extrairCNPJsDoTexto } from "./cnpj-service";
 
 if (!process.env.GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is required");
@@ -403,7 +404,7 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     // If no transactions found, try a simpler fallback analysis
     if (finalTransactions.length === 0 && extractText.length > 100) {
       console.log("No transactions found, creating fallback transactions");
-      finalTransactions = createFallbackTransactions(extractText);
+      finalTransactions = await createFallbackTransactions(extractText);
     }
     
     return {
@@ -417,7 +418,7 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
 }
 
 // Fallback function to create basic transactions when AI fails
-function createFallbackTransactions(extractText: string): any[] {
+async function createFallbackTransactions(extractText: string): Promise<any[]> {
   console.log("Creating fallback transactions from text patterns");
   console.log("Extract text sample:", extractText.substring(0, 2000));
   
@@ -530,5 +531,14 @@ function createFallbackTransactions(extractText: string): any[] {
     });
   }
   
-  return transactions;
+  // Enriquecer transações com dados de CNPJ usando o novo serviço
+  console.log("Enriquecendo transações com dados de CNPJ...");
+  try {
+    const transacoesEnriquecidas = await processarLoteTransacoes(transactions);
+    console.log(`${transacoesEnriquecidas.length} transações processadas com dados de CNPJ`);
+    return transacoesEnriquecidas;
+  } catch (error) {
+    console.error("Erro ao enriquecer transações com CNPJ:", error);
+    return transactions;
+  }
 }
