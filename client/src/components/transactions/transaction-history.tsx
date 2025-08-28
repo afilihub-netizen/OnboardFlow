@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Edit, Trash2, Download, Filter, X, Check } from "lucide-react";
+import { Edit, Trash2, Download, Filter, X, Check, Search, FilterX } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -19,6 +20,8 @@ export function TransactionHistory() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("current-month");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [searchFilter, setSearchFilter] = useState("");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
@@ -75,7 +78,7 @@ export function TransactionHistory() {
     return params.toString();
   };
 
-  const { data: transactions, isLoading } = useQuery({
+  const { data: allTransactions, isLoading } = useQuery({
     queryKey: ['/api/transactions', categoryFilter, periodFilter, typeFilter],
     queryFn: async () => {
       const filterParams = getFilterParams();
@@ -87,6 +90,32 @@ export function TransactionHistory() {
       return response.json();
     },
   });
+
+  // Filtros locais para busca e método de pagamento (mais responsivo)
+  const transactions = useMemo(() => {
+    if (!allTransactions) return [];
+    
+    let filtered = [...allTransactions];
+    
+    // Filtro por texto/descrição
+    if (searchFilter.trim()) {
+      const searchTerm = searchFilter.toLowerCase().trim();
+      filtered = filtered.filter(transaction => 
+        transaction.description.toLowerCase().includes(searchTerm) ||
+        getCategoryName(transaction.categoryId).toLowerCase().includes(searchTerm) ||
+        getPaymentMethodLabel(transaction.paymentMethod).toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    // Filtro por método de pagamento
+    if (paymentMethodFilter !== "all") {
+      filtered = filtered.filter(transaction => 
+        transaction.paymentMethod === paymentMethodFilter
+      );
+    }
+    
+    return filtered;
+  }, [allTransactions, searchFilter, paymentMethodFilter, categories]);
 
   const deleteTransactionMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -313,16 +342,63 @@ export function TransactionHistory() {
     return category?.name || 'Sem categoria';
   };
 
+  const clearAllFilters = () => {
+    setCategoryFilter("all");
+    setTypeFilter("all");
+    setPeriodFilter("current-month");
+    setSearchFilter("");
+    setPaymentMethodFilter("all");
+  };
+
+  const hasActiveFilters = () => {
+    return categoryFilter !== "all" || 
+           typeFilter !== "all" || 
+           periodFilter !== "current-month" || 
+           searchFilter.trim() !== "" || 
+           paymentMethodFilter !== "all";
+  };
+
   return (
     <Card className="financial-card">
       <CardHeader>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-          <CardTitle>Histórico de Transações</CardTitle>
+        <div className="flex flex-col space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+            <CardTitle>Histórico de Transações</CardTitle>
+            
+            <div className="flex items-center space-x-2 mt-4 md:mt-0">
+              {hasActiveFilters() && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                  data-testid="button-clear-filters"
+                >
+                  <FilterX className="w-4 h-4 mr-1" />
+                  Limpar
+                </Button>
+              )}
+            </div>
+          </div>
           
-          <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
+          {/* Barra de busca */}
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              type="text"
+              placeholder="Buscar por nome, categoria ou método..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className="pl-10 pr-4 py-2"
+              data-testid="input-search-filter"
+            />
+          </div>
+          
+          {/* Filtros em linha */}
+          <div className="flex flex-wrap gap-3">
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="w-48" data-testid="select-category-filter">
-                <SelectValue />
+                <SelectValue placeholder="Categoria" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as categorias</SelectItem>
@@ -336,7 +412,7 @@ export function TransactionHistory() {
             
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-32" data-testid="select-type-filter">
-                <SelectValue />
+                <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
@@ -345,9 +421,23 @@ export function TransactionHistory() {
               </SelectContent>
             </Select>
             
+            <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+              <SelectTrigger className="w-40" data-testid="select-payment-filter">
+                <SelectValue placeholder="Pagamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {PAYMENT_METHODS.map((method) => (
+                  <SelectItem key={method.value} value={method.value}>
+                    {method.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
             <Select value={periodFilter} onValueChange={setPeriodFilter}>
               <SelectTrigger className="w-40" data-testid="select-period-filter">
-                <SelectValue />
+                <SelectValue placeholder="Período" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="current-month">Este mês</SelectItem>
@@ -355,7 +445,10 @@ export function TransactionHistory() {
                 <SelectItem value="current-year">Este ano</SelectItem>
               </SelectContent>
             </Select>
-            
+          </div>
+          
+          {/* Ações */}
+          <div className="flex flex-wrap gap-3 justify-end">
             <Button 
               onClick={handleExport}
               className="bg-blue-500 hover:bg-blue-600 text-white"
@@ -410,8 +503,23 @@ export function TransactionHistory() {
         ) : !transactions || transactions.length === 0 ? (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             <Filter className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p>Nenhuma transação encontrada.</p>
-            <p className="text-sm">Ajuste os filtros ou adicione novas transações.</p>
+            <p className="text-lg font-medium mb-2">Nenhuma transação encontrada</p>
+            <p className="text-sm mb-4">
+              {hasActiveFilters() 
+                ? 'Nenhuma transação corresponde aos filtros aplicados.' 
+                : 'Adicione suas primeiras transações para começar.'
+              }
+            </p>
+            {hasActiveFilters() && (
+              <Button
+                variant="outline"
+                onClick={clearAllFilters}
+                className="text-orange-600 border-orange-300 hover:bg-orange-50"
+              >
+                <FilterX className="w-4 h-4 mr-2" />
+                Limpar filtros
+              </Button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
