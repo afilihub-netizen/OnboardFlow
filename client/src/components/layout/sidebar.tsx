@@ -90,7 +90,7 @@ export function Sidebar() {
       {/* Mobile menu button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-lg bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700"
+        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-lg bg-white dark:bg-gray-800"
         data-testid="button-mobile-menu"
       >
         {isOpen ? <X className="w-5 h-5 text-gray-600 dark:text-gray-300" /> : <Menu className="w-5 h-5 text-gray-600 dark:text-gray-300" />}
@@ -106,12 +106,12 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed md:static inset-y-0 left-0 z-40 w-64 shadow-lg border-r h-screen flex flex-col transition-transform duration-300 ease-in-out",
+        "fixed md:static inset-y-0 left-0 z-40 w-64 h-screen flex flex-col transition-transform duration-300 ease-in-out",
         "md:translate-x-0",
         isOpen ? "translate-x-0" : "-translate-x-full",
         isBusinessAccount 
-          ? "bg-gradient-to-b from-white to-slate-50 border-slate-300" 
-          : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+          ? "bg-gradient-to-b from-white to-slate-50" 
+          : "bg-white dark:bg-gray-800"
       )}>
         {/* Logo */}
         <div className="p-6">
