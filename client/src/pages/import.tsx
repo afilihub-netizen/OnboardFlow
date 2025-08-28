@@ -159,7 +159,8 @@ export default function Import() {
         
         toast({
           title: "PDF processado",
-          description: "Texto extraído com sucesso. Iniciando análise...",
+          description: result.message || "Texto extraído com sucesso. Iniciando análise...",
+          variant: result.isPartialResult ? "default" : "default"
         });
         
         // Automatically analyze after PDF text extraction

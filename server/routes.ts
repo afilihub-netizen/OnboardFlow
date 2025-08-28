@@ -1111,16 +1111,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const ocrResult = await ocrResponse.json();
       
-      if (ocrResult.IsErroredOnProcessing) {
+      // Check for critical errors (but allow page limit warnings)
+      if (ocrResult.IsErroredOnProcessing && 
+          !ocrResult.ErrorMessage?.includes('maximum page limit')) {
         throw new Error(`OCR processing error: ${ocrResult.ErrorMessage}`);
       }
 
-      // Extract text from all pages
+      // Extract text from all available pages
       let extractedText = '';
+      let pageCount = 0;
+      let isPartialResult = false;
+      
       if (ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0) {
         extractedText = ocrResult.ParsedResults
           .map((result: any) => result.ParsedText)
           .join('\n\n');
+        pageCount = ocrResult.ParsedResults.length;
+        
+        // Check if page limit was reached
+        if (ocrResult.ErrorMessage?.includes('maximum page limit')) {
+          isPartialResult = true;
+        }
       }
 
       if (!extractedText.trim()) {
@@ -1131,9 +1142,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({ 
         text: extractedText,
-        pages: ocrResult.ParsedResults?.length || 1,
+        pages: pageCount,
+        isPartialResult,
         confidence: ocrResult.ParsedResults?.[0]?.TextOrientation || 'N/A',
-        processingTime: ocrResult.ProcessingTimeInMilliseconds
+        processingTime: ocrResult.ProcessingTimeInMilliseconds,
+        message: isPartialResult 
+          ? `Texto extraído com sucesso das primeiras ${pageCount} páginas (limite da API gratuita)`
+          : `Texto extraído com sucesso de ${pageCount} página(s)`
       });
 
     } catch (error) {
