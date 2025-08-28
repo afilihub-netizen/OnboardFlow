@@ -14,6 +14,7 @@ import {
   insertBudgetGoalSchema,
 } from "@shared/schema";
 import { z } from "zod";
+import { emailService } from './email-service';
 import multer from "multer";
 import Stripe from "stripe";
 
@@ -1694,6 +1695,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating report:", error);
       res.status(500).json({ message: "Failed to generate report" });
+    }
+  });
+
+  // Email verification route
+  app.get('/api/auth/verify-email/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      if (!token) {
+        return res.status(400).json({ message: 'Token de verificação é obrigatório' });
+      }
+
+      const user = await storage.getUserByVerificationToken(token);
+      if (!user) {
+        return res.status(400).json({ message: 'Token inválido ou expirado' });
+      }
+
+      // Mark email as verified
+      await storage.verifyUserEmail(user.id);
+      
+      res.json({ message: 'Email verificado com sucesso! Você já pode fazer login.' });
+    } catch (error) {
+      console.error('Erro na verificação de email:', error);
+      res.status(500).json({ message: 'Erro interno do servidor' });
+    }
+  });
+
+  // Frontend route for email verification
+  app.get('/verify-email/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      if (!token) {
+        return res.redirect('/login?error=invalid_token');
+      }
+
+      const user = await storage.getUserByVerificationToken(token);
+      if (!user) {
+        return res.redirect('/login?error=invalid_token');
+      }
+
+      // Mark email as verified
+      await storage.verifyUserEmail(user.id);
+      
+      res.redirect('/login?verified=true');
+    } catch (error) {
+      console.error('Erro na verificação de email:', error);
+      res.redirect('/login?error=verification_failed');
+    }
+  });
+
+  // Resend verification email
+  app.post('/api/auth/resend-verification', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: 'Email é obrigatório' });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: 'Usuário não encontrado' });
+      }
+
+      if (user.emailVerified) {
+        return res.status(400).json({ message: 'Email já foi verificado' });
+      }
+
+      // Generate new verification token
+      const verificationToken = emailService.generateVerificationToken();
+      await storage.updateUserVerificationToken(user.id, verificationToken);
+      
+      // Send verification email
+      const emailSent = await emailService.sendVerificationEmail(
+        user.email, 
+        user.firstName, 
+        verificationToken
+      );
+      
+      if (emailSent) {
+        res.json({ message: 'Email de verificação reenviado com sucesso!' });
+      } else {
+        res.status(500).json({ message: 'Erro ao enviar email de verificação' });
+      }
+    } catch (error) {
+      console.error('Erro ao reenviar verificação:', error);
+      res.status(500).json({ message: 'Erro interno do servidor' });
     }
   });
 

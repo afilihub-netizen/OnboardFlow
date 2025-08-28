@@ -183,7 +183,15 @@ export async function setupAuth(app: Express) {
         accountType: accountType || 'individual'
       });
 
-      // TODO: Send verification email
+      // Generate verification token and send email
+      const { emailService } = await import('./email-service');
+      const verificationToken = emailService.generateVerificationToken();
+      
+      // Store verification token in user record
+      await storage.updateUserVerificationToken(user.id, verificationToken);
+      
+      // Send verification email
+      await emailService.sendVerificationEmail(email, firstName, verificationToken);
       
       res.status(201).json({ 
         message: "Conta criada com sucesso! Verifique seu email para ativar a conta.",

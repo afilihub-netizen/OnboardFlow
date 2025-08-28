@@ -87,6 +87,9 @@ export interface IStorage {
   createUserWithGoogle(userData: Partial<User>): Promise<User>;
   linkGoogleAccount(userId: string, googleId: string): Promise<void>;
   updateUserLastLogin(userId: string): Promise<void>;
+  updateUserVerificationToken(userId: string, token: string): Promise<void>;
+  getUserByVerificationToken(token: string): Promise<User | undefined>;
+  verifyUserEmail(userId: string): Promise<void>;
   
   // Category operations
   getCategories(userId: string): Promise<Category[]>;
@@ -291,6 +294,37 @@ export class DatabaseStorage implements IStorage {
       .set({ 
         lastLoginAt: new Date(),
         updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async updateUserVerificationToken(userId: string, token: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        emailVerificationToken: token,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async getUserByVerificationToken(token: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.emailVerificationToken, token))
+      .limit(1);
+    
+    return user;
+  }
+
+  async verifyUserEmail(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ 
+        emailVerified: true,
+        emailVerificationToken: null,
+        updatedAt: new Date() 
       })
       .where(eq(users.id, userId));
   }
