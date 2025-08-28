@@ -66,8 +66,8 @@ export function FinancialOverview() {
                 {formatCurrency(balance)}
               </p>
             </div>
-            <div className="bg-blue-400/30 rounded-xl p-2.5 backdrop-blur-sm ml-3">
-              <Wallet className="w-5 h-5 icon-pulse-smooth" />
+            <div className="bg-blue-400/30 rounded-xl p-2 sm:p-3 lg:p-4 backdrop-blur-sm ml-3">
+              <Wallet className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 icon-pulse-smooth" />
             </div>
           </div>
           <div className="flex items-center text-blue-100 text-sm font-medium">
@@ -87,8 +87,8 @@ export function FinancialOverview() {
                 {formatCurrency(totalIncome)}
               </p>
             </div>
-            <div className="bg-green-100 dark:bg-green-900 rounded-xl p-2.5 ml-3">
-              <TrendingUp className="w-5 h-5 text-green-600 icon-float" />
+            <div className="bg-green-100 dark:bg-green-900 rounded-xl p-2 sm:p-3 lg:p-4 ml-3">
+              <TrendingUp className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-green-600 icon-float" />
             </div>
           </div>
           <div className="flex items-center text-green-600 text-sm font-medium">
@@ -108,8 +108,8 @@ export function FinancialOverview() {
                 {formatCurrency(totalExpenses)}
               </p>
             </div>
-            <div className="bg-red-100 dark:bg-red-900 rounded-xl p-2.5 ml-3">
-              <TrendingDown className="w-5 h-5 text-red-600 icon-bounce-target" />
+            <div className="bg-red-100 dark:bg-red-900 rounded-xl p-2 sm:p-3 lg:p-4 ml-3">
+              <TrendingDown className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-red-600 icon-bounce-target" />
             </div>
           </div>
           <div className="flex items-center text-red-600 text-sm font-medium">
@@ -129,8 +129,8 @@ export function FinancialOverview() {
                 {formatCurrency(investmentValue)}
               </p>
             </div>
-            <div className="bg-purple-100 dark:bg-purple-900 rounded-xl p-2.5 ml-3">
-              <PieChart className="w-5 h-5 text-purple-600 icon-shield-glow" />
+            <div className="bg-purple-100 dark:bg-purple-900 rounded-xl p-2 sm:p-3 lg:p-4 ml-3">
+              <PieChart className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-purple-600 icon-shield-glow" />
             </div>
           </div>
           <div className="flex items-center text-purple-600 text-sm font-medium">
