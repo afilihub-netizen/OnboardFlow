@@ -728,10 +728,14 @@ export default function Import() {
                   <span className="text-sm font-medium">Progresso da Análise</span>
                   <span className="text-sm text-gray-500">{analysisProgress}%</span>
                 </div>
-                <Progress 
-                  value={analysisProgress} 
-                  className="h-3 transition-all duration-500 ease-out"
-                />
+                <div className="relative">
+                  <Progress 
+                    value={analysisProgress} 
+                    className="h-3 transition-all duration-500 ease-out"
+                  />
+                  {/* Animação de shimmer/loading */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 animate-[shimmer_2s_ease-in-out_infinite] rounded-full"></div>
+                </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
                   {progressMessage}
                 </p>
