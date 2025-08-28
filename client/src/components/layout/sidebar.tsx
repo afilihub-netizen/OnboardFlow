@@ -169,7 +169,7 @@ export function Sidebar() {
           </div>
 
           {/* Settings Section */}
-          <div className="px-6 mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+          <div className="px-6 mt-8 pt-8">
             <div className="space-y-2">
               <Link
                 href="/profile"
@@ -209,7 +209,7 @@ export function Sidebar() {
                 </span>
               </button>
 
-              <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+              <div className="my-2"></div>
               
               <button
                 onClick={() => window.location.href = '/api/logout'}

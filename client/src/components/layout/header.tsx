@@ -51,7 +51,7 @@ export function Header({ title, subtitle }: HeaderProps) {
   if (isBusinessAccount) {
     // Layout empresarial (como estava)
     return (
-      <header className="bg-slate-800 shadow-lg border-b border-slate-700 sticky top-0 z-40 border-animated">
+      <header className="bg-slate-800 shadow-lg sticky top-0 z-40">
         <div className="px-6 py-4 ml-0 md:ml-0 pl-16 md:pl-6">
           <div className="flex items-center justify-between">
             {/* Badge do Modo Empresarial - Lado Esquerdo */}
@@ -88,7 +88,7 @@ export function Header({ title, subtitle }: HeaderProps) {
 
   // Layout pessoal (original, como era antes)
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+    <header className="bg-white shadow-sm sticky top-0 z-40">
       <div className="px-6 py-4 ml-0 md:ml-0 pl-16 md:pl-6">
         <div className="flex items-center justify-between">
           {/* Título e Subtítulo - Lado Esquerdo */}
