@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, Brain, CheckCircle, AlertCircle, Download, Check, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -37,6 +38,8 @@ export default function Import() {
   const [currentStep, setCurrentStep] = useState(1);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [autoProcessing, setAutoProcessing] = useState(false);
 
   // Fetch categories for mapping
   const { data: categories = [] } = useQuery({
@@ -127,9 +130,11 @@ export default function Import() {
           description: "Iniciando análise automática do extrato...",
         });
         
-        // Automatically analyze the extract after loading
+        // Automatically open modal and analyze the extract
         setTimeout(() => {
           if (content.trim()) {
+            setIsModalOpen(true);
+            setAutoProcessing(true);
             analyzeExtractWithAI();
           }
         }, 500); // Small delay to ensure state is updated
@@ -194,9 +199,11 @@ export default function Import() {
                 setIsAnalyzing(false);
                 setCurrentStep(1);
                 
-                // Automatically analyze after PDF text extraction
+                // Automatically open modal and start analysis
                 setTimeout(() => {
                   if (finalResult.text.trim()) {
+                    setIsModalOpen(true);
+                    setAutoProcessing(true);
                     analyzeExtractWithAI();
                   }
                 }, 1000);
@@ -328,6 +335,7 @@ export default function Import() {
       setIsAnalyzing(false);
       setAnalysisProgress(0);
       setProgressMessage("");
+      setAutoProcessing(false);
     }
   };
 
@@ -682,6 +690,90 @@ export default function Import() {
           </Card>
         </div>
       </main>
+
+      {/* Modal de Processamento Automático */}
+      <Dialog open={isModalOpen} onOpenChange={(open) => !autoProcessing && setIsModalOpen(open)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Brain className="w-5 h-5 mr-2 text-blue-600" />
+              Análise Inteligente do Extrato
+            </DialogTitle>
+            <DialogDescription>
+              A IA está analisando seu extrato e categorizando as transações automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {isAnalyzing && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Progresso da Análise</span>
+                  <span className="text-sm text-gray-500">{analysisProgress}%</span>
+                </div>
+                <Progress 
+                  value={analysisProgress} 
+                  className="h-3 transition-all duration-500 ease-out"
+                />
+                <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+                  {progressMessage}
+                </p>
+              </div>
+            )}
+            
+            {!isAnalyzing && parsedTransactions.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-center space-x-2 text-green-600">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="font-medium">Análise concluída!</span>
+                </div>
+                <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+                  {parsedTransactions.length} transações foram identificadas e categorizadas automaticamente.
+                </p>
+                <div className="flex justify-center space-x-3">
+                  <Button 
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setCurrentStep(3);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    Revisar Transações
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setCurrentStep(1);
+                      setParsedTransactions([]);
+                      setSelectedTransactions(new Set());
+                    }}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {!isAnalyzing && parsedTransactions.length === 0 && (
+              <div className="text-center space-y-4">
+                <AlertCircle className="w-12 h-12 mx-auto text-red-500" />
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Não foi possível identificar transações no extrato.
+                </p>
+                <Button 
+                  variant="outline"
+                  onClick={() => setIsModalOpen(false)}
+                >
+                  Fechar
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

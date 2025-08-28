@@ -5,7 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Edit, Trash2, Download, Filter } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Edit, Trash2, Download, Filter, X, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -20,6 +21,8 @@ export function TransactionHistory() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   const { data: categories } = useQuery({
     queryKey: ['/api/categories'],
@@ -117,10 +120,81 @@ export function TransactionHistory() {
     },
   });
 
+  const deleteMultipleTransactionsMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(
+        ids.map(id => apiRequest('DELETE', `/api/transactions/${id}`, null))
+      );
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sucesso",
+        description: `${selectedTransactions.size} transações excluídas com sucesso!`,
+      });
+      setSelectedTransactions(new Set());
+      setIsSelectionMode(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions/recurring'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions/future-commitments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/financial-summary'] });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Erro",
+        description: "Falha ao excluir transações. Tente novamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDelete = (id: string) => {
     if (confirm("Tem certeza que deseja excluir esta transação?")) {
       deleteTransactionMutation.mutate(id);
     }
+  };
+
+  const handleMultipleDelete = () => {
+    if (selectedTransactions.size === 0) return;
+    
+    if (confirm(`Tem certeza que deseja excluir ${selectedTransactions.size} transação${selectedTransactions.size !== 1 ? 'ões' : ''}?`)) {
+      deleteMultipleTransactionsMutation.mutate(Array.from(selectedTransactions));
+    }
+  };
+
+  const toggleTransactionSelection = (id: string) => {
+    const newSelection = new Set(selectedTransactions);
+    if (newSelection.has(id)) {
+      newSelection.delete(id);
+    } else {
+      newSelection.add(id);
+    }
+    setSelectedTransactions(newSelection);
+  };
+
+  const selectAllTransactions = () => {
+    if (transactions) {
+      setSelectedTransactions(new Set(transactions.map((t: any) => t.id)));
+    }
+  };
+
+  const deselectAllTransactions = () => {
+    setSelectedTransactions(new Set());
+  };
+
+  const cancelSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedTransactions(new Set());
   };
 
   const handleEdit = (transaction: any) => {
@@ -275,6 +349,38 @@ export function TransactionHistory() {
               <Download className="w-4 h-4 mr-2" />
               Exportar
             </Button>
+            
+            {!isSelectionMode ? (
+              <Button 
+                onClick={() => setIsSelectionMode(true)}
+                variant="outline"
+                className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                data-testid="button-start-selection"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir
+              </Button>
+            ) : (
+              <div className="flex space-x-2">
+                <Button 
+                  onClick={handleMultipleDelete}
+                  disabled={selectedTransactions.size === 0 || deleteMultipleTransactionsMutation.isPending}
+                  className="bg-red-500 hover:bg-red-600 text-white"
+                  data-testid="button-delete-selected"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir ({selectedTransactions.size})
+                </Button>
+                <Button 
+                  onClick={cancelSelectionMode}
+                  variant="outline"
+                  data-testid="button-cancel-selection"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Cancelar
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -297,6 +403,24 @@ export function TransactionHistory() {
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
+                  {isSelectionMode && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          checked={transactions && selectedTransactions.size === transactions.length && transactions.length > 0}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              selectAllTransactions();
+                            } else {
+                              deselectAllTransactions();
+                            }
+                          }}
+                          data-testid="checkbox-select-all"
+                        />
+                        <span>Todos</span>
+                      </div>
+                    </th>
+                  )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Data
                   </th>
@@ -319,7 +443,18 @@ export function TransactionHistory() {
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {transactions.map((transaction, index) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50 dark:hover:bg-gray-700" data-testid={`transaction-row-${index}`}>
+                  <tr key={transaction.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                    selectedTransactions.has(transaction.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                  }`} data-testid={`transaction-row-${index}`}>
+                    {isSelectionMode && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Checkbox
+                          checked={selectedTransactions.has(transaction.id)}
+                          onCheckedChange={() => toggleTransactionSelection(transaction.id)}
+                          data-testid={`checkbox-transaction-${index}`}
+                        />
+                      </td>
+                    )}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {formatDate(transaction.date)}
                     </td>

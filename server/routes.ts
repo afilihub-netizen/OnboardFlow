@@ -50,6 +50,24 @@ function getUserId(req: any): string {
   return req.user?.id || req.user?.claims?.sub;
 }
 
+// Helper functions for automatic category creation
+function getRandomCategoryColor(): string {
+  const colors = ['red', 'blue', 'green', 'yellow', 'purple', 'pink', 'indigo', 'gray', 'orange', 'teal'];
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
+function getCategoryIcon(categoryName: string): string {
+  const name = categoryName.toLowerCase();
+  if (name.includes('alimentação') || name.includes('comida') || name.includes('supermercado')) return 'shopping-cart';
+  if (name.includes('transporte') || name.includes('combustível') || name.includes('uber')) return 'car';
+  if (name.includes('saúde') || name.includes('medicina') || name.includes('hospital')) return 'activity';
+  if (name.includes('educação') || name.includes('escola') || name.includes('curso')) return 'book';
+  if (name.includes('lazer') || name.includes('entretenimento') || name.includes('cinema')) return 'music';
+  if (name.includes('casa') || name.includes('moradia') || name.includes('aluguel')) return 'home';
+  if (name.includes('serviços') || name.includes('conta') || name.includes('energia')) return 'settings';
+  return 'folder';
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -1308,6 +1326,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Process large texts by splitting into chunks with progress tracking
       const result = await analyzeExtractWithAI(extractText, availableCategories || [], sessionId, true);
+      
+      // Auto-create categories if they don't exist
+      if (result.transactions && result.transactions.length > 0) {
+        const userId = getUserId(req);
+        const existingCategories = await storage.getCategories(userId);
+        const existingCategoryNames = existingCategories.map(cat => cat.name.toLowerCase());
+        
+        const newCategories = new Set<string>();
+        for (const transaction of result.transactions) {
+          if (transaction.category && !existingCategoryNames.includes(transaction.category.toLowerCase())) {
+            newCategories.add(transaction.category);
+          }
+        }
+        
+        // Create new categories automatically
+        for (const categoryName of newCategories) {
+          try {
+            const categoryData = insertCategorySchema.parse({
+              name: categoryName,
+              color: getRandomCategoryColor(),
+              icon: getCategoryIcon(categoryName),
+              userId,
+            });
+            await storage.createCategory(categoryData);
+            console.log(`Auto-created category: ${categoryName}`);
+          } catch (error) {
+            console.error(`Failed to create category ${categoryName}:`, error);
+          }
+        }
+      }
       
       // Final result processed successfully
       res.json(result);
