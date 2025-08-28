@@ -210,14 +210,14 @@ export default function Landing() {
                 title: "Objetivos Personalizados",
                 description: "Defina suas metas e acompanhe o progresso com orientações inteligentes",
                 gradient: "from-green-500 to-teal-500",
-                animation: "icon-wobble"
+                animation: "icon-bounce-target"
               },
               {
                 icon: Shield,
                 title: "Proteção Máxima",
                 description: "Segurança bancária avançada protege seus dados com tecnologia de ponta",
                 gradient: "from-orange-500 to-red-500",
-                animation: "icon-rotate-slow"
+                animation: "icon-shield-glow"
               }
             ].map((feature, index) => (
               <Card key={index} className="bg-white/5 border-gray-700 hover:bg-white/10 transition-all duration-300 group">
