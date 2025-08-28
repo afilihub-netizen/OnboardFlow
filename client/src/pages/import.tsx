@@ -186,16 +186,20 @@ export default function Import() {
                 setExtractText(finalResult.text);
                 
                 toast({
-                  title: "PDF processado completamente",
-                  description: finalResult.message,
+                  title: "PDF processado com sucesso!",
+                  description: `${finalResult.text.length} caracteres extraídos de ${finalResult.pages} páginas.`,
                 });
+                
+                // Reset states
+                setIsAnalyzing(false);
+                setCurrentStep(1);
                 
                 // Automatically analyze after PDF text extraction
                 setTimeout(() => {
                   if (finalResult.text.trim()) {
                     analyzeExtractWithAI();
                   }
-                }, 500);
+                }, 1000);
               }
               
               return; // Stop polling
@@ -217,6 +221,11 @@ export default function Import() {
             setCurrentStep(1);
           }
         };
+        
+        // Set analysis state and step to show progress
+        setCurrentStep(2);
+        setAnalysisProgress(10);
+        setProgressMessage("Iniciando processamento do PDF...");
         
         // Start polling
         setTimeout(pollProgress, 1000);
