@@ -1108,6 +1108,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const ocrResult = await ocrResponse.json();
     
+    // Check for critical errors (ignore page limit warnings)
+    const hasPageLimitError = ocrResult.ErrorMessage?.includes('maximum page limit');
+    if (ocrResult.IsErroredOnProcessing && !hasPageLimitError) {
+      throw new Error(`OCR processing error: ${ocrResult.ErrorMessage}`);
+    }
+    
     let extractedText = '';
     if (ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0) {
       extractedText = ocrResult.ParsedResults
@@ -1118,7 +1124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return {
       text: extractedText,
       pages: ocrResult.ParsedResults?.length || 0,
-      hasMore: ocrResult.ErrorMessage?.includes('maximum page limit') || false
+      hasMore: hasPageLimitError,
+      isFirstChunk: startPage === 1
     };
   }
 
@@ -1175,24 +1182,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       while (hasMorePages) {
         session.message = `Processando páginas ${currentPage}-${currentPage + 2}...`;
         
-        const chunkResult = await processPDFChunk(base64File, currentPage, currentPage + 2);
-        
-        if (chunkResult.text.trim()) {
-          fullText += (fullText ? '\n\n' : '') + chunkResult.text;
-          totalPages += chunkResult.pages;
+        try {
+          const chunkResult = await processPDFChunk(base64File, currentPage, currentPage + 2);
+          
+          if (chunkResult.text.trim()) {
+            fullText += (fullText ? '\n\n' : '') + chunkResult.text;
+            totalPages += chunkResult.pages;
+          }
+
+          // Update progress
+          const progressPercent = Math.min(30 + (currentPage / 10) * 60, 90);
+          session.progress = progressPercent;
+          session.message = `Páginas ${currentPage}-${currentPage + chunkResult.pages - 1} processadas...`;
+
+          // For first chunk, if no "hasMore" flag, it means the PDF has only these pages
+          if (chunkResult.isFirstChunk && !chunkResult.hasMore) {
+            hasMorePages = false;
+          } else {
+            currentPage += 3;
+            hasMorePages = currentPage <= 30; // Continue up to 30 pages max
+          }
+          
+        } catch (chunkError) {
+          console.log(`Error in chunk ${currentPage}, stopping processing:`, chunkError);
+          hasMorePages = false; // Stop processing on error
         }
-
-        // Update progress
-        session.progress = Math.min(30 + (currentPage / 10) * 60, 90);
-        session.message = `Páginas ${currentPage}-${currentPage + chunkResult.pages - 1} processadas...`;
-
-        currentPage += 3;
-        
-        // Check if we need to continue (simulate page detection)
-        hasMorePages = chunkResult.hasMore && currentPage <= 30; // Limit to 30 pages max
         
         // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
 
       // Final result
