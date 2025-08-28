@@ -1,27 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@200;300;400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* Modern Base Colors */
-  --background: hsl(0 0% 100%);
-  --foreground: hsl(224 71.4% 4.1%);
+  /* Minimalista Base Colors */
+  --background: hsl(0 0% 99%);
+  --foreground: hsl(240 10% 8%);
   --card: hsl(0 0% 100%);
-  --card-foreground: hsl(224 71.4% 4.1%);
+  --card-foreground: hsl(240 10% 8%);
   --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(224 71.4% 4.1%);
+  --popover-foreground: hsl(240 10% 8%);
   
-  /* Primary Brand Colors - Modern Blue */
-  --primary: hsl(221.2 83.2% 53.3%);
-  --primary-foreground: hsl(210 40% 98%);
-  --secondary: hsl(220 14.3% 95.9%);
-  --secondary-foreground: hsl(220.9 39.3% 11%);
-  --muted: hsl(220 14.3% 95.9%);
-  --muted-foreground: hsl(220 8.9% 46.1%);
-  --accent: hsl(220 14.3% 95.9%);
-  --accent-foreground: hsl(220.9 39.3% 11%);
+  /* Primary Brand Colors - Sophisticated Blue */
+  --primary: hsl(231 48% 48%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(240 6% 97%);
+  --secondary-foreground: hsl(240 10% 15%);
+  --muted: hsl(240 6% 97%);
+  --muted-foreground: hsl(240 4% 46%);
+  --accent: hsl(240 6% 97%);
+  --accent-foreground: hsl(240 10% 15%);
   
   /* Status Colors */
   --destructive: hsl(0 84.2% 60.2%);
@@ -60,11 +60,11 @@
   --icon-warning: hsl(38.4 92.1% 50.2%);
   --icon-danger: hsl(0 84.2% 60.2%);
   
-  /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: ui-serif, Georgia, serif;
-  --font-mono: ui-monospace, 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  /* Modern Typography */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-serif: 'Charter', 'BitStream Charter', 'Sitka Text', Cambria, serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, 'Liberation Mono', monospace;
   
   /* Modern Border Radius - Extra Soft */
   --radius: 1rem;
@@ -149,13 +149,16 @@
   }
 
   body {
-    @apply bg-gray-50 text-foreground antialiased;
+    @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);
-    line-height: 1.65;
-    letter-spacing: -0.01em;
+    line-height: 1.7;
+    letter-spacing: -0.015em;
     text-rendering: optimizeLegibility;
-    font-feature-settings: 'cv11', 'ss01', 'kern';
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
     font-weight: 400;
+    font-variation-settings: 'wght' 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   .dark body {
@@ -464,7 +467,7 @@ canvas {
   background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
 }
 
-/* Animation keyframes */
+/* Modern Animation System */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -484,6 +487,105 @@ canvas {
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+
+/* Ícones Animados - Loops Suaves */
+@keyframes float-gentle {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg);
+  }
+  25% { 
+    transform: translateY(-3px) rotate(1deg);
+  }
+  50% { 
+    transform: translateY(0px) rotate(0deg);
+  }
+  75% { 
+    transform: translateY(-1px) rotate(-1deg);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+@keyframes rotate-subtle {
+  0% { 
+    transform: rotate(0deg);
+  }
+  25% { 
+    transform: rotate(3deg);
+  }
+  50% { 
+    transform: rotate(0deg);
+  }
+  75% { 
+    transform: rotate(-3deg);
+  }
+  100% { 
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes breathe {
+  0%, 100% { 
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1);
+  }
+  50% { 
+    transform: scale(1.02) rotate(1deg);
+    filter: brightness(1.1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bounce-subtle {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
   }
 }
 
@@ -679,4 +781,161 @@ canvas {
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+/* Classes de Animação para Ícones */
+.icon-animated {
+  animation: float-gentle 4s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.icon-pulse {
+  animation: pulse-soft 3s ease-in-out infinite;
+}
+
+.icon-rotate {
+  animation: rotate-subtle 6s ease-in-out infinite;
+}
+
+.icon-breathe {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.icon-hover:hover {
+  animation: bounce-subtle 0.6s ease-in-out;
+}
+
+/* Sistema de Micro-interações */
+.micro-interaction {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.micro-interaction:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.card-hover:hover::before {
+  left: 100%;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Botões Dinâmicos */
+.dynamic-button {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dynamic-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: width 0.6s, height 0.6s, top 0.6s, left 0.6s;
+  transform: translate(-50%, -50%);
+}
+
+.dynamic-button:hover::before {
+  width: 300px;
+  height: 300px;
+  top: 50%;
+  left: 50%;
+}
+
+.dynamic-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* Loading States Elegantes */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 50%,
+    #f0f0f0 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+.dark .shimmer {
+  background: linear-gradient(
+    90deg,
+    #2a2a2a 25%,
+    #3a3a3a 50%,
+    #2a2a2a 75%
+  );
+  background-size: 200% 100%;
+}
+
+/* Animações de Entrada */
+.animate-slide-up {
+  animation: slide-up 0.6s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+/* Efeitos de Foco Modernos */
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+  transition: all 0.2s ease;
+}
+
+/* Bordas Animadas */
+.border-animated {
+  position: relative;
+  overflow: hidden;
+}
+
+.border-animated::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary)), transparent);
+  transition: left 0.8s ease-in-out;
+}
+
+.border-animated:hover::after {
+  left: 100%;
 }

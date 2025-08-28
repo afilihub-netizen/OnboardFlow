@@ -51,13 +51,13 @@ export function Header({ title, subtitle }: HeaderProps) {
   if (isBusinessAccount) {
     // Layout empresarial (como estava)
     return (
-      <header className="bg-slate-800 shadow-lg border-b border-slate-700 sticky top-0 z-40">
+      <header className="bg-slate-800 shadow-lg border-b border-slate-700 sticky top-0 z-40 border-animated">
         <div className="px-6 py-4 ml-0 md:ml-0 pl-16 md:pl-6">
           <div className="flex items-center justify-between">
             {/* Badge do Modo Empresarial - Lado Esquerdo */}
             <div>
-              <Badge className="bg-white/20 text-white border-white/30 text-sm px-3 py-1 backdrop-blur">
-                <Building2 className="w-4 h-4 mr-2" />
+              <Badge className="bg-white/20 text-white border-white/30 text-sm px-3 py-1 backdrop-blur micro-interaction">
+                <Building2 className="w-4 h-4 mr-2 icon-pulse" />
                 MODO EMPRESARIAL
               </Badge>
             </div>
@@ -67,8 +67,8 @@ export function Header({ title, subtitle }: HeaderProps) {
               <NotificationPanel />
               
               {/* User Profile */}
-              <div className="flex items-center gap-3 p-2 rounded-lg bg-white/10 border border-white/20 backdrop-blur">
-                <Avatar className="h-8 w-8">
+              <div className="flex items-center gap-3 p-2 rounded-lg bg-white/10 border border-white/20 backdrop-blur micro-interaction">
+                <Avatar className="h-8 w-8 card-hover">
                   <AvatarImage src={user?.profileImageUrl || undefined} alt="Profile" />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold">
                     {getUserInitials()}

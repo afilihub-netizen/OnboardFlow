@@ -107,12 +107,12 @@ export function Sidebar() {
         <div className="p-6">
           <div className="flex items-center space-x-3">
             <div className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center",
+              "w-10 h-10 rounded-lg flex items-center justify-center card-hover",
               isBusinessAccount 
                 ? "bg-gradient-to-r from-slate-700 to-slate-800" 
                 : "bg-gradient-to-r from-blue-500 to-blue-600"
             )}>
-              <TrendingUp className="text-white text-lg" />
+              <TrendingUp className="text-white text-lg icon-pulse" />
             </div>
             <div>
               <h1 className={cn(
@@ -140,7 +140,7 @@ export function Sidebar() {
                   key={item.name}
                   href={item.href}
                   className={cn(
-                    "sidebar-item",
+                    "sidebar-item micro-interaction border-animated",
                     isActive && "active",
                     item.name === "Premium" && "premium-nav-item"
                   )}
@@ -148,9 +148,10 @@ export function Sidebar() {
                   onClick={() => setIsOpen(false)}
                 >
                   <Icon className={cn(
-                    "w-5 h-5 sidebar-icon", 
-                    isActive ? "sidebar-icon-active" : "",
-                    item.name === "Premium" ? "text-yellow-500" : "text-gray-600 dark:text-gray-300"
+                    "w-5 h-5 sidebar-icon icon-hover", 
+                    isActive ? "sidebar-icon-active icon-breathe" : "icon-animated",
+                    item.name === "Premium" ? "text-yellow-500 icon-pulse" : "text-gray-600 dark:text-gray-300",
+                    item.name === "IA Avançada" && "icon-rotate"
                   )} />
                   <span className={item.name === "Premium" ? "font-semibold text-yellow-600 dark:text-yellow-500" : ""}>{item.name}</span>
                 </Link>
@@ -176,10 +177,10 @@ export function Sidebar() {
               
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="sidebar-item w-full text-left"
+                className="sidebar-item w-full text-left micro-interaction dynamic-button"
                 data-testid="button-theme-toggle"
               >
-                {theme === "dark" ? <Sun className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300" /> : <Moon className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300" />}
+                {theme === "dark" ? <Sun className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300 icon-rotate" /> : <Moon className="w-5 h-5 sidebar-icon text-gray-600 dark:text-gray-300 icon-animated" />}
                 <span>{theme === "dark" ? "Modo Claro" : "Modo Escuro"}</span>
               </button>
 
