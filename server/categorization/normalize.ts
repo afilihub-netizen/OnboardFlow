@@ -12,14 +12,29 @@ const titleCase = (s: string) =>
 
 export function detectTipo(descricao: string, amount: number): Tipo {
   const d = deburr(descricao.toUpperCase());
+  
+  console.log(`🔍 [DETECT-TIPO] "${descricao}" (amount: ${amount}) → normalized: "${d}"`);
 
-  if (/PAGAMENTO\s+PIX/.test(d) && amount < 0) return 'PIX_DEB';
-  if (/(RECEBIMENTO\s+PIX|PIX\s+CRED)/.test(d) && amount > 0) return 'PIX_CRED';
-  if (/(COMPRA|COMPRAS\s+NACIONAIS)/.test(d)) return 'COMPRA';
+  // PIX - detectar independente do valor primeiro, depois ajustar por contexto
+  if (/PAGAMENTO\s+PIX|PIX\s+DEB/.test(d)) {
+    console.log(`  → PIX_DEB detectado (pagamento/débito)`);
+    return 'PIX_DEB';
+  }
+  if (/(RECEBIMENTO\s+PIX|PIX\s+CRED)/.test(d)) {
+    console.log(`  → PIX_CRED detectado (recebimento/crédito)`);
+    return 'PIX_CRED';
+  }
+  
+  if (/(COMPRA|COMPRAS\s+NACIONAIS)/.test(d)) {
+    console.log(`  → COMPRA detectado`);
+    return 'COMPRA';
+  }
   if (/(TRANSFERENCIA|TED|DOC)/.test(d) && amount < 0) return 'TRANSFER_OUT';
   if (/(TRANSFERENCIA|TED|DOC)/.test(d) && amount > 0) return 'TRANSFER_IN';
   if (/BOLETO/.test(d)) return 'BOLETO';
   if (/(TARIFA|PACOTE|MENSALIDADE)/.test(d)) return 'TARIFA';
+  
+  console.log(`  → OUTRO (fallback)`);
   return 'OUTRO';
 }
 

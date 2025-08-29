@@ -234,8 +234,8 @@ JSON OBRIGATÓRIO:
 RULES:
 - date: YYYY-MM-DD (use 2025-01-01 se não encontrar)
 - description: texto completo da transação  
-- amount: número decimal (negativo para gastos, positivo para receitas)
-- type: "expense" ou "income"
+- amount: PRESERVAR SINAIS! (negativo para gastos, positivo para receitas)
+- type: OBRIGATÓRIO "expense" para PAGAMENTO PIX, "income" para RECEBIMENTO PIX
 - category: Alimentação, Transporte, Casa, Saúde, Entretenimento, Assinaturas, Outros
 - isSubscription: true se for serviço de assinatura conhecida, false caso contrário`;
 
@@ -378,17 +378,21 @@ RULES:
         // Smart categorization based on description
         const description = rawDescription.toString().toLowerCase();
         
-        // PIX payments are always expenses (saídas)
+        // PIX payments are always expenses (saídas) - INCLUINDO PIX DEB
         if (description.includes('pagamento pix') || 
             description.includes('pix pagamento') ||
-            (description.includes('pix') && (description.includes('pagamento') || description.includes('pagto')))) {
+            description.includes('pix deb') ||
+            (description.includes('pix') && (description.includes('pagamento') || description.includes('pagto') || description.includes('deb')))) {
           normalizedType = 'expense';
+          console.log(`🔴 [PIX-EXPENSE] "${description}" → type="expense"`);
         }
-        // PIX receipts are income (entradas)
+        // PIX receipts are income (entradas) - INCLUINDO PIX CRED
         else if (description.includes('recebimento pix') || 
                  description.includes('pix recebido') ||
-                 (description.includes('pix') && (description.includes('recebimento') || description.includes('recebido')))) {
+                 description.includes('pix cred') ||
+                 (description.includes('pix') && (description.includes('recebimento') || description.includes('recebido') || description.includes('cred')))) {
           normalizedType = 'income';
+          console.log(`🟢 [PIX-INCOME] "${description}" → type="income"`);
         }
         // Other payment indicators
         else if (description.includes('pagamento') || description.includes('pagto') || 
