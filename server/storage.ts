@@ -608,7 +608,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(
         or(
           sql`LOWER(${transactions.description}) LIKE ${searchTerm}`,
-          sql`LOWER(${transactions.paymentMethod}) LIKE ${searchTerm}`
+          sql`LOWER(CAST(${transactions.paymentMethod} AS TEXT)) LIKE ${searchTerm}`
         )
       );
     }
