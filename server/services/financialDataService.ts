@@ -118,7 +118,7 @@ Responda em JSON com esta estrutura:
 `;
 
       const response = await this.geminiAI.models.generateContent({
-        model: "gemini-2.0-flash-experimental",
+        model: "gemini-2.0-flash-exp",
         config: {
           responseMimeType: "application/json"
         },

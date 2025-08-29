@@ -161,10 +161,10 @@ export function AISuggestions() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-2xl font-bold text-blue-600">
-                    {suggestions.suggestions.portfolio_score}/10
+                    {suggestions?.suggestions?.portfolio_score || '0'}/10
                   </span>
                   <Badge variant="outline" className="text-xs">
-                    {suggestions.portfolio_summary.total_investments} ativos
+                    {suggestions?.portfolio_summary?.total_investments || 0} ativos
                   </Badge>
                 </div>
               </div>
@@ -178,7 +178,7 @@ export function AISuggestions() {
                   {new Intl.NumberFormat('pt-BR', {
                     style: 'currency',
                     currency: 'BRL',
-                  }).format(suggestions.portfolio_summary.total_value)}
+                  }).format(suggestions?.portfolio_summary?.total_value || 0)}
                 </span>
               </div>
             </div>
@@ -192,7 +192,7 @@ export function AISuggestions() {
                     Análise do Portfólio
                   </h4>
                   <p className="text-sm text-blue-700 dark:text-blue-300">
-                    {suggestions.suggestions.analysis}
+                    {suggestions?.suggestions?.analysis || 'Análise não disponível'}
                   </p>
                 </div>
               </div>
@@ -206,7 +206,7 @@ export function AISuggestions() {
               </h4>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {suggestions.suggestions.suggestions.map((suggestion, index) => (
+                {(suggestions?.suggestions?.suggestions || []).map((suggestion, index) => (
                   <div 
                     key={index}
                     className="bg-white dark:bg-gray-800 p-4 rounded-lg border hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
@@ -250,7 +250,7 @@ export function AISuggestions() {
                     Próximos Passos
                   </h4>
                   <p className="text-sm text-green-700 dark:text-green-300">
-                    {suggestions.suggestions.next_steps}
+                    {suggestions?.suggestions?.next_steps || 'Próximos passos não disponíveis'}
                   </p>
                 </div>
               </div>
@@ -258,7 +258,7 @@ export function AISuggestions() {
 
             {/* Timestamp */}
             <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-              Sugestões geradas em: {new Date(suggestions.generated_at).toLocaleString('pt-BR')}
+              Sugestões geradas em: {suggestions?.generated_at ? new Date(suggestions.generated_at).toLocaleString('pt-BR') : 'Data não disponível'}
             </p>
           </div>
         )}
