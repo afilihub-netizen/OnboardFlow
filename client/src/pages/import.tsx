@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useBusinessTheme } from "@/hooks/useBusinessTheme";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +39,7 @@ interface DetectedSubscription {
 export default function Import() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const { isBusinessAccount } = useBusinessTheme();
   const queryClient = useQueryClient();
   const [extractText, setExtractText] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -466,16 +468,16 @@ export default function Import() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className={`flex h-screen overflow-hidden ${isBusinessAccount ? '' : 'bg-gray-50 dark:bg-gray-900'}`}>
       <Sidebar />
       
       <main className="flex-1 overflow-auto">
         <Header 
-          title="Importação de Extratos" 
-          subtitle="Importe seus extratos bancários com análise inteligente" 
+          title={isBusinessAccount ? "Importação de Extratos Empresariais" : "Importação de Extratos"} 
+          subtitle={isBusinessAccount ? "Processe extratos bancários e conciliação empresarial" : "Importe seus extratos bancários com análise inteligente"} 
         />
         
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-8">
           {/* Progress Bar */}
           <Card className="financial-card">
             <CardContent className="p-6">

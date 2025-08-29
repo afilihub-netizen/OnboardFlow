@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useBusinessTheme } from "@/hooks/useBusinessTheme";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function Goals() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { isBusinessAccount } = useBusinessTheme();
   const queryClient = useQueryClient();
   const [isNewGoalDialogOpen, setIsNewGoalDialogOpen] = useState(false);
   const [newGoalData, setNewGoalData] = useState({
@@ -136,16 +138,16 @@ export default function Goals() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className={`flex h-screen overflow-hidden ${isBusinessAccount ? '' : 'bg-gray-50 dark:bg-gray-900'}`}>
       <Sidebar />
       
       <main className="flex-1 overflow-auto md:ml-0">
         <Header 
-          title="Metas Financeiras" 
-          subtitle="Defina e acompanhe suas metas de economia" 
+          title={isBusinessAccount ? "Metas e Orçamentos Corporativos" : "Metas Financeiras"} 
+          subtitle={isBusinessAccount ? "Controle orçamentário e metas departamentais" : "Defina e acompanhe suas metas de economia"} 
         />
         
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-8">
           {/* Overview Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="financial-card">

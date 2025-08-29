@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useBusinessTheme } from "@/hooks/useBusinessTheme";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { InvestmentOverview } from "@/components/investments/investment-overview";
@@ -11,6 +12,7 @@ import { AISuggestions } from "@/components/investments/ai-suggestions";
 export default function Investments() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { isBusinessAccount } = useBusinessTheme();
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -32,16 +34,16 @@ export default function Investments() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    <div className={`flex h-screen overflow-hidden ${isBusinessAccount ? '' : 'bg-gray-50 dark:bg-gray-900'}`}>
       <Sidebar />
       
       <main className="flex-1 overflow-auto min-w-0">
         <Header 
-          title="Investimentos" 
-          subtitle="Acompanhe seu portfólio" 
+          title={isBusinessAccount ? "Investimentos Corporativos" : "Investimentos"} 
+          subtitle={isBusinessAccount ? "Gestão de aplicações e reservas empresariais" : "Acompanhe seu portfólio"} 
         />
         
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-8">
           <InvestmentNotifications />
           <InvestmentOverview />
           <AISuggestions />

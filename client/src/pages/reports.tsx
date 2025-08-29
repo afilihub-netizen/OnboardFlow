@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useBusinessTheme } from "@/hooks/useBusinessTheme";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import { DetailedAnalysis } from "@/components/reports/detailed-analysis";
 export default function Reports() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { isBusinessAccount } = useBusinessTheme();
   const [selectedPeriod, setSelectedPeriod] = useState("current-month");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -183,13 +185,13 @@ export default function Reports() {
   const totalExpenses = summary ? parseFloat(summary.totalExpenses) : 0;
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    <div className={`flex h-screen overflow-hidden ${isBusinessAccount ? '' : 'bg-gray-50 dark:bg-gray-900'}`}>
       <Sidebar />
       
       <main className="flex-1 overflow-auto min-w-0">
         <Header 
-          title="Relatórios" 
-          subtitle="Análises detalhadas das suas finanças" 
+          title={isBusinessAccount ? "Relatórios Gerenciais" : "Relatórios"} 
+          subtitle={isBusinessAccount ? "Análises e indicadores corporativos avançados" : "Análises detalhadas das suas finanças"} 
         />
         
         <div className="p-6 space-y-6">
@@ -259,7 +261,7 @@ export default function Reports() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas as categorias</SelectItem>
-                      {categories?.map((category) => (
+                      {categories?.map((category: any) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
                         </SelectItem>
@@ -378,7 +380,7 @@ export default function Reports() {
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {summary?.categoryBreakdown?.map((category, index) => (
+                      {summary?.categoryBreakdown?.map((category: any, index: number) => (
                         <tr key={index} data-testid={`category-row-${index}`}>
                           <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                             {category.categoryName}

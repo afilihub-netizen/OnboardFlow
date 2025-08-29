@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useBusinessTheme } from "@/hooks/useBusinessTheme";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +30,7 @@ type CategoryFormData = z.infer<typeof categorySchema>;
 export default function Categories() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { isBusinessAccount } = useBusinessTheme();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
@@ -208,16 +210,16 @@ export default function Categories() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    <div className={`flex h-screen overflow-hidden ${isBusinessAccount ? '' : 'bg-gray-50 dark:bg-gray-900'}`}>
       <Sidebar />
       
       <main className="flex-1 overflow-auto min-w-0">
         <Header 
-          title="Categorias" 
-          subtitle="Organize seus gastos e receitas" 
+          title={isBusinessAccount ? "Classificação de Contas" : "Categorias"} 
+          subtitle={isBusinessAccount ? "Organize plano de contas e centros de custo" : "Organize seus gastos e receitas"} 
         />
         
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-8">
           {/* Create Category Button */}
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
