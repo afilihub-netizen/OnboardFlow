@@ -1820,7 +1820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const normalizedTransactions = transactions.map((t: any, index: number) => ({
             date: t.date || new Date().toISOString().split('T')[0],
             description: t.description || `Transação ${index + 1}`,
-            amount: String(Math.abs(parseFloat(t.amount || 0))),
+            amount: String(parseFloat(t.amount || 0)), // PRESERVAR SINAL CORRETO
             type: t.type === 'income' ? 'income' : 'expense',
             category: t.category || 'Outros',
             confidence: t.confidence || 0.8,

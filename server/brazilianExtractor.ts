@@ -206,7 +206,7 @@ function parseTransactionLineStrict(line: string, availableCategories: any[]): T
     return {
       date: extractDate(line) || new Date().toISOString().split('T')[0],
       description: cleanedDescription,
-      amount: Math.abs(amountInfo.amount),
+      amount: amountInfo.amount, // USAR VALOR COM SINAL do parser corrigido
       type: 'expense', // Manter como expense mas pode ser marcado diferente
       category: 'Transferência Interna',
       paymentMethod: determinePaymentMethod(line),
@@ -230,7 +230,7 @@ function parseTransactionLineStrict(line: string, availableCategories: any[]): T
   return {
     date,
     description: cleanedDescription,
-    amount: Math.abs(amountInfo.amount),
+    amount: amountInfo.amount, // USAR VALOR COM SINAL do parser corrigido
     type,
     category,
     paymentMethod,
@@ -330,65 +330,132 @@ export function detectTransferenciaInterna(desc: string, nomeTitular: string = '
 }
 
 function extractAmount(line: string): { amount: number; confidence: number } | null {
-  // CORREÇÃO: Parser inteligente que ignora datas (2025, 2024, etc)
-  // Padrões ESPECÍFICOS para valores monetários brasileiros
-  const patterns = [
-    // Padrão com R$ explícito (mais confiável)
-    /[-+]?\s*R\$\s*([\d]{1,3}(?:\.\d{3})*,\d{2})/g, // R$ 1.234,56
-    /[-+]?\s*R\$\s*(\d{1,6},\d{2})/g, // R$ 123,45
-    
-    // Padrões sem R$ mas com contexto monetário
-    /(?:PIX_(?:DEB|CRED)|DEB|CRED)\s+[-+]?\s*([\d]{1,3}(?:\.\d{3})*,\d{2})/g, // PIX_DEB 1.234,56
-    /(?:PIX_(?:DEB|CRED)|DEB|CRED)\s+[-+]?\s*(\d{1,6},\d{2})/g, // PIX_DEB 123,45
-    
-    // Valores no final da linha (formato extrato)
-    /\s+([\d]{1,3}(?:\.\d{3})*,\d{2})\s*$/g, // ...1.234,56 (final da linha)
-    /\s+(\d{1,6},\d{2})\s*$/g, // ...123,45 (final da linha)
-    
-    // Valores negativos explícitos
-    /-\s*([\d]{1,3}(?:\.\d{3})*,\d{2})/g, // -1.234,56
-    /-\s*(\d{1,6},\d{2})/g, // -123,45
-  ];
+  // CORREÇÃO CRÍTICA: Priorizar valores de transação sobre saldos
+  console.log(`[PARSER] Analisando linha: "${line}"`);
   
   const foundValues = [];
   
-  for (const pattern of patterns) {
+  // PADRÃO 1: Valores com sinal explícito (MAIOR PRIORIDADE - são valores de transação)
+  const signedPatterns = [
+    /[-+]\s*R?\$?\s*([\d]{1,3}(?:\.\d{3})*,\d{2})/g, // -R$ 1.234,56 ou +1.234,56
+    /[-+]\s*R?\$?\s*(\d{1,6},\d{2})/g, // -123,45 ou +123,45
+  ];
+  
+  for (const pattern of signedPatterns) {
     const matches = [...line.matchAll(pattern)];
     for (const match of matches) {
-      try {
-        const rawValue = match[1] || match[0];
-        const amount = parseAmountBR(rawValue);
-        
-        // FILTRAR valores claramente inválidos
-        if (isNaN(amount)) continue;
-        if (Math.abs(amount) < 0.01) continue; // Muito pequeno
-        if (Math.abs(amount) > 100000) continue; // Muito grande
-        
-        // IGNORAR anos (2024, 2025, etc) - padrão comum em datas
-        if (amount >= 2020 && amount <= 2030 && Number.isInteger(amount)) continue;
-        
-        // IGNORAR códigos bancários típicos (6+ dígitos consecutivos)
-        if (Number.isInteger(amount) && amount >= 100000) continue;
-        
+      const fullMatch = match[0];
+      const valueStr = match[1];
+      const amount = parseAmountBR(fullMatch); // Inclui o sinal
+      
+      if (!isNaN(amount) && Math.abs(amount) >= 0.01 && Math.abs(amount) <= 50000) {
         foundValues.push({
           amount,
-          confidence: match[0].includes('R$') ? 0.98 : 0.85,
-          context: match[0]
+          confidence: 0.95, // ALTA confiança - tem sinal explícito
+          context: fullMatch,
+          type: 'signed_transaction'
         });
-      } catch {
-        continue;
+        console.log(`[PARSER] 🎯 VALOR COM SINAL: ${fullMatch} → ${amount}`);
       }
     }
   }
   
-  if (foundValues.length === 0) return null;
+  // PADRÃO 2: Contexto PIX/TED com valores (SEGUNDA PRIORIDADE)
+  const contextPatterns = [
+    /(?:PIX_(?:DEB|CRED)|TED|DOC)\s+([-+]?\s*)([\d]{1,3}(?:\.\d{3})*,\d{2})/g, // PIX_DEB 1.234,56
+    /(?:PIX_(?:DEB|CRED)|TED|DOC)\s+([-+]?\s*)(\d{1,6},\d{2})/g, // PIX_CRED 123,45
+  ];
   
-  // Retornar o valor com maior confiança, priorizando valores com R$
-  foundValues.sort((a, b) => b.confidence - a.confidence || Math.abs(b.amount) - Math.abs(a.amount));
+  for (const pattern of contextPatterns) {
+    const matches = [...line.matchAll(pattern)];
+    for (const match of matches) {
+      const sign = match[1].trim();
+      const valueStr = match[2];
+      let amount = parseAmountBR(valueStr);
+      
+      // Determinar sinal baseado no contexto
+      if (match[0].includes('PIX_DEB') || match[0].includes('TED') || sign === '-') {
+        amount = -Math.abs(amount);
+      } else if (match[0].includes('PIX_CRED') || sign === '+') {
+        amount = Math.abs(amount);
+      }
+      
+      if (!isNaN(amount) && Math.abs(amount) >= 0.01 && Math.abs(amount) <= 50000) {
+        foundValues.push({
+          amount,
+          confidence: 0.90, // ALTA confiança - contexto bancário
+          context: match[0],
+          type: 'contextual_transaction'
+        });
+        console.log(`[PARSER] 🏦 CONTEXTO BANCÁRIO: ${match[0]} → ${amount}`);
+      }
+    }
+  }
   
+  // PADRÃO 3: Múltiplos valores - priorizar o PRIMEIRO (geralmente transação)
+  if (foundValues.length === 0) {
+    const allValuePatterns = [
+      /\b([\d]{1,3}(?:\.\d{3})*,\d{2})\b/g, // 1.234,56
+      /\b(\d{1,6},\d{2})\b/g, // 123,45
+    ];
+    
+    const allValuesInLine = [];
+    for (const pattern of allValuePatterns) {
+      const matches = [...line.matchAll(pattern)];
+      for (const match of matches) {
+        const amount = parseAmountBR(match[1]);
+        
+        // IGNORAR anos e códigos
+        if (amount >= 2020 && amount <= 2030) continue;
+        if (amount >= 100000) continue;
+        if (Math.abs(amount) < 2) continue; // Muito pequeno
+        
+        allValuesInLine.push({
+          amount,
+          position: match.index,
+          value: match[1]
+        });
+      }
+    }
+    
+    // Se tem múltiplos valores, o PRIMEIRO é geralmente a transação, o ÚLTIMO é o saldo
+    if (allValuesInLine.length >= 2) {
+      const firstValue = allValuesInLine[0];
+      const lastValue = allValuesInLine[allValuesInLine.length - 1];
+      
+      // Determinar sinal baseado no contexto da descrição
+      let amount = firstValue.amount;
+      if (line.toLowerCase().includes('pagamento') || line.toLowerCase().includes('compra') || 
+          line.toLowerCase().includes('débito') || line.toLowerCase().includes('pix_deb')) {
+        amount = -Math.abs(amount);
+      } else if (line.toLowerCase().includes('recebimento') || line.toLowerCase().includes('crédito') || 
+                 line.toLowerCase().includes('pix_cred')) {
+        amount = Math.abs(amount);
+      }
+      
+      foundValues.push({
+        amount,
+        confidence: 0.75, // Confiança média - inferido
+        context: `Primeiro valor: ${firstValue.value} (saldo ignorado: ${lastValue.value})`,
+        type: 'positional_transaction'
+      });
+      console.log(`[PARSER] 📍 VALOR POSICIONAL: ${firstValue.value} → ${amount} (ignorando saldo ${lastValue.value})`);
+    }
+  }
+  
+  if (foundValues.length === 0) {
+    console.log(`[PARSER] ❌ NENHUM VALOR ENCONTRADO na linha`);
+    return null;
+  }
+  
+  // Retornar o valor com maior confiança
+  foundValues.sort((a, b) => b.confidence - a.confidence);
+  const best = foundValues[0];
+  
+  console.log(`[PARSER] ✅ MELHOR VALOR: ${best.amount} (conf: ${best.confidence}, tipo: ${best.type})`);
   return {
-    amount: foundValues[0].amount,
-    confidence: foundValues[0].confidence
+    amount: best.amount,
+    confidence: best.confidence
   };
 }
 
