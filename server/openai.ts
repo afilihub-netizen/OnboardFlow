@@ -501,8 +501,10 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
         console.log(`[CHUNK ${i + 1}] Sample:`, chunkTransactions.slice(0, 2));
         
         if (chunkTransactions.length > 0) {
+          console.log(`[CHUNK ${i + 1}] 🔍 BEFORE PUSH: allTransactions has ${allTransactions.length} items`);
           allTransactions.push(...chunkTransactions);
-          console.log(`[CHUNK ${i + 1}] ✅ TOTAL ACCUMULATED: ${allTransactions.length} transactions`);
+          console.log(`[CHUNK ${i + 1}] ✅ AFTER PUSH: allTransactions now has ${allTransactions.length} transactions`);
+          console.log(`[CHUNK ${i + 1}] 🔍 SAMPLE ADDED:`, chunkTransactions[0]);
         } else {
           console.log(`[CHUNK ${i + 1}] ⚠️ NO TRANSACTIONS RETURNED FROM CHUNK`);
         }
@@ -527,6 +529,8 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     console.log(`   - Total chunks processed: ${chunks.length}`);
     console.log(`   - Total transactions extracted: ${allTransactions.length}`);
     console.log(`   - Transactions per chunk average: ${chunks.length > 0 ? Math.round(allTransactions.length / chunks.length) : 0}`);
+    console.log(`   - allTransactions array type:`, typeof allTransactions, Array.isArray(allTransactions));
+    console.log(`   - allTransactions first item:`, allTransactions[0]);
     
     if (allTransactions.length === 0) {
       console.log(`❌ NO TRANSACTIONS FOUND AFTER CHUNK PROCESSING`);
@@ -556,6 +560,9 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     
     if (allTransactions.length === 0) {
       console.log(`❌ CRITICAL ERROR: No transactions to normalize! Stopping here.`);
+      console.log(`🔍 DEBUG: Rechecking chunks processing...`);
+      console.log(`   - Chunks length: ${chunks.length}`);
+      console.log(`   - Did any chunk succeed?`);
       return { transactions: [] };
     }
     let finalTransactions = allTransactions.map((t: any, index: number) => {      
