@@ -25,6 +25,7 @@ import {
 import { z } from "zod";
 import { emailService } from './email-service';
 import multer from "multer";
+import Tesseract from 'tesseract.js';
 import Stripe from "stripe";
 
 // Initialize Stripe
@@ -34,6 +35,35 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 // Store SSE connections for progress tracking
 export const extractProgressSessions = new Map<string, any>();
+
+// 🚀 FUNÇÃO OCR NATIVO SEM LIMITES - TESSERACT.JS PURO
+async function extractWithNativeOCR(buffer: Buffer): Promise<{ text: string; pages: number; method: string }> {
+  console.log('[OCR NATIVO] Iniciando extração com Tesseract.js - SEM LIMITES!');
+  
+  try {
+    console.log('[OCR NATIVO] Configurando Tesseract para português...');
+    
+    const { data: { text } } = await Tesseract.recognize(buffer, 'por', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          console.log(`[OCR NATIVO] Progresso OCR: ${Math.round(m.progress * 100)}%`);
+        }
+      }
+    });
+    
+    console.log(`[OCR NATIVO] ✅ EXTRAÇÃO COMPLETA: ${text.length} caracteres`);
+    
+    return {
+      text: text,
+      pages: 1, // Tesseract processa documento inteiro como uma unidade
+      method: 'tesseract-nativo'
+    };
+    
+  } catch (error) {
+    console.log('[OCR NATIVO] ❌ Erro no Tesseract:', error);
+    throw new Error(`Tesseract OCR falhou: ${error}`);
+  }
+}
 
 // Configure multer for file uploads
 const upload = multer({ 
@@ -1302,22 +1332,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Starting PDF text extraction via OCR...');
       const base64Data = buffer.toString('base64');
-      // Voltar ao sistema original que funcionava
-      console.log('[OCR] Processando PDF com sistema original...');
-      const ocrResult = await processPDFChunk(base64Data, 1, 3);
+          // 🚀 NOVO: OCR NATIVO SEM LIMITES
+      console.log('[OCR NATIVO] Processando PDF com OCR local - SEM LIMITES!');
+      const result = await extractWithNativeOCR(buffer);
       
-      // Extrair texto dos resultados
-      let extractedText = '';
-      if (ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0) {
-        extractedText = ocrResult.ParsedResults
-          .map((result: any) => result.ParsedText)
-          .join('\n\n');
-      }
-
+      // Usar resultado do OCR nativo
       return {
-        text: extractedText,
-        pages: ocrResult.ParsedResults?.length || 0,
-        method: 'ocr'
+        text: result.text,
+        pages: result.pages,
+        method: result.method
       };
       
     } catch (error) {
@@ -1624,37 +1647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Auto-create categories if they don't exist - TEMPORARIAMENTE DESABILITADO PARA DEBUG
-      // 🚀 NOVO: SALVAR AUTOMATICAMENTE todas as transações extraídas
-      console.log('[SALVAMENTO] Salvando automaticamente', result.transactions?.length || 0, 'transações no banco...');
-      
-      if (result.transactions && result.transactions.length > 0) {
-        try {
-          const storage = new DrizzleStorage();
-          let savedCount = 0;
-          
-          for (const transaction of result.transactions) {
-            try {
-              const savedTransaction = await storage.createTransaction({
-                description: transaction.description,
-                amount: Math.abs(transaction.amount).toString(),
-                categoryId: transaction.categoryId || 'outros',
-                type: transaction.amount < 0 ? 'expense' : 'income',
-                date: new Date(transaction.date),
-                userId: req.userId,
-                paymentMethod: transaction.paymentMethod || 'other'
-              });
-              savedCount++;
-              console.log(`[SALVAMENTO] ${savedCount}. ${transaction.description.substring(0, 40)} - R$ ${transaction.amount}`);
-            } catch (error) {
-              console.log(`[SALVAMENTO] Erro ao salvar: ${error}`);
-            }
-          }
-          
-          console.log(`[SALVAMENTO] ✅ CONCLUÍDO: ${savedCount}/${result.transactions.length} transações salvas no banco`);
-        } catch (error) {
-          console.log('[SALVAMENTO] ❌ Erro geral:', error);
-        }
-      }
+      console.log(`[DEBUG] Transações extraídas para seleção do usuário: ${result.transactions?.length || 0}`);
       
       // Final result processed successfully
       console.log(`[analyze-extract] Final result before sending:`, {
