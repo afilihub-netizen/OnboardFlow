@@ -83,6 +83,7 @@ Responda APENAS com JSON válido no formato:
 // Nova função para análise específica de assinaturas
 export async function analyzeSubscriptionPatterns(transactions: any[]) {
   try {
+    console.log(`[analyzeSubscriptionPatterns] Input: ${transactions.length} transactions`);
     const transactionsText = transactions.map(t => 
       `${t.description || 'Sem descrição'} - R$ ${t.amount} - ${t.date}`
     ).join('\n');
@@ -141,7 +142,9 @@ RESPONDA APENAS com JSON válido:
         result = aiResponse.data;
       }
       
-      return result?.potentialSubscriptions || [];
+      const subscriptions = result?.potentialSubscriptions || [];
+      console.log(`[analyzeSubscriptionPatterns] Output: ${subscriptions.length} subscriptions detected`);
+      return subscriptions;
     }
     
     return [];
@@ -504,9 +507,12 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
       
       // Wait for batch to complete and add results
       const batchResults = await Promise.all(batchPromises);
-      batchResults.forEach(transactions => {
+      console.log(`Batch results: ${batchResults.length} batches with [${batchResults.map(b => b.length).join(', ')}] transactions each`);
+      batchResults.forEach((transactions, batchIdx) => {
+        console.log(`Adding ${transactions.length} transactions from batch ${batchIdx + 1}`);
         allTransactions.push(...transactions);
       });
+      console.log(`Total accumulated transactions so far: ${allTransactions.length}`);
       
       processedChunks += chunkBatch.length;
       console.log(`Batch completed. Processed ${processedChunks}/${chunks.length} chunks so far`);

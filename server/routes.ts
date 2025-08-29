@@ -1522,6 +1522,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Process large texts by splitting into chunks with progress tracking
       const result = await analyzeExtractWithAI(extractText, availableCategories || [], sessionId, true);
       
+      console.log(`[analyze-extract] Result from AI:`, {
+        transactionsCount: result.transactions?.length || 0,
+        hasTransactions: !!result.transactions,
+        sampleTransaction: result.transactions?.[0]
+      });
+      
       // Auto-create categories if they don't exist
       if (result.transactions && result.transactions.length > 0) {
         const userId = getUserId(req);
@@ -1551,21 +1557,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        // Análise de assinaturas com IA Gemini
-        try {
-          const { analyzeSubscriptionPatterns } = await import('./openai');
-          const subscriptionAnalysis = await analyzeSubscriptionPatterns(result.transactions);
-          
-          if (subscriptionAnalysis && subscriptionAnalysis.length > 0) {
-            console.log(`IA detectou ${subscriptionAnalysis.length} possíveis assinaturas`);
-            result.detectedSubscriptions = subscriptionAnalysis;
-          }
-        } catch (subscriptionError) {
-          console.warn("Falha na análise de assinaturas:", subscriptionError);
-        }
+        // Análise de assinaturas com IA Gemini - TEMPORARIAMENTE DESABILITADA
+        console.log(`[analyze-extract] Skipping subscription analysis to debug. Transactions: ${result.transactions.length}`);
       }
       
       // Final result processed successfully
+      console.log(`[analyze-extract] Final result before sending:`, {
+        transactionsCount: result.transactions?.length || 0,
+        hasDetectedSubscriptions: !!result.detectedSubscriptions,
+        subscriptionsCount: result.detectedSubscriptions?.length || 0
+      });
+      
       res.json(result);
     } catch (error) {
       console.error("Error analyzing extract:", error);
