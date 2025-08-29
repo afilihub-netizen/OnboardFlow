@@ -1813,34 +1813,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (transactions && transactions.length > 0) {
           console.log(`✅ [AI] Sucesso: ${transactions.length} transações encontradas`);
           
-          // 🚀 NOVO SISTEMA SUPABASE: Arquitetura híbrida com dicionário do banco
-          console.log(`🎯 [SUPABASE] Aplicando sistema de categorização Supabase...`);
+          // 🎯 SISTEMA SIMPLIFICADO: Usar resultado direto do AI
+          console.log(`🎯 [SIMPLIFIED] Usando resultado direto do AI para máxima estabilidade`);
           
-          try {
-            // Converte transações para formato do classificador
-            const rawRows = transactions.map(convertToRawBankRow);
-            
-            // Aplica classificação em lote com sistema Supabase
-            const classifiedRows = await classifyBatchSupabase(rawRows, 'demo-user');
-            
-            // Converte de volta para formato do sistema
-            const enhancedTransactions = classifiedRows.map(convertFromTxNormalizedSupabase);
-            
-            result = { transactions: enhancedTransactions };
-            console.log(`🎯 [SUPABASE] Categorização Supabase concluída: ${enhancedTransactions.length} transações processadas`);
-            
-            // Log de estatísticas de confiança
-            const highConfidence = enhancedTransactions.filter(t => t.confidence >= 0.9).length;
-            const mediumConfidence = enhancedTransactions.filter(t => t.confidence >= 0.7 && t.confidence < 0.9).length;
-            const lowConfidence = enhancedTransactions.filter(t => t.confidence < 0.7).length;
-            
-            console.log(`📊 [STATS] Alta confiança (≥90%): ${highConfidence} | Média (70-89%): ${mediumConfidence} | Baixa (<70%): ${lowConfidence}`);
-            
-          } catch (error) {
-            console.error(`❌ [SUPABASE] Erro no sistema Supabase:`, error);
-            // Fallback para transações diretas do AI
-            result = { transactions: transactions };
-          }
+          // Normalizar transações do AI para formato esperado
+          const normalizedTransactions = transactions.map((t: any, index: number) => ({
+            date: t.date || new Date().toISOString().split('T')[0],
+            description: t.description || `Transação ${index + 1}`,
+            amount: String(Math.abs(parseFloat(t.amount || 0))),
+            type: t.type === 'income' ? 'income' : 'expense',
+            category: t.category || 'Outros',
+            confidence: t.confidence || 0.8,
+            paymentMethod: t.paymentMethod || 'other',
+            merchant: t.merchant || t.description?.split(' ').slice(0, 3).join(' ') || 'Desconhecido'
+          }));
+          
+          result = { transactions: normalizedTransactions };
+          console.log(`✅ [SIMPLIFIED] Processadas ${normalizedTransactions.length} transações diretamente`);
+          
+          // Log de amostra
+          console.log(`📊 [SAMPLE] Primeiras 3 transações:`, normalizedTransactions.slice(0, 3));
           
         } else {
           console.log(`⚠️ [AI] Nenhuma transação encontrada`);
