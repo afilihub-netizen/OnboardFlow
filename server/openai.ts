@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { processarLoteTransacoes, extrairCNPJsDoTexto } from "./cnpj-service";
 import { aiServiceManager } from "./services/aiServiceManager";
+import { extractTransactionsBrazilian } from "./brazilianExtractor.js";
 
 if (!process.env.GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is required");
@@ -579,6 +580,39 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
   console.log("CNPJ categorization:", enableCNPJCategorization);
   
   try {
+    // 🚀 NOVO: EXTRAÇÃO DETERMINÍSTICA BRASILEIRA COMO MÉTODO PRINCIPAL
+    console.log("🇧🇷 [BR-DETERMINISTIC] Usando extração determinística brasileira...");
+    const deterministicTransactions = extractTransactionsBrazilian(extractText, availableCategories);
+    
+    if (deterministicTransactions.length > 0) {
+      console.log(`✅ [BR-DETERMINISTIC] Extraiu ${deterministicTransactions.length} transações de forma determinística`);
+      
+      // Aplicar processamento de CNPJ se habilitado
+      let finalTransactions = deterministicTransactions;
+      if (enableCNPJCategorization) {
+        try {
+          const cnpjProcessed = await processarLoteTransacoes(deterministicTransactions);
+          if (cnpjProcessed && cnpjProcessed.length > 0) {
+            finalTransactions = cnpjProcessed;
+            console.log(`🏢 [CNPJ] Processadas ${finalTransactions.length} transações com CNPJ`);
+          }
+        } catch (error) {
+          console.error("❌ [CNPJ] Erro no processamento CNPJ:", error);
+          // Continuar com transações determinísticas mesmo se CNPJ falhar
+        }
+      }
+      
+      return {
+        transactions: finalTransactions,
+        hasTransactions: true,
+        transactionsCount: finalTransactions.length,
+        extractionMethod: 'deterministic_brazilian',
+        reliability: 'high'
+      };
+    }
+    
+    console.log("⚠️ [BR-DETERMINISTIC] Não conseguiu extrair transações, tentando com AI como backup...");
+    
     console.log(`🚀 EXTRACT ANALYSIS STARTING:`);
     console.log(`   - Extract text length: ${extractText.length}`);
     console.log(`   - Available categories: ${availableCategories.length}`);
