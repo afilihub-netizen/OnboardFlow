@@ -60,15 +60,7 @@ export class AIServiceManager {
       priority: 3
     });
 
-    // Sistema local - sempre disponível
-    this.providers.set('local', {
-      name: 'Sistema Local',
-      enabled: true,
-      quotaLimit: 999999,
-      quotaUsed: 0,
-      resetDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      priority: 10 // Última opção
-    });
+    // Removido sistema local - apenas APIs de IA
 
     // Inicializar clientes das APIs
     if (process.env.GEMINI_API_KEY) {
@@ -162,9 +154,7 @@ export class AIServiceManager {
           case 'openai':
             result = await this.callOpenAI(prompt, config);
             break;
-          case 'local':
-            result = await this.callLocalSystem(prompt, type, config);
-            break;
+          // Sistema local removido - apenas APIs de IA
           default:
             continue;
         }
@@ -184,23 +174,13 @@ export class AIServiceManager {
       }
     }
 
-    // Se todos falharam, usar sistema local como fallback absoluto
-    try {
-      const localResult = await this.callLocalSystem(prompt, type, config);
-      return {
-        success: true,
-        data: localResult,
-        provider: 'assistant',
-        timestamp: new Date()
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: 'Assistente temporariamente indisponível',
-        provider: 'assistant',
-        timestamp: new Date()
-      };
-    }
+    // Todas as APIs de IA falharam
+    return {
+      success: false,
+      error: 'Assistente financeiro temporariamente indisponível. Tente novamente em alguns minutos.',
+      provider: 'assistant',
+      timestamp: new Date()
+    };
   }
 
   // Gerar sugestões de investimento usando múltiplas APIs
@@ -235,9 +215,7 @@ export class AIServiceManager {
           case 'openai':
             result = await this.tryOpenAI(userPortfolio, riskProfile);
             break;
-          case 'local':
-            result = await this.tryLocalSystem(userPortfolio, riskProfile);
-            break;
+          // Sistema local removido - apenas APIs de IA
           default:
             continue;
         }
@@ -257,23 +235,13 @@ export class AIServiceManager {
       }
     }
 
-    // Se todos falharam, usar sistema local como fallback absoluto
-    try {
-      const localResult = await this.tryLocalSystem(userPortfolio, riskProfile);
-      return {
-        success: true,
-        data: localResult,
-        provider: 'local_fallback',
-        timestamp: new Date()
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: 'Assistente temporariamente indisponível',
-        provider: 'assistant',
-        timestamp: new Date()
-      };
-    }
+    // Todas as APIs de investimento falharam
+    return {
+      success: false,
+      error: 'Serviço de sugestões de investimento temporariamente indisponível. Tente novamente em alguns minutos.',
+      provider: 'assistant',
+      timestamp: new Date()
+    };
   }
 
   // Método universal para chamar Gemini
@@ -349,21 +317,7 @@ export class AIServiceManager {
     throw new Error('OpenAI não configurado');
   }
 
-  // Sistema local universal
-  private async callLocalSystem(prompt: string, type: string, config: any = {}): Promise<any> {
-    switch (type) {
-      case 'investment_suggestions':
-        return this.generateLocalInvestmentSuggestions(config);
-      case 'financial_insights':
-        return this.generateLocalFinancialInsights(config);
-      case 'chat_response':
-        return this.generateLocalChatResponse(prompt, config);
-      case 'extract_analysis':
-        return this.generateLocalExtractAnalysis(prompt, config);
-      default:
-        return this.generateGenericLocalResponse(prompt, type, config);
-    }
-  }
+  // Sistema local removido - apenas APIs de IA
 
   // Processar resposta do Hugging Face
   private processHuggingFaceResponse(hfResponse: any, config: any): any {
@@ -378,53 +332,7 @@ export class AIServiceManager {
     return config.fallbackResponse || "Análise processada com sucesso";
   }
 
-  // Sistemas locais específicos
-  private generateLocalInvestmentSuggestions(config: any): any {
-    const { userPortfolio, riskProfile } = config;
-    return this.tryLocalSystem(userPortfolio || [], riskProfile || 'moderado');
-  }
-
-  private generateLocalFinancialInsights(config: any): any {
-    const { financialData } = config;
-    return {
-      insights: [
-        {
-          type: "opportunity",
-          title: "Análise Financeira Local",
-          message: "Sistema local analisou seus dados e identificou oportunidades de melhoria no controle financeiro."
-        }
-      ]
-    };
-  }
-
-  private generateLocalChatResponse(prompt: string, config: any): any {
-    // Respostas inteligentes baseadas no prompt
-    if (prompt.toLowerCase().includes('investiment') || prompt.toLowerCase().includes('ação')) {
-      return "Com base na análise local, recomendo diversificar seus investimentos entre renda fixa e variável conforme seu perfil de risco.";
-    }
-    
-    if (prompt.toLowerCase().includes('gasto') || prompt.toLowerCase().includes('despesa')) {
-      return "Analisando seus gastos, sugiro revisar suas categorias de maior impacto no orçamento e estabelecer metas de redução.";
-    }
-    
-    return "Sistema local processou sua pergunta. Para análises mais detalhadas, aguarde a disponibilidade dos serviços de IA.";
-  }
-
-  private generateLocalExtractAnalysis(prompt: string, config: any): any {
-    // Análise básica de extratos usando sistema local
-    return {
-      transactions: [],
-      summary: "Análise local de extrato processada com sucesso"
-    };
-  }
-
-  private generateGenericLocalResponse(prompt: string, type: string, config: any): any {
-    return {
-      message: `Análise ${type} processada pelo sistema local`,
-      processed_at: new Date().toISOString(),
-      fallback: true
-    };
-  }
+  // Funções de sistema local removidas - apenas APIs de IA
 
   // Método específico para investimentos (mantido para compatibilidade)
   private async tryGemini(userPortfolio: any[], riskProfile: string): Promise<any> {
@@ -531,24 +439,10 @@ Responda APENAS em JSON válido:
 
   // Tentar usar OpenAI (se disponível)
   private async tryOpenAI(userPortfolio: any[], riskProfile: string): Promise<any> {
-    // Implementação similar ao Gemini, mas usando OpenAI
-    // Por ora, fazer fallback para sistema local
-    return this.tryLocalSystem(userPortfolio, riskProfile);
+    throw new Error('OpenAI para investimentos não implementado');
   }
 
-  // Sistema local inteligente (sempre funciona)
-  private async tryLocalSystem(userPortfolio: any[], riskProfile: string): Promise<any> {
-    const portfolioValue = userPortfolio.reduce((total, inv) => total + parseFloat(inv.currentAmount), 0);
-    const suggestions = this.generateSmartSuggestions(userPortfolio, riskProfile);
-    
-    return {
-      analysis: this.generatePortfolioAnalysis(userPortfolio, riskProfile),
-      suggestions: suggestions.slice(0, 3),
-      portfolio_score: this.calculateScore(userPortfolio, riskProfile).toString(),
-      next_steps: this.generateNextSteps(userPortfolio, riskProfile),
-      generated_by: "sistema_local_hibrido"
-    };
-  }
+  // Sistema local removido - mantidas apenas funções auxiliares para APIs
 
   // Gerar sugestões inteligentes baseadas em dados reais
   private generateSmartSuggestions(userPortfolio: any[], riskProfile: string): any[] {
