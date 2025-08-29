@@ -1800,21 +1800,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Extract text is required" });
       }
 
-      // 🤖 GEMINI CORRIGIDO: Extração com preservação de sinais
-      console.log(`🤖 [Gemini] Iniciando extração de ${extractText.length} caracteres...`);
+      // 🤖 NOVO SISTEMA: analyzeExtractWithAI com correções completas
+      console.log(`🤖 [AI] Iniciando extração de ${extractText.length} caracteres...`);
       let result;
       try {
-        const geminiResult = await analyzeExtractWithAI(extractText, availableCategories.map(c => c.name));
+        console.log(`🚀 [AI-CALL] Chamando analyzeExtractWithAI...`);
+        const aiResult = await analyzeExtractWithAI(extractText, availableCategories.map(c => c.name));
+        console.log(`🔍 [AI-RESULT] Retornou:`, typeof aiResult, aiResult?.transactions ? `object with ${aiResult.transactions.length} transactions` : 'unexpected format');
+        console.log(`🔍 [AI-DEBUG] aiResult.transactions:`, JSON.stringify(aiResult?.transactions?.slice?.(0, 2) || aiResult, null, 2));
         
-        if (geminiResult && geminiResult.length > 0) {
-          console.log(`✅ [Gemini] Sucesso: ${geminiResult.length} transações encontradas`);
+        const transactions = aiResult?.transactions || [];
+        if (transactions && transactions.length > 0) {
+          console.log(`✅ [AI] Sucesso: ${transactions.length} transações encontradas`);
           
           // 🚀 NOVO SISTEMA SUPABASE: Arquitetura híbrida com dicionário do banco
           console.log(`🎯 [SUPABASE] Aplicando sistema de categorização Supabase...`);
           
           try {
             // Converte transações para formato do classificador
-            const rawRows = geminiResult.map(convertToRawBankRow);
+            const rawRows = transactions.map(convertToRawBankRow);
             
             // Aplica classificação em lote com sistema Supabase
             const classifiedRows = await classifyBatchSupabase(rawRows, 'demo-user');
@@ -1834,20 +1838,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
           } catch (error) {
             console.error(`❌ [SUPABASE] Erro no sistema Supabase:`, error);
-            // Fallback para o sistema antigo em caso de erro
-            result = { transactions: geminiResult };
+            // Fallback para transações diretas do AI
+            result = { transactions: transactions };
           }
           
         } else {
-          console.log(`⚠️ [Gemini] Nenhuma transação encontrada`);
+          console.log(`⚠️ [AI] Nenhuma transação encontrada`);
           result = { transactions: [] };
         }
       } catch (error) {
-        console.error(`❌ [Gemini] Erro:`, error.message);
+        console.error(`❌ [AI] Erro:`, error.message);
         result = { transactions: [] };
       }
       
-      console.log(`[Gemini] Resultado final:`, {
+      console.log(`[AI] Resultado final:`, {
         transactionsCount: result.transactions?.length || 0,
         hasTransactions: !!result.transactions,
         sampleTransaction: result.transactions?.[0]
@@ -2891,87 +2895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 🚫 REMOVIDA - CONFLITAVA COM IMPLEMENTAÇÃO CORRIGIDA
-  // async function extractWithGemini(extractText: string, availableCategories: any[]): Promise<any[]> {
-    try {
-      const categories = availableCategories.map(c => c.name).join(', ');
-      
-      const prompt = `Extraia TODAS as transações bancárias do extrato brasileiro.
-
-CATEGORIAS: ${categories}
-
-REGRAS:
-- Encontre padrões: PIX, TED, DOC, débito, crédito, pagamento, compra
-- Identifique datas (DD/MM/AAAA)
-- Extraia valores (+ receitas, - despesas)
-- Categorize automaticamente
-
-EXTRATO:
-${extractText.substring(0, 8000)}
-
-RESPONDA APENAS JSON:
-{"transactions":[{"date":"AAAA-MM-DD","description":"DESC","amount":VALOR,"type":"income/expense","category":"CATEGORIA","confidence":0.9}]}`;
-
-      console.log(`[Gemini] Enviando prompt de ${prompt.length} caracteres`);
-
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 4000,
-          }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API Gemini erro: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log(`[Gemini] Status da resposta: ${response.status}`);
-      
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      console.log(`[Gemini] Texto recebido: ${text.length} caracteres`);
-      
-      if (!text) {
-        console.log(`[Gemini] ⚠️  Resposta vazia da API`);
-        return await extractWithRegexFallback(extractText);
-      }
-
-      // Parse JSON robusto
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.log(`[Gemini] Nenhum JSON encontrado, usando fallback regex`);
-        return await extractWithRegexFallback(extractText);
-      }
-
-      try {
-        const parsed = JSON.parse(jsonMatch[0]);
-        const transactions = parsed.transactions || [];
-        
-        console.log(`[Gemini] ✅ ${transactions.length} transações extraídas`);
-        return transactions.map((t: any) => ({
-          date: t.date || new Date().toISOString().split('T')[0],
-          description: t.description || 'Transação',
-          amount: parseFloat(t.amount) || 0,
-          type: (t.type || 'expense').toLowerCase(),
-          category: t.category || 'Outros',
-          confidence: t.confidence || 0.8,
-          reasoning: 'Categorização Gemini'
-        }));
-      } catch (parseError) {
-        console.log(`[Gemini] Erro no JSON parse, usando fallback regex`);
-        return await extractWithRegexFallback(extractText);
-      }
-
-  // 🚫 FUNÇÃO REMOVIDA - USAMOS analyzeExtractWithAI
+  // 🚫 FUNÇÃO DUPLICADA REMOVIDA - USAMOS analyzeExtractWithAI DO openai.ts
 
   function inferCategoryFromDescription(description: string): string {
     const desc = description.toLowerCase();
