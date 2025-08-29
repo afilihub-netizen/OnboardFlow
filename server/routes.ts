@@ -7,6 +7,7 @@ import { financialAssistant, type FinancialData, type ChatMessage } from "./ai-a
 import { insertNotificationSchema, insertWorkflowTriggerSchema, insertEmailPreferencesSchema } from "@shared/schema";
 import { analyzeExtractWithAI, generateFinancialInsights, setProgressSessions } from "./openai";
 import { financialDataService } from "./services/financialDataService.js";
+import { aiServiceManager } from "./services/aiServiceManager.js";
 import {
   insertCategorySchema,
   insertTransactionSchema,
@@ -1050,6 +1051,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         message: "Failed to generate investment suggestions" 
+      });
+    }
+  });
+
+  // AI Service Status - Monitor multiple AI providers
+  app.get("/api/ai/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const status = aiServiceManager.getProvidersStatus();
+      
+      res.json({
+        success: true,
+        providers: status,
+        system_health: {
+          total_providers: Object.keys(status).length,
+          available_providers: Object.values(status).filter((p: any) => p.available).length,
+          last_check: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching AI service status:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to fetch AI service status" 
       });
     }
   });

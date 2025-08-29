@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { aiServiceManager } from "./aiServiceManager";
 
 // Serviço para buscar dados financeiros em tempo real
 export class FinancialDataService {
@@ -75,13 +76,28 @@ export class FinancialDataService {
     }
   }
 
-  // Gerar sugestões de investimento usando sistema híbrido
+  // Gerar sugestões de investimento usando sistema híbrido multi-API
   async generateInvestmentSuggestions(userPortfolio: any[], riskProfile: string = 'moderado'): Promise<any> {
     try {
-      // Primeiro tenta API gratuita, depois fallback inteligente
-      return await this.generateIntelligentSuggestions(userPortfolio, riskProfile);
+      console.log('🚀 Iniciando análise com sistema híbrido multi-API');
+      
+      // Usar o gerenciador de múltiplas APIs
+      const response = await aiServiceManager.generateInvestmentSuggestions(userPortfolio, riskProfile);
+      
+      if (response.success) {
+        console.log(`✅ Sugestões geradas com sucesso usando: ${response.provider}`);
+        return {
+          ...response.data,
+          provider_used: response.provider,
+          generation_time: response.timestamp,
+          hybrid_system: true
+        };
+      } else {
+        console.log('⚠️ Sistema híbrido falhou, usando fallback local');
+        return this.getAdvancedFallbackSuggestions(userPortfolio, riskProfile);
+      }
     } catch (error) {
-      console.error('Erro ao gerar sugestões:', error);
+      console.error('Erro no sistema híbrido:', error);
       return this.getAdvancedFallbackSuggestions(userPortfolio, riskProfile);
     }
   }
