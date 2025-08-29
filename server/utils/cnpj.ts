@@ -1,5 +1,5 @@
 // CNPJ utilities for automatic categorization
-interface CNPJInfo {
+export interface CNPJInfo {
   nome: string;
   atividade_principal: Array<{
     code: string;
@@ -74,11 +74,13 @@ export function categorizeByCNPJ(cnpjInfo: CNPJInfo): {
   const activity = cnpjInfo.atividade_principal[0]?.text?.toLowerCase() || '';
   const name = cnpjInfo.nome.toLowerCase();
   
-  // Supermercados e Mercados
+  // Supermercados e Mercados - EXPANDIDO para mercados regionais brasileiros
   if (activity.includes('supermercado') || activity.includes('hipermercado') || activity.includes('mercado') ||
       activity.includes('atacadista') || activity.includes('varejo alimentício') ||
       name.includes('supermercado') || name.includes('mercado') || name.includes('atacadão') ||
-      name.includes('carrefour') || name.includes('pão de açúcar') || name.includes('extra')) {
+      name.includes('carrefour') || name.includes('pão de açúcar') || name.includes('extra') ||
+      name.includes('tonin') || name.includes('medeiros') || name.includes('reta') ||
+      name.includes('assaí') || name.includes('assai') || name.includes('sam\'s') || name.includes('sams')) {
     return {
       category: 'Alimentação',
       businessType: 'Supermercado',
@@ -121,11 +123,13 @@ export function categorizeByCNPJ(cnpjInfo: CNPJInfo): {
     };
   }
   
-  // Telecomunicações e Internet
+  // Telecomunicações e Internet - EXPANDIDO para casos brasileiros
   if (activity.includes('telecomunicações') || activity.includes('telefonia') || activity.includes('internet') ||
-      activity.includes('celular') || activity.includes('banda larga') ||
+      activity.includes('celular') || activity.includes('banda larga') || activity.includes('provedor') ||
       name.includes('vivo') || name.includes('tim') || name.includes('claro') ||
-      name.includes('oi') || name.includes('nextel') || name.includes('sky')) {
+      name.includes('oi') || name.includes('nextel') || name.includes('sky') ||
+      name.includes('webclix') || name.includes('telecom') || name.includes('embratel') ||
+      name.includes('telefonica') || name.includes('telefônica')) {
     return {
       category: 'Serviços Essenciais',
       businessType: 'Telecomunicações',

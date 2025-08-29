@@ -31,6 +31,7 @@ import fs from 'fs/promises';
 import Stripe from "stripe";
 import { DocumentProcessorServiceClient } from '@google-cloud/documentai';
 import { enriquecerTransacaoComCNPJ, extrairCNPJsDoTexto } from './cnpj-service';
+import { enhancedCategorization, processTransactionBatch } from './utils/enhanced-categorization.js';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -1732,14 +1733,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Test OpenAI API route
-  app.post("/api/test-openai", isAuthenticated, async (req: any, res) => {
+  // Test enhanced categorization with Brazilian cases
+  app.post("/api/test-categorization", async (req: any, res) => {
     try {
-      const { analyzeExtractWithAI } = await import("./openai");
-      const result = await analyzeExtractWithAI("10/12/2024 PIX RECEBIDO João Silva R$ 100,00", []);
-      res.json({ success: true, result });
+      console.log(`🧪 [TEST] Testing enhanced categorization...`);
+      
+      // Casos problemáticos mencionados pelo usuário
+      const testCases = [
+        'CLARO -R$ 21,56',
+        'COMPRAS NACIONAIS LUIZ TONIN SAO JOAQUIM DBR VEO563899 -R$ 65,20',
+        'COMPRAS NACIONAIS SUPERM MEDEIROS S SAO JOAQUIM VEO531866 -R$ 40,91',
+        'COMPRAS NACIONAIS AUTO POSTO INNOVARE SAO JOAQUIM VEO090246 -R$ 60,00',
+        'WEBCLIX -R$ 89,90',
+        'TOSCANA TELEMARKETING E SERVICOS S.A. -R$ 70,12',
+        'BLUE PAY SOLUTIONS LTDA +R$ 445,61',
+        'PAGAMENTO PIX 504211698826 Kauane Vieira de Souza PIX DEB -R$ 80,38'
+      ];
+      
+      const results = [];
+      
+      for (const testCase of testCases) {
+        try {
+          const categorization = await enhancedCategorization(testCase, 0);
+          results.push({
+            original: testCase,
+            categorization: categorization
+          });
+          
+          console.log(`✅ [TEST] "${testCase}" → ${categorization.merchant} (${categorization.category}) [${Math.round(categorization.confidence * 100)}%] Sources: ${categorization.sources.join(', ')}`);
+          
+        } catch (error) {
+          console.error(`❌ [TEST] Erro ao testar "${testCase}":`, error);
+          results.push({
+            original: testCase,
+            error: error.message
+          });
+        }
+      }
+      
+      console.log(`🧪 [TEST] Teste concluído: ${results.length} casos testados`);
+      res.json({ success: true, results });
+      
     } catch (error) {
-      console.error("OpenAI test error:", error);
+      console.error("Enhanced categorization test error:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
@@ -1768,7 +1804,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (geminiResult && geminiResult.length > 0) {
           console.log(`✅ [Gemini] Sucesso: ${geminiResult.length} transações encontradas`);
-          result = { transactions: geminiResult };
+          
+          // 🚀 NOVA CATEGORIZAÇÃO APRIMORADA: Aplicar sistema melhorado
+          console.log(`🎯 [Enhanced] Aplicando categorização aprimorada...`);
+          
+          const enhancedTransactions = [];
+          for (const transaction of geminiResult) {
+            try {
+              const categorization = await enhancedCategorization(
+                transaction.description || '', 
+                parseFloat(transaction.amount) || 0
+              );
+              
+              // Merge dos dados originais com a categorização aprimorada
+              const enhancedTransaction = {
+                ...transaction,
+                merchant: categorization.merchant,
+                category: categorization.category,
+                businessType: categorization.businessType,
+                confidence: categorization.confidence,
+                sources: categorization.sources,
+                paymentMethod: categorization.paymentMethod || transaction.paymentMethod,
+                cnpj: categorization.cnpj
+              };
+              
+              enhancedTransactions.push(enhancedTransaction);
+              console.log(`✅ [Enhanced] ${transaction.description} → ${categorization.merchant} (${categorization.category}) [${Math.round(categorization.confidence * 100)}%]`);
+              
+            } catch (error) {
+              console.error(`❌ [Enhanced] Erro ao categorizar "${transaction.description}":`, error);
+              // Em caso de erro, mantém a transação original
+              enhancedTransactions.push(transaction);
+            }
+            
+            // Pequeno delay para não sobrecarregar as APIs
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+          
+          result = { transactions: enhancedTransactions };
+          console.log(`🎯 [Enhanced] Categorização concluída: ${enhancedTransactions.length} transações processadas`);
+          
         } else {
           console.log(`⚠️ [Gemini] Nenhuma transação encontrada`);
           result = { transactions: [] };

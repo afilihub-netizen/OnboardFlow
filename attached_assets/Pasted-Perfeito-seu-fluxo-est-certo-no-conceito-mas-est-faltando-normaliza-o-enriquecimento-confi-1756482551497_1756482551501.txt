@@ -1,0 +1,217 @@
+Perfeito — seu fluxo está certo “no conceito”, mas está faltando normalização + enriquecimento confiável + regras determinísticas antes da IA. Abaixo vai um plano enxuto para você corrigir imediatamente a precisão de nome do local, categoria e entradas/saídas.
+
+1) Normalize o texto do lançamento (antes de classificar)
+
+Crie uma função que “limpa” a narrativa do banco e extrai o merchant bruto.
+
+Regras práticas (português BR, bancos comuns):
+
+Remova prefixos/sufixos e “lixo” de adquirentes/códigos:
+
+PAGAMENTO PIX \d+ , — - DEB CRED DBR VEO\d+ VEOS\d+ VEC\d+ AUT \d+ NACIONAIS COMPRA(S) LOJAS SAO JOAQUIM etc.
+
+Tagueie o tipo:
+
+Começa com PAGAMENTO PIX → tipo=PIX (debita)
+
+Contém RECEBIMENTO PIX/PIX CRÉDITO → tipo=PIX_IN (credita)
+
+Contém COMPRAS NACIONAIS/COMPRA → tipo=CARTAO_DEB/CRÉD
+
+Contém TED/DOC/TRANSFERÊNCIA → tipo=TRANSFERENCIA
+
+Extraia o nome candidato:
+
+Em PAGAMENTO PIX 37823330806 Maickon Douglas dos An PIX DEB → normalize para Maickon Douglas dos An
+
+Em COMPRAS NACIONAIS AUTO POSTO INNOVARE SAO JOAQUIM VEO0090246 → AUTO POSTO INNOVARE
+
+Em BLUE PAY SOLUTIONS LTDA já está OK
+
+Aplique normalizações:
+
+Uppercase → Title Case
+
+Remover acentos/duplicidades de espaço
+
+Regras de abreviação: LTDA, ME, EPP mantidas, mas não usadas para matching
+
+Gere um merchant_hash (ex.: slug simplificado) para cache.
+
+Resultado: de “COMPRAS NACIONAIS LUIZ TONIN SAO JOAQUIM DBR VEO…” você guarda “Luiz Tonin”.
+
+2) Enriquecimento com CNPJ (confiável)
+
+Antes da IA, bata em um serviço de CNPJ (público/contratado). Estratégia:
+
+Match direto por nome (fuzzy) na base de CNPJs (razão social e nome fantasia). Use:
+
+tokenização + Jaro–Winkler / Levenshtein
+
+limiar p.ex. score ≥ 0.90 aceita; 0.80–0.90 = candidato com baixa confiança; <0.80 = sem match
+
+Heurísticas por palavra-chave (se falhar):
+
+AUTO POSTO|POSTO|SHELL|IPIRANGA|RAIZEN → setor Combustível
+
+MERCADO|SUPERMERCADO|ATACAD|ASSAÍ|TONIN → Alimentação/Supermercado
+
+UBER|99APP|99POP → Transporte/Apps
+
+TIM|VIVO|CLARO|OI → Telefonia/Internet
+
+Se encontrou CNPJ, use CNAE principal para categorizar com regra determinística (mapa CNAE→categoria). A IA só entra como fallback.
+
+Ex.: BLUE PAY SOLUTIONS LTDA → CNPJ válido (serviços financeiros/gateway) → Categoria: Serviços Financeiros.
+AUTO POSTO INNOVARE → CNPJ de posto → Categoria: Transporte > Combustível.
+TOSCANA TELEMARKETING E SERVIÇOS S.A. → CNAE de call center/serviços → Serviços/Assinaturas (ver recorrência abaixo).
+
+3) Classificador híbrido (regra > CNPJ/CNAE > ML)
+
+Ordem de decisão (garante precisão):
+
+Regras fortes (regex + palavras-chave)
+
+CNPJ encontrado → mapear por CNAE
+
+Dicionário canônico (tabela de reconciliação que você alimenta via feedback)
+
+Modelo ML (BERT-lite/fastText ou Naive Bayes) somente se 1–3 falharem
+
+Fallback: “Sem categoria” com score de confiança baixo para o usuário corrigir na UI
+
+Armazene confidence_score (0–1) em cada lançamento. Tudo <0.85 aparece com um badge para validação.
+
+4) Entradas vs Saídas (sem erro)
+
+Não confie só no sinal exibido. Normalize por origem do evento:
+
+Campos de origem do arquivo (seu parser) devem mapear: credit/debit, amount, balance_after.
+
+Convenção:
+
+credit = Entrada (ex.: +R$ 445,61 de BLUE PAY)
+
+debit = Saída (ex.: -R$ 60,00 no AUTO POSTO)
+
+Se o PDF não tiver flag, derive do sinal do valor e do tipo (PIX DEB/CRÉD, COMPRA, etc.).
+
+Para transferências entre contas próprias, detecte pelo mesmo CPF/CNPJ do titular ou por descrições padrão e marque como “Transferência interna (neutra)” — não entra em DRE.
+
+5) Assinaturas vigentes (recorrência real)
+
+Identifique assinatura por recorrência temporal + merchant:
+
+Regra: lançamentos com mesmo merchant canônico em janelas de 25–35 dias por ≥ 3 ciclos → assinatura=true.
+
+Tolerância de valor: variação ≤ 15%.
+
+Exemplos típicos: Netflix, Spotify, Apple.com/Bill, Microsoft, Vivo, Claro, BluePay (se repassar mensal fixo).
+
+Salve first_seen, last_seen, periodicidade e próxima previsão.
+
+SQL (idéia):
+
+-- merchant canonizado em merchant_id
+SELECT merchant_id,
+       COUNT(*) as parcelas,
+       STDDEV_SAMP(amount) as desv,
+       AVG(DATE_PART('day', lead(tx_date) OVER (PARTITION BY merchant_id ORDER BY tx_date)
+                        - tx_date)) as ciclo_medio
+FROM transactions
+GROUP BY merchant_id
+HAVING COUNT(*) >= 3 AND ciclo_medio BETWEEN 25 AND 35;
+
+6) Dicionário de reconciliação (aprendizado contínuo)
+
+Tenha uma tabela merchant_map:
+
+id | pattern_substring | merchant_canonico | cnpj | categoria | confianca | criado_por | atualizado_em
+
+
+Quando o usuário corrige algo na tela de Lançamentos, grave essa correção aqui.
+
+No próximo import, aplique primeiro o dicionário, antes da IA.
+
+Ex.: TONIN → Luiz Tonin Supermercados (CNPJ X) → Alimentação > Supermercado.
+
+7) Regras específicas (casos da sua tela)
+
+Com base nos textos da imagem:
+
+PAGAMENTO PIX ... Maickon Douglas ... PIX DEB → Transferência PIX (Saída); se o recebedor for o próprio titular em outra conta, marque como Transferência interna (neutra).
+
+COMPRAS NACIONAIS LUIZ TONIN ... → Alimentação > Supermercado (Saída).
+
+TOSCANA TELEMARKETING E SERVICOS S.A. → use CNAE; possivelmente Serviços/Assinatura ou Outros Serviços (Saída).
+
+AUTO POSTO INNOVARE ... → Transporte > Combustível (Saída).
+
+BLUE PAY SOLUTIONS LTDA com +R$ 445,61 → Entrada > Gateway/Recebíveis (Entrada).
+
+PAGAMENTO PIX ... Kauane Vieira ... PIX DEB → Transferência PIX (Saída); se recorrente e mesmo valor, pode ser assinatura/repasse (validar).
+
+8) Pipeline recomendado (TypeScript/Node – pseudo)
+for (const row of extrato) {
+  const raw = row.descricao;
+  const amount = parseAmount(row.valor);
+  const tipo = detectTipo(raw, amount); // PIX_DEB, PIX_CRED, COMPRA, TRANSF etc.
+  const merchantRaw = extractMerchant(raw, tipo);
+  const merchantNorm = normalizeMerchant(merchantRaw);
+
+  let meta: Meta = { confidence: 0, fonte: [] };
+
+  // 1) dicionário
+  let match = dictLookup(merchantNorm);
+  if (match) { meta.confidence = 0.99; meta.fonte.push('dict'); }
+
+  // 2) CNPJ/CNAE
+  if (!match) {
+    const cnpjHit = cnpjResolve(merchantNorm); // fuzzy 0.8+
+    if (cnpjHit) { match = cnpjHit; meta.confidence = cnpjHit.score; meta.fonte.push('cnpj'); }
+  }
+
+  // 3) regras fortes
+  if (!match) {
+    const rule = rulesMatch(merchantNorm, tipo);
+    if (rule) { match = rule; meta.confidence = 0.9; meta.fonte.push('rule'); }
+  }
+
+  // 4) ML
+  if (!match) {
+    const ml = mlPredict({descricao: raw, merchant: merchantNorm, tipo});
+    match = ml; meta.confidence = ml.score; meta.fonte.push('ml');
+  }
+
+  // 5) fallback
+  if (!match) { match = { categoria: 'Sem categoria' }; meta.confidence = 0.4; }
+
+  // Entrada x Saída
+  const natureza = (amount >= 0 || tipo.endsWith('_CRED')) ? 'Entrada' : 'Saída';
+
+  saveTransaction({
+    ...row,
+    merchant: match.nome ?? merchantNorm,
+    cnpj: match.cnpj ?? null,
+    categoria: match.categoria,
+    natureza,
+    confidence: meta.confidence,
+    fontes: meta.fonte.join(',')
+  });
+}
+
+9) UI que evita erro (2 toques)
+
+Mostre nome canônico, categoria e um “chip” de confiança.
+
+Itens <0.85 vêm com dropdown de categoria + campo de nome.
+
+Ao salvar, alimenta o merchant_map automaticamente.
+
+10) Qualidade do OCR/parse
+
+Se possível, evite OCR: incentive upload OFX/CSV ou PDF nativo do banco.
+
+Se precisar OCR, prefira Document AI (Specialized Parsers para statements) ou treine custom splitter por linha + regex.
+
+Valide colunas mínimas: data, descricao, valor, saldo (opcional), tipo.
