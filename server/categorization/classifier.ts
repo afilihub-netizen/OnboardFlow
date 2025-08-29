@@ -203,13 +203,27 @@ export function convertToRawBankRow(transaction: any): RawBankRow {
 
 // Função para converter resultado do classificador para formato do sistema
 export function convertFromTxNormalized(tx: TxNormalized): any {
+  // Determina o valor correto baseado na natureza
+  let finalAmount: number;
+  
+  if (tx.natureza === 'Entrada') {
+    // Para entradas, garante que o valor seja positivo
+    finalAmount = Math.abs(tx.valor);
+  } else if (tx.natureza === 'Saída') {
+    // Para saídas, garante que o valor seja negativo  
+    finalAmount = -Math.abs(tx.valor);
+  } else {
+    // Neutra: mantém o valor original
+    finalAmount = tx.valor;
+  }
+  
   return {
     date: tx.data,
     description: tx.descricao_raw,
     merchant: tx.nome_canonico,
     category: tx.categoria,
     type: tx.natureza === 'Entrada' ? 'income' : 'expense',
-    amount: Math.abs(tx.valor).toString(),
+    amount: finalAmount.toString(),
     confidence: tx.confidence,
     sources: tx.fontes,
     businessType: tx.categoria, // Para compatibilidade

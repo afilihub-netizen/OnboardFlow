@@ -1,0 +1,563 @@
+segue um pacote pronto para Supabase (Postgres + RLS + Edge Functions). Ele cobre:
+
+esquema multi-tenant com user_id
+
+RLS para segurança
+
+views/RPC para assinaturas recorrentes
+
+duas Edge Functions:
+
+classify-import: recebe linhas de extrato já parseadas e grava normalizado
+
+apply-correction: recebe correções da UI e alimenta o dicionário (merchant_map)
+
+Você só precisa colar os arquivos nos locais indicados e fazer supabase db push + supabase functions deploy.
+
+1) Banco (Supabase SQL)
+
+supabase/migrations/000_init_finance.sql
+
+-- Habilitar extensões úteis
+create extension if not exists pg_trgm;
+create extension if not exists "uuid-ossp";
+
+-- MERCHANTS (canônicos)
+create table if not exists public.merchants (
+  id bigserial primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  slug text not null,
+  nome text not null,
+  cnpj text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique (user_id, slug)
+);
+
+-- MAPA de reconciliação (aprende com correções do usuário)
+create table if not exists public.merchant_map (
+  id bigserial primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  pattern_substring text not null,
+  merchant_id bigint references public.merchants(id) on delete set null,
+  cnpj text,
+  categoria text,
+  confianca real default 0.99,
+  criado_por uuid references auth.users(id) on delete set null,
+  atualizado_em timestamptz default now()
+);
+
+-- Cache de CNPJ (evita bater API toda hora)
+create table if not exists public.cnpj_cache (
+  cnpj text primary key,
+  nome_fantasia text,
+  razao_social text,
+  cnae_principal text,
+  atualizado_em timestamptz default now()
+);
+
+-- Lançamentos normalizados
+create table if not exists public.transactions (
+  id bigserial primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  conta_id text,
+  data date not null,
+  descricao_raw text not null,
+  merchant_raw text,
+  merchant_norm text,
+  merchant_slug text,
+  merchant_id bigint references public.merchants(id) on delete set null,
+  tipo text,
+  natureza text check (natureza in ('Entrada','Saída','Neutra')),
+  valor numeric(14,2) not null,
+  categoria text,
+  cnpj text,
+  confidence real,
+  fontes text,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_tx_user_date on public.transactions(user_id, data);
+create index if not exists idx_tx_user_slug on public.transactions(user_id, merchant_slug);
+create index if not exists idx_merchant_user_slug on public.merchants(user_id, slug);
+
+-- VIEW de recorrência (assinaturas)
+create or replace view public.subscriptions_view as
+with series as (
+  select
+    user_id,
+    merchant_slug,
+    valor,
+    data,
+    lead(data) over (partition by user_id, merchant_slug order by data) as prox_data
+  from public.transactions
+  where natureza = 'Saída'
+),
+intervalos as (
+  select
+    user_id,
+    merchant_slug,
+    abs(extract(day from (prox_data - data)))::int as delta,
+    valor
+  from series
+  where prox_data is not null
+),
+stats as (
+  select
+    user_id,
+    merchant_slug,
+    count(*) as ciclos,
+    avg(delta)::numeric(10,2) as ciclo_medio,
+    stddev_samp(valor)::numeric(14,2) as desv_valor,
+    avg(valor)::numeric(14,2) as media_valor,
+    min(valor)::numeric(14,2) as min_valor,
+    max(valor)::numeric(14,2) as max_valor
+  from intervalos
+  group by 1,2
+)
+select *
+from stats
+where ciclos >= 2 and ciclo_medio between 25 and 35;
+
+-- RPC para listar assinaturas do usuário logado
+create or replace function public.list_subscriptions()
+returns setof public.subscriptions_view
+language sql
+security definer
+set search_path = public
+as $$
+  select *
+  from public.subscriptions_view
+  where user_id = auth.uid();
+$$;
+
+-- RLS
+alter table public.merchants enable row level security;
+alter table public.merchant_map enable row level security;
+alter table public.transactions enable row level security;
+
+-- Policies (owner only)
+do $$
+begin
+  if not exists (select 1 from pg_policies where policyname='merchants_owner' and tablename='merchants') then
+    create policy merchants_owner on public.merchants
+      for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+  end if;
+
+  if not exists (select 1 from pg_policies where policyname='merchant_map_owner' and tablename='merchant_map') then
+    create policy merchant_map_owner on public.merchant_map
+      for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+  end if;
+
+  if not exists (select 1 from pg_policies where policyname='transactions_owner' and tablename='transactions') then
+    create policy transactions_owner on public.transactions
+      for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+  end if;
+end $$;
+
+2) Helpers (Edge/Server)
+
+supabase/functions/_shared/supabaseClient.ts
+
+// Deno edge: supabase-js v2
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.2';
+
+export function getSupabase(req: Request) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!; // service role (edge only)
+  const client = createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false },
+  });
+
+  // opcional: recuperar user_id do JWT do cliente (se enviar Authorization Bearer)
+  const authHeader = req.headers.get('authorization') ?? '';
+  const jwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  return { client, jwt };
+}
+
+3) Núcleo de classificação (reaproveitado e adaptado)
+
+supabase/functions/_shared/classifier.ts
+
+// Compactei os módulos anteriores em um único arquivo para Edge Function.
+
+export type Natureza = 'Entrada' | 'Saída' | 'Neutra';
+export type Tipo = 'PIX_DEB' | 'PIX_CRED' | 'COMPRA' | 'TRANSFER_OUT' | 'TRANSFER_IN' | 'BOLETO' | 'TARIFA' | 'OUTRO';
+
+export interface RawBankRow {
+  data: string;
+  descricao: string;
+  valor: number;
+  conta_id?: string | null;
+}
+
+export interface TxNormalized {
+  data: string;
+  descricao_raw: string;
+  merchant_raw: string;
+  merchant_norm: string;
+  merchant_slug: string;
+  tipo: Tipo;
+  natureza: Natureza;
+  valor: number;
+  categoria: string;
+  cnpj?: string | null;
+  nome_canonico: string;
+  confidence: number;
+  fontes: string[];
+}
+
+const deburr = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const titleCase = (s: string) => s.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase()).trim();
+
+export function detectTipo(descricao: string, amount: number): Tipo {
+  const d = deburr(descricao.toUpperCase());
+  if (/PAGAMENTO\s+PIX/.test(d) && amount < 0) return 'PIX_DEB';
+  if (/(RECEBIMENTO\s+PIX|PIX\s+CRED)/.test(d) && amount > 0) return 'PIX_CRED';
+  if (/(COMPRA|COMPRAS\s+NACIONAIS)/.test(d)) return 'COMPRA';
+  if (/(TRANSFERENCIA|TED|DOC)/.test(d) && amount < 0) return 'TRANSFER_OUT';
+  if (/(TRANSFERENCIA|TED|DOC)/.test(d) && amount > 0) return 'TRANSFER_IN';
+  if (/BOLETO/.test(d)) return 'BOLETO';
+  if (/(TARIFA|PACOTE|MENSALIDADE)/.test(d)) return 'TARIFA';
+  return 'OUTRO';
+}
+export function extractMerchant(descricao: string, tipo: Tipo): string {
+  let d = descricao;
+  d = d.replace(/\b(PAGAMENTO|RECEBIMENTO)\b\s+PIX\s+\d+/gi, ' ');
+  d = d.replace(/\bPIX\s+(DEB|CRED)\b/gi, ' ');
+  d = d.replace(/\bCOMPRAS?\b\s+NACIONAIS?/gi, ' ');
+  d = d.replace(/\bDBR\b|\bVEO\S*\b|\bAUT\s*\d+\b/gi, ' ');
+  d = d.replace(/\bSAO\s+JOAQUIM\b/gi, ' ');
+  d = d.replace(/\bDEB(?:ITO)?\b|\bCRED(?:ITO)?\b/gi, ' ');
+  d = d.replace(/[—–-]/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  if (tipo === 'PIX_DEB' || tipo === 'PIX_CRED') return d.replace(/\b(PAGAMENTO|RECEBIMENTO)\b\s*PIX/gi, '').trim();
+  return d;
+}
+export function normalizeMerchantName(name: string): string {
+  let s = name.replace(/\b(BR|BRASIL)\b/gi, ' ').replace(/\b(LOJAS?|NACIONAL(IS)?)\b/gi, ' ');
+  return titleCase(s.replace(/\s{2,}/g, ' ').trim());
+}
+export function slugify(s: string): string {
+  return deburr(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+export function naturezaFrom(tipo: Tipo, amount: number): Natureza {
+  if (tipo === 'TRANSFER_IN' || tipo === 'PIX_CRED' || amount > 0) return 'Entrada';
+  if (tipo === 'TRANSFER_OUT' || tipo === 'PIX_DEB' || tipo === 'COMPRA' || amount < 0) return 'Saída';
+  return 'Neutra';
+}
+
+/** --- Heurísticas/Regras --- */
+const RULES: Array<{ re: RegExp; categoria: string; score: number }> = [
+  { re: /(POSTO|IPIRANGA|SHELL|RAIZEN|ALE\b)/i, categoria: 'Transporte > Combustível', score: 0.93 },
+  { re: /(MERCADO|SUPERMERC|ATACAD|ASSAI|TONIN)/i, categoria: 'Alimentação > Supermercado', score: 0.92 },
+  { re: /(VIVO|CLARO|TIM|OI|ALGAR|NEXTEL)/i, categoria: 'Telefonia/Internet', score: 0.92 },
+  { re: /(UBER|99APP|99POP|BUSER)/i, categoria: 'Transporte > Apps', score: 0.9 },
+  { re: /(PAY|PAGAR\.ME|CIELO|STONE|PAYPAL|MERCADO\s*PAGO|BLUE\s*PAY)/i, categoria: 'Serviços Financeiros', score: 0.9 },
+  { re: /(LANCH|RESTAUR|PIZZA|BURGER|SUBWAY|MC ?DONALD|BK\b)/i, categoria: 'Alimentação > Restaurantes', score: 0.88 },
+  { re: /(DROGARIA|FARMACIA|LABORATORIO|CLINICA)/i, categoria: 'Saúde', score: 0.9 },
+];
+function rulesMatch(merchantNorm: string) {
+  for (const r of RULES) if (r.re.test(merchantNorm)) return { categoria: r.categoria, score: r.score };
+  return null;
+}
+
+/** --- Mini resolutor CNPJ (substitua por API/DB real) --- */
+function jaroWinkler(a: string, b: string): number {
+  function jaro(s1: string, s2: string) {
+    const m = Math.floor(Math.max(s1.length, s2.length) / 2) - 1;
+    const s1m = new Array(s1.length).fill(false);
+    const s2m = new Array(s2.length).fill(false);
+    let mat = 0;
+    for (let i = 0; i < s1.length; i++) {
+      for (let j = Math.max(0, i - m); j < Math.min(i + m + 1, s2.length); j++) {
+        if (!s2m[j] && s1[i] === s2[j]) { s1m[i] = s2m[j] = true; mat++; break; }
+      }
+    }
+    if (!mat) return 0;
+    let t = 0, k = 0;
+    for (let i = 0; i < s1.length; i++) if (s1m[i]) { while (!s2m[k]) k++; if (s1[i] !== s2[k]) t++; k++; }
+    t /= 2;
+    return (mat / s1.length + mat / s2.length + (mat - t) / mat) / 3;
+  }
+  const j = jaro(a, b);
+  let l = 0; for (; l < Math.min(4, a.length, b.length); l++) if (a[l] !== b[l]) break;
+  return j + l * 0.1 * (1 - j);
+}
+const CNAE_TO_CATEGORY: Array<{ prefix: string; cat: string }> = [
+  { prefix: '47.11', cat: 'Alimentação > Supermercado' },
+  { prefix: '47.30', cat: 'Transporte > Combustível' },
+  { prefix: '61.',   cat: 'Telefonia/Internet' },
+  { prefix: '64.',   cat: 'Serviços Financeiros' },
+  { prefix: '82.20', cat: 'Serviços' },
+];
+function categoryFromCNAE(cnae?: string | null) {
+  if (!cnae) return null;
+  const hit = CNAE_TO_CATEGORY.find(x => cnae.startsWith(x.prefix));
+  return hit?.cat ?? null;
+}
+
+export type DictEntry = { pattern_substring: string; merchant_canonico: string; cnpj?: string | null; categoria?: string | null; confianca?: number; };
+
+export async function classifyRowWithSupabase(row: RawBankRow, user_id: string, dict: DictEntry[], supabase: any): Promise<TxNormalized> {
+  const tipo = detectTipo(row.descricao, row.valor);
+  const merchantRaw = extractMerchant(row.descricao, tipo);
+  const merchantNorm = normalizeMerchantName(merchantRaw);
+  const slug = slugify(merchantNorm);
+  const natureza = naturezaFrom(tipo, row.valor);
+
+  const fontes: string[] = [];
+  let nome = merchantNorm, categoria: string | null = null, cnpj: string | null = null, confidence = 0;
+
+  // 1) dicionário (do DB já carregado)
+  const up = merchantNorm.toUpperCase();
+  for (const e of dict) {
+    if (up.includes(e.pattern_substring.toUpperCase())) {
+      nome = e.merchant_canonico || nome;
+      cnpj = e.cnpj ?? cnpj;
+      categoria = e.categoria ?? categoria;
+      confidence = Math.max(confidence, e.confianca ?? 0.99);
+      fontes.push('dict');
+      break;
+    }
+  }
+
+  // 2) CNPJ cache por nome (simples: varrer merchants do user)
+  if (!categoria || confidence < 0.95) {
+    const { data: candidates } = await supabase
+      .from('merchants')
+      .select('id,nome,cnpj')
+      .eq('user_id', user_id)
+      .limit(50);
+
+    let best: any = null;
+    for (const c of candidates ?? []) {
+      const sc = jaroWinkler(merchantNorm.toUpperCase(), String(c.nome).toUpperCase());
+      if (!best || sc > best.score) best = { ...c, score: sc };
+    }
+    if (best && best.score >= 0.82) {
+      nome = best.nome;
+      cnpj = best.cnpj ?? cnpj;
+      confidence = Math.max(confidence, best.score);
+      fontes.push('cnpj');
+      // opcional: buscar categoria por CNAE se tiver em cnpj_cache
+      if (best.cnpj) {
+        const { data: cc } = await supabase.from('cnpj_cache').select('cnae_principal').eq('cnpj', best.cnpj).maybeSingle();
+        const by = categoryFromCNAE(cc?.cnae_principal);
+        if (by) categoria = by;
+      }
+    }
+  }
+
+  // 3) regras
+  if (!categoria) {
+    const r = rulesMatch(merchantNorm);
+    if (r) { categoria = r.categoria; confidence = Math.max(confidence, r.score); fontes.push('rule'); }
+  }
+
+  // 4) fallback simples
+  if (!categoria) { categoria = 'Sem categoria'; confidence = Math.max(confidence, 0.4); fontes.push('fallback'); }
+
+  return {
+    data: row.data,
+    descricao_raw: row.descricao,
+    merchant_raw: merchantRaw,
+    merchant_norm: merchantNorm,
+    merchant_slug: slug,
+    tipo, natureza, valor: row.valor,
+    categoria, cnpj,
+    nome_canonico: nome,
+    confidence, fontes,
+  };
+}
+
+4) Edge Function: classify-import
+
+Objetivo: receber { rows: RawBankRow[] }, classificar e inserir em transactions, criando merchants se necessário, tudo no escopo do user_id autenticado.
+
+supabase/functions/classify-import/index.ts
+
+// deno-lint-ignore-file no-explicit-any
+import { getSupabase } from '../_shared/supabaseClient.ts';
+import { classifyRowWithSupabase, type RawBankRow } from '../_shared/classifier.ts';
+
+Deno.serve(async (req) => {
+  try {
+    const { client: supabase, jwt } = getSupabase(req);
+    // exige auth do cliente (JWT)
+    const { data: auth } = await supabase.auth.getUser(jwt ?? '');
+    const user_id = auth?.user?.id;
+    if (!user_id) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+
+    const body = await req.json();
+    const rows: RawBankRow[] = body?.rows ?? [];
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return new Response(JSON.stringify({ error: 'rows empty' }), { status: 400 });
+    }
+
+    // carrega dicionário do usuário
+    const { data: dictRows } = await supabase
+      .from('merchant_map')
+      .select('pattern_substring, cnpj, categoria, confianca, merchant_id, merchants!inner(nome)')
+      .eq('merchant_map.user_id', user_id);
+
+    const dict = (dictRows ?? []).map((r: any) => ({
+      pattern_substring: r.pattern_substring,
+      merchant_canonico: r.merchants?.nome ?? '',
+      cnpj: r.cnpj,
+      categoria: r.categoria,
+      confianca: r.confianca ?? 0.99
+    }));
+
+    // classifica
+    const normalized = [];
+    for (const r of rows) {
+      const n = await classifyRowWithSupabase(r, user_id, dict, supabase);
+      normalized.push(n);
+    }
+
+    // upsert merchants faltantes (pelo slug)
+    for (const n of normalized) {
+      const { data: m } = await supabase
+        .from('merchants')
+        .select('id')
+        .eq('user_id', user_id)
+        .eq('slug', n.merchant_slug)
+        .maybeSingle();
+
+      let merchant_id = m?.id;
+      if (!merchant_id) {
+        const { data: ins } = await supabase
+          .from('merchants')
+          .insert({
+            user_id, slug: n.merchant_slug, nome: n.nome_canonico, cnpj: n.cnpj ?? null
+          })
+          .select('id')
+          .single();
+        merchant_id = ins?.id;
+      }
+
+      // insere transação
+      await supabase.from('transactions').insert({
+        user_id,
+        data: n.data,
+        descricao_raw: n.descricao_raw,
+        merchant_raw: n.merchant_raw,
+        merchant_norm: n.merchant_norm,
+        merchant_slug: n.merchant_slug,
+        merchant_id,
+        tipo: n.tipo,
+        natureza: n.natureza,
+        valor: n.valor,
+        categoria: n.categoria,
+        cnpj: n.cnpj,
+        confidence: n.confidence,
+        fontes: n.fontes.join('>')
+      });
+    }
+
+    return new Response(JSON.stringify({ inserted: normalized.length }), { status: 200 });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
+  }
+});
+
+
+Chamando do seu app (front/back):
+
+await fetch(`${SUPABASE_URL}/functions/v1/classify-import`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+  body: JSON.stringify({ rows })
+});
+
+5) Edge Function: apply-correction
+
+Objetivo: quando o usuário corrige nome/categoria/CNPJ na UI, persistir no merchant_map para “ensinar” o sistema.
+
+supabase/functions/apply-correction/index.ts
+
+// deno-lint-ignore-file no-explicit-any
+import { getSupabase } from '../_shared/supabaseClient.ts';
+
+Deno.serve(async (req) => {
+  try {
+    const { client: supabase, jwt } = getSupabase(req);
+    const { data: auth } = await supabase.auth.getUser(jwt ?? '');
+    const user_id = auth?.user?.id;
+    if (!user_id) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+
+    const { pattern_substring, nome_canonico, categoria, cnpj } = await req.json();
+
+    if (!pattern_substring || !nome_canonico) {
+      return new Response(JSON.stringify({ error: 'pattern_substring and nome_canonico required' }), { status: 400 });
+    }
+
+    // garantir merchant canônico
+    const slug = (nome_canonico as string).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+
+    const { data: msel } = await supabase
+      .from('merchants')
+      .select('id')
+      .eq('user_id', user_id)
+      .eq('slug', slug)
+      .maybeSingle();
+
+    let merchant_id = msel?.id;
+    if (!merchant_id) {
+      const { data: mins } = await supabase
+        .from('merchants')
+        .insert({ user_id, slug, nome: nome_canonico, cnpj: cnpj ?? null })
+        .select('id')
+        .single();
+      merchant_id = mins?.id;
+    }
+
+    // insere/atualiza regra no dicionário
+    await supabase.from('merchant_map').insert({
+      user_id,
+      pattern_substring,
+      merchant_id,
+      cnpj: cnpj ?? null,
+      categoria: categoria ?? null,
+      criado_por: user_id
+    });
+
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
+  }
+});
+
+6) Como usar no seu fluxo
+
+Importação
+
+Parseie o extrato (Google Document AI ou outro) para rows: RawBankRow[].
+
+Chame classify-import com o token do usuário.
+
+Os lançamentos já entram normalizados em transactions e prontos para a aba Lançamentos.
+
+Correções na UI
+
+Ao o usuário editar nome/categoria/CNPJ: chame apply-correction com:
+
+{ "pattern_substring": "TONIN", "nome_canonico": "Luiz Tonin Supermercados", "categoria":"Alimentação > Supermercado", "cnpj":"00.000.000/0001-00" }
+
+
+Próximos imports aprenderão automaticamente.
+
+Assinaturas
+
+Liste via RPC list_subscriptions() no Supabase JS:
+
+const { data } = await supabase.rpc('list_subscriptions');
+
+Notas finais
+
+Troque o resolutor CNPJ simplificado por sua fonte oficial/contratada e popule cnpj_cache (CNAE → categoria) para máxima precisão.
+
+Se tiver múltiplas contas por usuário, use conta_id nos inserts e filtros.
+
+A função classify-import já cria merchants automaticamente se não existirem.
