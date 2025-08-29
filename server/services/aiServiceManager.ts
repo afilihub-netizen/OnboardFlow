@@ -312,8 +312,7 @@ export class AIServiceManager {
 
   // Método universal para chamar OpenAI
   private async callOpenAI(prompt: string, config: any = {}): Promise<any> {
-    // Por enquanto, fazer fallback para sistema local
-    // Pode ser implementado quando OpenAI API key estiver disponível
+    // Implementação pendente quando OpenAI API key estiver disponível
     throw new Error('OpenAI não configurado');
   }
 

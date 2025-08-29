@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, User, Send, Loader2, MessageCircle, X, CheckCircle } from 'lucide-react';
+import { Bot, User, Send, Loader2, MessageCircle, X, CheckCircle, Trash2 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -177,6 +177,16 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
     }
   };
 
+  const handleClearChat = () => {
+    setMessages([getInitialMessage()]);
+    const storageKey = getStorageKey();
+    localStorage.removeItem(storageKey);
+    toast({
+      title: "Chat Limpo",
+      description: "Conversa reiniciada com sucesso.",
+    });
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -196,9 +206,14 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose} data-testid="close-chat">
-            <X className="w-4 h-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={handleClearChat} data-testid="clear-chat" title="Limpar conversa">
+              <Trash2 className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose} data-testid="close-chat">
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col p-0 bg-white overflow-hidden">

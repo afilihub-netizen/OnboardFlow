@@ -133,7 +133,7 @@ EXEMPLOS:
       
       return {
         type: (result.type as AssistantAction['type']) || 'none',
-        data: result.data || undefined,
+        data: (result as any).data || undefined,
         description: result.description || 'Ação detectada'
       };
     } catch (error) {
