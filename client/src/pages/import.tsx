@@ -334,7 +334,7 @@ export default function Import() {
     setIsAnalyzing(true);
     setCurrentStep(2);
     setAnalysisProgress(0);
-    setProgressMessage("Iniciando análise...");
+    setProgressMessage("🔍 Iniciando análise inteligente do extrato...");
 
     // Generate unique session ID for progress tracking
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -343,7 +343,11 @@ export default function Import() {
     const eventSource = connectToProgressStream(sessionId);
 
     try {
-      // Call OpenAI API to analyze the bank statement
+      // 🎯 SISTEMA OTIMIZADO: Análise com extrator brasileiro
+      setProgressMessage("🎯 Aplicando algoritmos brasileiros de extração...");
+      setAnalysisProgress(15);
+      
+      // Call analyze API to process the bank statement
       const response = await fetch("/api/analyze-extract", {
         method: "POST",
         credentials: 'include',

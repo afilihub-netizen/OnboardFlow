@@ -131,9 +131,9 @@ export function extractTransactionsBrazilian(text: string, availableCategories: 
       validCount++;
       console.log(`[BR-EXTRACTOR] ✅ [${validCount}] ${transaction.description} - R$ ${transaction.amount}`);
       
-      // LIMITE DE SEGURANÇA: parar se extrair muitas (indica ruído)
-      if (validCount >= 80) {
-        console.log(`[BR-EXTRACTOR] ⚠️ LIMITE DE SEGURANÇA: Parando em 80 transações`);
+      // LIMITE DE SEGURANÇA AUMENTADO: parar apenas se for realmente excessivo
+      if (validCount >= 200) {
+        console.log(`[BR-EXTRACTOR] ⚠️ LIMITE DE SEGURANÇA: Parando em 200 transações`);
         break;
       }
     }
@@ -141,13 +141,13 @@ export function extractTransactionsBrazilian(text: string, availableCategories: 
   
   console.log(`[BR-EXTRACTOR] 📊 Resultado: ${validCount}/${processedCount} transações válidas`);
   
-  // VALIDAÇÃO FINAL DE QUALIDADE
-  if (transactions.length > 60) {
-    console.log(`[BR-EXTRACTOR] ⚠️ MUITAS TRANSAÇÕES (${transactions.length}) - possível ruído`);
-    // Filtrar apenas as mais confiáveis
-    const highConfidence = transactions.filter(t => t.confidence >= 0.9);
-    console.log(`[BR-EXTRACTOR] 🔄 Filtrando para ${highConfidence.length} transações de alta confiança`);
-    return highConfidence.slice(0, 40); // Máximo 40
+  // VALIDAÇÃO FINAL DE QUALIDADE REMOVIDA - permitir todas as transações válidas
+  if (transactions.length > 200) {
+    console.log(`[BR-EXTRACTOR] ⚠️ MUITAS TRANSAÇÕES (${transactions.length}) - possível ruído massivo`);
+    // Filtrar apenas as mais confiáveis se for realmente excessivo
+    const highConfidence = transactions.filter(t => t.confidence >= 0.95);
+    console.log(`[BR-EXTRACTOR] 🔄 Filtrando para ${highConfidence.length} transações de altíssima confiança`);
+    return highConfidence.slice(0, 150); // Máximo mais alto
   }
   
   return transactions;
@@ -330,37 +330,66 @@ export function detectTransferenciaInterna(desc: string, nomeTitular: string = '
 }
 
 function extractAmount(line: string): { amount: number; confidence: number } | null {
-  // USAR NOVO PARSER BR - Buscar valores mais precisamente
-  // Padrões para capturar valores monetários brasileiros
+  // CORREÇÃO: Parser inteligente que ignora datas (2025, 2024, etc)
+  // Padrões ESPECÍFICOS para valores monetários brasileiros
   const patterns = [
-    /[-+]?\s*R?\$?\s*([\d]{1,3}(?:\.\d{3})*,\d{2})/g, // 1.234,56
-    /[-+]?\s*R?\$?\s*(\d{1,6},\d{2})/g, // 123,45
-    /[-+]?\s*R?\$?\s*(\d+\.\d{2})/g, // 123.45 (formato US convertido)
-    /[-+]?\s*R?\$?\s*(\d+)/g // 123 (inteiros)
+    // Padrão com R$ explícito (mais confiável)
+    /[-+]?\s*R\$\s*([\d]{1,3}(?:\.\d{3})*,\d{2})/g, // R$ 1.234,56
+    /[-+]?\s*R\$\s*(\d{1,6},\d{2})/g, // R$ 123,45
+    
+    // Padrões sem R$ mas com contexto monetário
+    /(?:PIX_(?:DEB|CRED)|DEB|CRED)\s+[-+]?\s*([\d]{1,3}(?:\.\d{3})*,\d{2})/g, // PIX_DEB 1.234,56
+    /(?:PIX_(?:DEB|CRED)|DEB|CRED)\s+[-+]?\s*(\d{1,6},\d{2})/g, // PIX_DEB 123,45
+    
+    // Valores no final da linha (formato extrato)
+    /\s+([\d]{1,3}(?:\.\d{3})*,\d{2})\s*$/g, // ...1.234,56 (final da linha)
+    /\s+(\d{1,6},\d{2})\s*$/g, // ...123,45 (final da linha)
+    
+    // Valores negativos explícitos
+    /-\s*([\d]{1,3}(?:\.\d{3})*,\d{2})/g, // -1.234,56
+    /-\s*(\d{1,6},\d{2})/g, // -123,45
   ];
   
-  let bestMatch = null;
-  let bestValue = 0;
+  const foundValues = [];
   
   for (const pattern of patterns) {
     const matches = [...line.matchAll(pattern)];
     for (const match of matches) {
       try {
-        const amount = parseAmountBR(match[0]);
-        if (!isNaN(amount) && Math.abs(amount) >= 2 && Math.abs(amount) <= 50000) {
-          // Priorizar valores maiores (mais prováveis de serem o valor principal)
-          if (Math.abs(amount) > bestValue) {
-            bestValue = Math.abs(amount);
-            bestMatch = { amount, confidence: 0.95 };
-          }
-        }
+        const rawValue = match[1] || match[0];
+        const amount = parseAmountBR(rawValue);
+        
+        // FILTRAR valores claramente inválidos
+        if (isNaN(amount)) continue;
+        if (Math.abs(amount) < 0.01) continue; // Muito pequeno
+        if (Math.abs(amount) > 100000) continue; // Muito grande
+        
+        // IGNORAR anos (2024, 2025, etc) - padrão comum em datas
+        if (amount >= 2020 && amount <= 2030 && Number.isInteger(amount)) continue;
+        
+        // IGNORAR códigos bancários típicos (6+ dígitos consecutivos)
+        if (Number.isInteger(amount) && amount >= 100000) continue;
+        
+        foundValues.push({
+          amount,
+          confidence: match[0].includes('R$') ? 0.98 : 0.85,
+          context: match[0]
+        });
       } catch {
         continue;
       }
     }
   }
   
-  return bestMatch;
+  if (foundValues.length === 0) return null;
+  
+  // Retornar o valor com maior confiança, priorizando valores com R$
+  foundValues.sort((a, b) => b.confidence - a.confidence || Math.abs(b.amount) - Math.abs(a.amount));
+  
+  return {
+    amount: foundValues[0].amount,
+    confidence: foundValues[0].confidence
+  };
 }
 
 function extractAmountOld(line: string): { amount: number; confidence: number } | null {
