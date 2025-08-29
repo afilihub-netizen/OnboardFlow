@@ -1527,26 +1527,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Extract text is required" });
       }
 
-      // 🧠 DEEPSEEK ÚNICO: Extração e categorização completa em uma única chamada
-      console.log(`🧠 [DeepSeek] Iniciando extração e categorização de ${extractText.length} caracteres...`);
+      // 🧠 DEEPSEEK COM FALLBACK ROBUSTO: Sem timeout global interferindo
+      console.log(`🧠 [DeepSeek] Iniciando extração de ${extractText.length} caracteres...`);
       let result;
       try {
-        const deepSeekPromise = deepSeekCategorization.extractAndCategorizeTransactions(extractText);
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('DeepSeek timeout após 90s')), 90000)
-        );
-        
-        const deepSeekResult = await Promise.race([deepSeekPromise, timeoutPromise]);
+        const deepSeekResult = await deepSeekCategorization.extractAndCategorizeTransactions(extractText);
         
         if (deepSeekResult && deepSeekResult.length > 0) {
-          console.log(`✅ [DeepSeek] Processamento concluído: ${deepSeekResult.length} transações encontradas`);
+          console.log(`✅ [DeepSeek] Sucesso: ${deepSeekResult.length} transações encontradas`);
           result = { transactions: deepSeekResult };
         } else {
-          console.log(`⚠️ [DeepSeek] Nenhuma transação encontrada no extrato`);
+          console.log(`⚠️ [DeepSeek] Nenhuma transação encontrada`);
           result = { transactions: [] };
         }
       } catch (error) {
-        console.error(`❌ [DeepSeek] Erro no processamento:`, error.message);
+        console.error(`❌ [DeepSeek] Erro:`, error.message);
         result = { transactions: [] };
       }
       

@@ -164,17 +164,43 @@ RESPONDA APENAS JSON:
   }
 
   /**
-   * Processa a resposta da extração e retorna transações
+   * Processa a resposta da extração e retorna transações - COM PARSING ROBUSTO
    */
   private parseExtractionResponse(response: string): CategorizedTransaction[] {
     try {
+      console.log(`[DeepSeek] Processando resposta: ${response.length} caracteres`);
+      
+      // Tentar múltiplas estratégias de parsing
+      let parsed;
+      
+      // Estratégia 1: JSON limpo
       const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('Resposta não contém JSON válido');
+      if (jsonMatch) {
+        try {
+          parsed = JSON.parse(jsonMatch[0]);
+        } catch (e) {
+          console.log(`[DeepSeek] JSON parsing falhou, tentando limpeza...`);
+          
+          // Estratégia 2: Limpar JSON malformado
+          let cleanedJson = jsonMatch[0]
+            .replace(/,\s*}/g, '}')  // Remove vírgulas extras antes de }
+            .replace(/,\s*]/g, ']')  // Remove vírgulas extras antes de ]
+            .replace(/([{,]\s*)(\w+):/g, '$1"$2":'); // Adiciona aspas em chaves
+          
+          try {
+            parsed = JSON.parse(cleanedJson);
+          } catch (e2) {
+            console.log(`[DeepSeek] Limpeza falhou, extraindo transações com regex...`);
+            return this.extractWithRegex(response);
+          }
+        }
+      } else {
+        console.log(`[DeepSeek] Nenhum JSON encontrado, usando regex...`);
+        return this.extractWithRegex(response);
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
       const transactions = parsed.transactions || [];
+      console.log(`[DeepSeek] ${transactions.length} transações encontradas no JSON`);
 
       return transactions.map((t: any) => ({
         date: t.date || new Date().toISOString().split('T')[0],
@@ -187,8 +213,63 @@ RESPONDA APENAS JSON:
       }));
 
     } catch (error) {
-      console.error('[DeepSeek] Erro ao processar resposta de extração:', error);
-      return [];
+      console.error('[DeepSeek] Erro ao processar resposta:', error);
+      return this.extractWithRegex(response);
+    }
+  }
+
+  /**
+   * Extração via regex como fallback
+   */
+  private extractWithRegex(text: string): CategorizedTransaction[] {
+    console.log(`[DeepSeek] Usando extração regex como fallback...`);
+    
+    const transactions: CategorizedTransaction[] = [];
+    const lines = text.split('\n');
+    
+    for (const line of lines) {
+      // Padrões básicos de transação bancária
+      const patterns = [
+        /(\d{2}\/\d{2}\/\d{4}).*?([A-Z\s]+).*?R?\$?\s*([\d,.-]+)/i,
+        /(\d{4}-\d{2}-\d{2}).*?(PIX|TED|DOC|DÉBITO|CRÉDITO).*?([\d,.-]+)/i
+      ];
+      
+      for (const pattern of patterns) {
+        const match = line.match(pattern);
+        if (match) {
+          const amount = parseFloat(match[3].replace(/[^\d,-]/g, '').replace(',', '.'));
+          if (!isNaN(amount) && amount !== 0) {
+            transactions.push({
+              date: this.normalizeDate(match[1]),
+              description: match[2].trim(),
+              amount: amount,
+              type: amount > 0 ? 'income' : 'expense',
+              category: 'Outros',
+              confidence: 0.6,
+              reasoning: 'Extração via regex'
+            });
+          }
+          break;
+        }
+      }
+    }
+    
+    console.log(`[DeepSeek] Regex extraiu ${transactions.length} transações`);
+    return transactions;
+  }
+
+  /**
+   * Normaliza formato de data
+   */
+  private normalizeDate(dateStr: string): string {
+    try {
+      if (dateStr.includes('/')) {
+        const [day, month, year] = dateStr.split('/');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      return dateStr;
+    } catch {
+      return new Date().toISOString().split('T')[0];
     }
   }
 
