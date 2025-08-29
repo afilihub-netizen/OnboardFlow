@@ -190,60 +190,61 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl h-[600px] flex flex-col shadow-2xl bg-white border-2 border-blue-200 rounded-xl overflow-hidden">
-        <CardHeader className="flex-row items-center justify-between space-y-0 pb-3 border-b">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <Bot className="w-5 h-5 text-blue-600" />
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+      <Card className="w-full max-w-2xl h-[90vh] sm:h-[600px] max-h-[600px] flex flex-col shadow-2xl bg-white border-2 border-blue-200 rounded-xl overflow-hidden">
+        <CardHeader className="flex-row items-center justify-between space-y-0 pb-3 border-b px-3 sm:px-6">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
             </div>
-            <div>
-              <CardTitle className="text-lg">
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-base sm:text-lg truncate">
                 {accountType === 'business' ? 'Assistente Empresarial IA' : 'Assistente Financeiro IA'}
               </CardTitle>
-              <p className="text-sm text-slate-600">
+              <p className="text-xs sm:text-sm text-slate-600 truncate">
                 {accountType === 'business' ? 'Pergunte sobre as finanças da empresa' : 'Pergunte sobre suas finanças'}
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={handleClearChat} data-testid="clear-chat" title="Encerrar conversa">
-              Encerrar
+          <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+            <Button variant="ghost" size="sm" onClick={handleClearChat} data-testid="clear-chat" title="Encerrar conversa" className="text-xs sm:text-sm px-2 sm:px-3">
+              <span className="hidden sm:inline">Encerrar</span>
+              <span className="sm:hidden">Fim</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={onClose} data-testid="close-chat">
+            <Button variant="ghost" size="sm" onClick={onClose} data-testid="close-chat" className="p-1 sm:p-2">
               <X className="w-4 h-4" />
             </Button>
           </div>
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col p-0 bg-white overflow-hidden">
-          <ScrollArea className="flex-1 p-4 bg-white">
-            <div className="space-y-4 pr-2">
+          <ScrollArea className="flex-1 p-2 sm:p-4 bg-white">
+            <div className="space-y-3 sm:space-y-4 pr-1 sm:pr-2">
               {messages.map((message, index) => (
                 <div
                   key={index}
                   className={`flex w-full ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`flex items-start gap-3 max-w-[75%] ${
+                    className={`flex items-start gap-2 sm:gap-3 max-w-[85%] sm:max-w-[75%] ${
                       message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
                     }`}
                   >
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                         message.role === 'user'
                           ? 'bg-blue-500'
                           : 'bg-slate-100'
                       }`}
                     >
                       {message.role === 'user' ? (
-                        <User className="w-4 h-4 text-white" />
+                        <User className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                       ) : (
-                        <Bot className="w-4 h-4 text-slate-600" />
+                        <Bot className="w-3 h-3 sm:w-4 sm:h-4 text-slate-600" />
                       )}
                     </div>
                     <div
-                      className={`rounded-lg px-4 py-2 break-words ${
+                      className={`rounded-lg px-3 py-2 sm:px-4 break-words ${
                         message.role === 'user'
                           ? 'bg-blue-500 text-white'
                           : 'bg-gray-50 text-gray-900 border border-gray-200 shadow-sm'
@@ -296,14 +297,14 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
 
               {isLoading && (
                 <div className="flex justify-start w-full">
-                  <div className="flex items-start gap-3 max-w-[75%]">
-                    <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
-                      <Bot className="w-4 h-4 text-slate-600" />
+                  <div className="flex items-start gap-2 sm:gap-3 max-w-[75%]">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-slate-100 rounded-full flex items-center justify-center">
+                      <Bot className="w-3 h-3 sm:w-4 sm:h-4 text-slate-600" />
                     </div>
-                    <div className="bg-gray-100 border border-gray-200 rounded-lg px-4 py-2">
+                    <div className="bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 sm:px-4">
                       <div className="flex items-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                        <span className="text-sm text-gray-600">Analisando seus dados...</span>
+                        <span className="text-xs sm:text-sm text-gray-600">Analisando...</span>
                       </div>
                     </div>
                   </div>
@@ -345,15 +346,15 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
           )}
 
           {/* Input de mensagem */}
-          <div className="p-4 border-t bg-white">
+          <div className="p-2 sm:p-4 border-t bg-white">
             <div className="flex gap-2">
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Digite sua pergunta sobre finanças..."
+                placeholder="Digite sua pergunta..."
                 disabled={isLoading}
-                className="flex-1"
+                className="flex-1 text-sm sm:text-base"
                 data-testid="chat-input"
               />
               <Button
@@ -361,6 +362,7 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
                 disabled={!input.trim() || isLoading}
                 size="sm"
                 data-testid="send-message"
+                className="p-2 sm:p-3"
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -384,10 +386,10 @@ export function AIChatButton() {
     <>
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 z-40"
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 z-40"
         data-testid="open-ai-chat"
       >
-        <MessageCircle className="w-6 h-6" />
+        <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
       </Button>
 
       <AIChatAssistant 
