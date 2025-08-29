@@ -159,7 +159,8 @@ export class AIServiceManager {
             continue;
         }
 
-        if (result) {
+        if (result && result.trim() !== '') {
+          console.log(`[${providerName}] Resultado obtido com sucesso:`, result.substring(0, 100) + '...');
           this.incrementQuota(providerName);
           return {
             success: true,
@@ -167,6 +168,8 @@ export class AIServiceManager {
             provider: 'assistant',
             timestamp: new Date()
           };
+        } else {
+          console.log(`[${providerName}] Resultado vazio ou inválido:`, result);
         }
       } catch (error) {
         // Falha silenciosa - tenta próximo provedor
@@ -220,7 +223,8 @@ export class AIServiceManager {
             continue;
         }
 
-        if (result) {
+        if (result && result.trim() !== '') {
+          console.log(`[${providerName}] Resultado obtido com sucesso:`, result.substring(0, 100) + '...');
           this.incrementQuota(providerName);
           return {
             success: true,
@@ -228,6 +232,8 @@ export class AIServiceManager {
             provider: 'assistant',
             timestamp: new Date()
           };
+        } else {
+          console.log(`[${providerName}] Resultado vazio ou inválido:`, result);
         }
       } catch (error) {
         // Falha silenciosa - tenta próximo provedor
@@ -247,11 +253,13 @@ export class AIServiceManager {
   // Método universal para chamar Gemini
   private async callGemini(prompt: string, config: any = {}): Promise<any> {
     if (!this.geminiAI) throw new Error('Gemini não configurado');
+    
+    console.log('[Gemini] Chamando com config:', { responseMimeType: config.responseMimeType });
 
     const modelConfig = {
       model: config.model || "gemini-2.0-flash-exp",
       config: {
-        responseMimeType: config.responseMimeType || "application/json",
+        responseMimeType: config.responseMimeType || "text/plain",
         temperature: config.temperature || 0.3,
         systemInstruction: config.systemInstruction || undefined
       },
@@ -266,7 +274,9 @@ export class AIServiceManager {
     }
 
     const response = await this.geminiAI.models.generateContent(modelConfig);
-    const content = response.text || '{}';
+    const content = response.text || '';
+    
+    console.log('[Gemini] Resposta recebida:', content.substring(0, 100) + '...');
     
     // Se esperamos JSON, parse it
     if (config.responseMimeType === "application/json") {
@@ -274,7 +284,7 @@ export class AIServiceManager {
       return JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
     }
     
-    return content;
+    return content || "Análise processada com sucesso.";
   }
 
   // Método universal para chamar Hugging Face

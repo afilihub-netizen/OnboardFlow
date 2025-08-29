@@ -207,8 +207,8 @@ export function AIChatAssistant({ isOpen, onClose }: AIChatAssistantProps) {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={handleClearChat} data-testid="clear-chat" title="Limpar conversa">
-              <Trash2 className="w-4 h-4" />
+            <Button variant="ghost" size="sm" onClick={handleClearChat} data-testid="clear-chat" title="Encerrar conversa">
+              Encerrar
             </Button>
             <Button variant="ghost" size="sm" onClick={onClose} data-testid="close-chat">
               <X className="w-4 h-4" />
