@@ -158,6 +158,11 @@ function parseTransactionLine(line: string, availableCategories: any[]): Transac
 }
 
 function extractAmount(line: string): { amount: number; confidence: number } | null {
+  // VALIDAÇÃO PRÉVIA: linha deve ter contexto financeiro válido
+  if (!hasValidFinancialContext(line)) {
+    return null;
+  }
+  
   // Tentar padrão com sinal explícito primeiro
   const signMatch = line.match(BRAZILIAN_PATTERNS.AMOUNT_WITH_SIGN);
   if (signMatch) {
@@ -178,12 +183,17 @@ function extractAmount(line: string): { amount: number; confidence: number } | n
   if (amountMatch) {
     let valueStr = amountMatch[1].replace(/\s/g, '');
     
+    // REJEITAR valores claramente inválidos
+    if (valueStr.length > 10 || /^[0,\.]+$/.test(valueStr)) {
+      return null;
+    }
+    
     // Determinar sinal baseado no contexto
     let isNegative = false;
-    if (valueStr.startsWith('-') || line.includes('-R$')) {
+    if (valueStr.startsWith('-') || line.includes('-R$') || line.includes('DEB')) {
       isNegative = true;
       valueStr = valueStr.replace('-', '');
-    } else if (valueStr.startsWith('+') || line.includes('+R$')) {
+    } else if (valueStr.startsWith('+') || line.includes('+R$') || line.includes('CRED')) {
       valueStr = valueStr.replace('+', '');
     }
     
@@ -193,7 +203,9 @@ function extractAmount(line: string): { amount: number; confidence: number } | n
     }
     
     const value = parseFloat(valueStr);
-    if (!isNaN(value) && value > 0) {
+    
+    // VALORES REALISTAS: entre R$ 2,00 e R$ 50.000,00  
+    if (!isNaN(value) && value >= 2 && value <= 50000) {
       return {
         amount: isNegative ? -value : value,
         confidence: 0.9
@@ -202,6 +214,24 @@ function extractAmount(line: string): { amount: number; confidence: number } | n
   }
   
   return null;
+}
+
+// FUNÇÃO PARA VALIDAR SE A LINHA TEM CONTEXTO FINANCEIRO VÁLIDO
+function hasValidFinancialContext(line: string): boolean {
+  // Deve ter pelo menos uma palavra de contexto bancário
+  const bankKeywords = [
+    'PIX', 'TED', 'DOC', 'COMPRA', 'PAGAMENTO', 'RECEBIMENTO',
+    'TRANSFERENCIA', 'DEBITO', 'CREDITO', 'CARTAO', 'SAQUE', 
+    'DEPOSITO', 'NACIONAIS', 'INTERNACIONAL', 'TARIFA'
+  ];
+  
+  for (const keyword of bankKeywords) {
+    if (line.toUpperCase().includes(keyword)) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 function determineTransactionType(line: string, amount: number): 'income' | 'expense' {
@@ -240,12 +270,46 @@ function cleanDescription(line: string): string {
   // Remover códigos e números longos do final
   clean = clean.replace(/\s+[A-Z0-9]{6,}$/i, '');
   
+  // Remover datas do início (formato DD/MM/YYYY)
+  clean = clean.replace(/^\d{1,2}\/\d{1,2}\/\d{2,4}\s*/, '');
+  
+  // Remover símbolos estranhos
+  clean = clean.replace(/^[\s\-\—\*\/\#\@\%\$]+/, '');
+  clean = clean.replace(/[\s\-\—\*\/\#\@\%\$]+$/, '');
+  
+  // Remover ":" isolados no final
+  clean = clean.replace(/:\s*$/, '');
+  
+  // REJEITAR descrições muito curtas ou inválidas
+  if (clean.length < 8) {
+    return '';
+  }
+  
+  // REJEITAR padrões claramente inválidos
+  const invalidPatterns = [
+    /^cooperativa:?\s*$/i,
+    /^conta:?\s*$/i,
+    /^extrato:?\s*$/i,
+    /^período:?\s*$/i,
+    /^saldo:?\s*$/i,
+    /^total:?\s*$/i,
+    /^data\s+descrição/i,
+    /^\/\/\s*$/,
+    /^\s*[\-\=\*]{2,}\s*$/
+  ];
+  
+  for (const pattern of invalidPatterns) {
+    if (pattern.test(clean)) {
+      return '';
+    }
+  }
+  
   // Capitalizar primeira letra
   if (clean.length > 0) {
     clean = clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
   }
   
-  return clean || 'Transação';
+  return clean || '';
 }
 
 function categorizeTransaction(description: string, availableCategories: any[]): string {
