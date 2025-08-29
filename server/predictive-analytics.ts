@@ -9,6 +9,7 @@ import type {
   InsertCashflowPrediction
 } from "@shared/schema";
 import { storage } from "./storage";
+import { aiServiceManager } from "./services/aiServiceManager";
 
 // DON'T DELETE THIS COMMENT  
 // Follow these instructions when using this blueprint:
@@ -254,15 +255,23 @@ export class PredictiveAnalytics {
       - Contexto econômico brasileiro
       `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-pro",
-        config: {
+      const aiResponse = await aiServiceManager.generateAIResponse(
+        prompt,
+        'predictive_analysis',
+        {
           responseMimeType: "application/json",
-        },
-        contents: prompt,
-      });
+          fallbackResponse: '{"predictions": {"next30Days": 0, "next60Days": 0, "next90Days": 0}, "confidence": 0.5}'
+        }
+      );
 
-      const result = JSON.parse(response.text || '{}');
+      let result = { predictions: { next30Days: 0, next60Days: 0, next90Days: 0 }, confidence: 0.5 };
+      if (aiResponse.success) {
+        if (typeof aiResponse.data === 'string') {
+          result = JSON.parse(aiResponse.data || '{}');
+        } else if (typeof aiResponse.data === 'object') {
+          result = aiResponse.data;
+        }
+      }
       
       // Save prediction to database
       const prediction: InsertPrediction = {
@@ -362,15 +371,24 @@ export class PredictiveAnalytics {
       - Frequência incomum
       `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        config: {
+      const aiResponse = await aiServiceManager.generateAIResponse(
+        prompt,
+        'predictive_analysis',
+        {
           responseMimeType: "application/json",
-        },
-        contents: prompt,
-      });
+          fallbackResponse: '{"isAnomaly": false, "score": 0, "reasons": []}'
+        }
+      );
 
-      return JSON.parse(response.text || '{"isAnomaly": false, "score": 0, "reasons": []}');
+      if (aiResponse.success) {
+        if (typeof aiResponse.data === 'string') {
+          return JSON.parse(aiResponse.data || '{"isAnomaly": false, "score": 0, "reasons": []}');
+        } else if (typeof aiResponse.data === 'object') {
+          return aiResponse.data;
+        }
+      }
+      
+      return { isAnomaly: false, score: 0, reasons: [] };
     } catch (error) {
       console.error('Error in AI anomaly detection:', error);
       return { isAnomaly: false, score: 0, reasons: [] };

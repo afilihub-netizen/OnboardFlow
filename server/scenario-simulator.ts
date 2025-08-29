@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { Scenario, InsertScenario } from "@shared/schema";
+import { aiServiceManager } from "./services/aiServiceManager";
 
 // DON'T DELETE THIS COMMENT  
 // Follow these instructions when using this blueprint:
@@ -214,14 +215,21 @@ export class ScenarioSimulator {
       Forneça recomendações específicas e acionáveis para melhorar as chances de sucesso.
       `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-      });
+      const aiResponse = await aiServiceManager.generateAIResponse(
+        prompt,
+        'scenario_simulation',
+        {
+          responseMimeType: "text/plain",
+          fallbackResponse: "Considere aumentar sua contribuição mensal gradualmente"
+        }
+      );
 
-      const recommendations = response.text?.split('\n')
-        .filter(line => line.trim().length > 0)
-        .slice(0, 5) || [];
+      let recommendations: string[] = [];
+      if (aiResponse.success && typeof aiResponse.data === 'string') {
+        recommendations = aiResponse.data.split('\n')
+          .filter(line => line.trim().length > 0)
+          .slice(0, 5);
+      }
 
       return recommendations.length > 0 ? recommendations : [
         "Considere aumentar sua contribuição mensal gradualmente",

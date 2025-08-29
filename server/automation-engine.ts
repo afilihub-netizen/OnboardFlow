@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import type { AutomationRule, InsertAutomationRule, Transaction } from "@shared/schema";
 import { storage } from "./storage";
+import { aiServiceManager } from "./services/aiServiceManager";
 
 // DON'T DELETE THIS COMMENT  
 // Follow these instructions when using this blueprint:
@@ -132,15 +133,23 @@ export class AutomationEngine {
       - "Todo dia 15, transferir R$ 500 para poupança" → trigger: date_based + transfer
       `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-pro",
-        config: {
+      const aiResponse = await aiServiceManager.generateAIResponse(
+        prompt,
+        'automation_rules',
+        {
           responseMimeType: "application/json",
-        },
-        contents: prompt,
-      });
+          fallbackResponse: '{"name": "Regra de Automação", "type": "alert", "confidence": 0.5}'
+        }
+      );
 
-      const parsed = JSON.parse(response.text || '{}');
+      let parsed = {};
+      if (aiResponse.success) {
+        if (typeof aiResponse.data === 'string') {
+          parsed = JSON.parse(aiResponse.data || '{}');
+        } else if (typeof aiResponse.data === 'object') {
+          parsed = aiResponse.data;
+        }
+      }
       
       return {
         name: parsed.name || "Regra de Automação",
@@ -292,12 +301,20 @@ export class AutomationEngine {
       Responda apenas "true" ou "false" se detectar um padrão anômalo de gastos.
       `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-      });
+      const aiResponse = await aiServiceManager.generateAIResponse(
+        prompt,
+        'automation_rules',
+        {
+          responseMimeType: "text/plain",
+          fallbackResponse: "false"
+        }
+      );
 
-      return (response.text?.toLowerCase().includes('true')) || false;
+      if (aiResponse.success && typeof aiResponse.data === 'string') {
+        return aiResponse.data.toLowerCase().includes('true');
+      }
+      
+      return false;
     } catch (error) {
       console.error('Error evaluating pattern trigger:', error);
       return false;

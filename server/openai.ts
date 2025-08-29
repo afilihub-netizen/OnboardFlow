@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { processarLoteTransacoes, extrairCNPJsDoTexto } from "./cnpj-service";
+import { aiServiceManager } from "./services/aiServiceManager";
 
 if (!process.env.GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is required");
@@ -11,10 +12,7 @@ export async function generateFinancialInsights(financialData: any) {
   try {
     const { transactions, summary, categories } = financialData;
     
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
-      config: {
-        systemInstruction: `Você é um consultor financeiro especializado. Analise os dados financeiros fornecidos e gere insights personalizados em português brasileiro.
+    const systemPrompt = `Você é um consultor financeiro especializado. Analise os dados financeiros fornecidos e gere insights personalizados em português brasileiro.
 
 Instruções:
 1. Analise as transações, resumo financeiro e categorias
@@ -37,16 +35,31 @@ Responda APENAS com JSON válido no formato:
       "message": "Mensagem detalhada com valores específicos"
     }
   ]
-}`
-      },
-      contents: [{ role: "user", parts: [{ text: `Analise estes dados financeiros e gere insights personalizados:\n\nResumo: ${JSON.stringify(summary)}\nTransações recentes: ${JSON.stringify(Array.isArray(transactions) ? transactions.slice(-20) : transactions?.transactions?.slice(-20) || [])}\nCategorias: ${JSON.stringify(categories)}` }] }],
-    });
+}`;
 
-    const content = response.text || '{"insights": []}';
-    // Extrair JSON do texto se necessário
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{"insights": []}');
-    return result;
+    const prompt = `Analise estes dados financeiros e gere insights personalizados:\n\nResumo: ${JSON.stringify(summary)}\nTransações recentes: ${JSON.stringify(Array.isArray(transactions) ? transactions.slice(-20) : transactions?.transactions?.slice(-20) || [])}\nCategorias: ${JSON.stringify(categories)}`;
+
+    const aiResponse = await aiServiceManager.generateAIResponse(
+      prompt,
+      'financial_insights',
+      {
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json",
+        financialData: financialData,
+        fallbackResponse: '{"insights": []}'
+      }
+    );
+
+    if (aiResponse.success) {
+      if (typeof aiResponse.data === 'string') {
+        const jsonMatch = aiResponse.data.match(/\{[\s\S]*\}/);
+        return JSON.parse(jsonMatch ? jsonMatch[0] : '{"insights": []}');
+      } else if (typeof aiResponse.data === 'object') {
+        return aiResponse.data;
+      }
+    }
+    
+    return { insights: [] };
   } catch (error: any) {
     console.error("Error generating financial insights:", error);
     
@@ -74,11 +87,7 @@ export async function analyzeSubscriptionPatterns(transactions: any[]) {
       `${t.description || 'Sem descrição'} - R$ ${t.amount} - ${t.date}`
     ).join('\n');
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
-      config: {
-        temperature: 0.1,
-        systemInstruction: `Você é um especialista em detecção de assinaturas e serviços recorrentes.
+    const systemPrompt = `Você é um especialista em detecção de assinaturas e serviços recorrentes.
 
 ANALISE as transações e identifique possíveis ASSINATURAS baseado em:
 
@@ -110,16 +119,32 @@ RESPONDA APENAS com JSON válido:
       "description": "descrição do serviço identificado"
     }
   ]
-}`
-      },
-      contents: [{ role: "user", parts: [{ text: `Analise estas transações e identifique possíveis assinaturas:\n\n${transactionsText}` }] }],
-    });
+}`;
 
-    const content = response.text || '{"potentialSubscriptions": []}';
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{"potentialSubscriptions": []}');
+    const aiResponse = await aiServiceManager.generateAIResponse(
+      `Analise estas transações e identifique possíveis assinaturas:\n\n${transactionsText}`,
+      'extract_analysis',
+      {
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json",
+        temperature: 0.1,
+        fallbackResponse: '{"potentialSubscriptions": []}'
+      }
+    );
+
+    if (aiResponse.success) {
+      let result;
+      if (typeof aiResponse.data === 'string') {
+        const jsonMatch = aiResponse.data.match(/\{[\s\S]*\}/);
+        result = JSON.parse(jsonMatch ? jsonMatch[0] : '{"potentialSubscriptions": []}');
+      } else if (typeof aiResponse.data === 'object') {
+        result = aiResponse.data;
+      }
+      
+      return result?.potentialSubscriptions || [];
+    }
     
-    return result.potentialSubscriptions || [];
+    return [];
   } catch (error: any) {
     console.error("Error analyzing subscription patterns:", error);
     return [];
@@ -158,11 +183,7 @@ async function processChunk(extractText: string, availableCategories: string[] =
   let content = '{"transactions": []}';
   
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
-      config: {
-        temperature: 0.1, // Lower temperature for more consistent output
-        systemInstruction: `CRÍTICO: Extraia TODAS as transações do extrato bancário e identifique ASSINATURAS.
+    const systemPrompt = `CRÍTICO: Extraia TODAS as transações do extrato bancário e identifique ASSINATURAS.
 
 INSTRUÇÕES ESPECÍFICAS:
 1. Procure por padrões de transação: valores, datas, descrições de PIX, TEF, débitos, créditos
@@ -197,18 +218,36 @@ RULES:
 - amount: número decimal (negativo para gastos, positivo para receitas)
 - type: "expense" ou "income"
 - category: Alimentação, Transporte, Casa, Saúde, Entretenimento, Assinaturas, Outros
-- isSubscription: true se for serviço de assinatura conhecida, false caso contrário`
-      },
-      contents: [{ role: "user", parts: [{ text: `Analise este extrato bancário e extraia as transações:\n\n${extractText}` }] }],
-    });
+- isSubscription: true se for serviço de assinatura conhecida, false caso contrário`;
 
-    content = response.text || '{"transactions": []}';
-    console.log("AI Response length:", content.length);
-    console.log("AI Response preview:", content.substring(0, 500));
+    const aiResponse = await aiServiceManager.generateAIResponse(
+      `Analise este extrato bancário e extraia as transações:\n\n${extractText}`,
+      'extract_analysis',
+      {
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json", 
+        temperature: 0.1,
+        fallbackResponse: '{"transactions": []}'
+      }
+    );
+
+    if (aiResponse.success) {
+      if (typeof aiResponse.data === 'string') {
+        content = aiResponse.data;
+      } else if (typeof aiResponse.data === 'object') {
+        content = JSON.stringify(aiResponse.data);
+      }
+      console.log("AI Response length:", content.length);
+      console.log("AI Response preview:", content.substring(0, 500));
+    } else {
+      content = '{"transactions": []}';
+      console.log("Using fallback empty transactions due to AI error");
+    }
     
   } catch (error) {
-    console.error("Error calling Gemini API:", error);
+    console.error("Error calling AI service:", error);
     console.log("Using fallback empty transactions due to AI error");
+    content = '{"transactions": []}';
     // Don't throw here, continue with empty transactions to provide feedback
   }
   

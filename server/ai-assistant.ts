@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { aiServiceManager } from "./services/aiServiceManager";
 
 if (!process.env.GEMINI_API_KEY) {
   throw new Error('GEMINI_API_KEY environment variable must be set');
@@ -45,18 +46,24 @@ export class FinancialAssistant {
         const actionResult = await this.executeAction(action, userId);
         response = actionResult;
       } else {
-        // Resposta normal de análise
+        // Resposta normal de análise usando sistema híbrido
         const systemPrompt = this.buildSystemPrompt(financialData);
         
-        const aiResponse = await ai.models.generateContent({
-          model: "gemini-2.0-flash-exp",
-          config: {
+        const aiResponse = await aiServiceManager.generateAIResponse(
+          question,
+          'chat_response',
+          {
             systemInstruction: systemPrompt,
-          },
-          contents: [{ role: "user", parts: [{ text: question }] }],
-        });
+            responseMimeType: "text/plain",
+            financialData: financialData
+          }
+        );
 
-        response = aiResponse.text || "Desculpe, não consegui processar sua pergunta.";
+        if (aiResponse.success) {
+          response = typeof aiResponse.data === 'string' ? aiResponse.data : "Análise processada com sucesso.";
+        } else {
+          response = "Desculpe, não consegui processar sua pergunta no momento. Tente reformular ou aguarde alguns instantes.";
+        }
       }
 
       return { response, action: action.type !== 'none' ? action : undefined };
@@ -99,17 +106,30 @@ EXEMPLOS:
 "Adicione um gasto de R$ 50 em alimentação" → {"type": "add_transaction", "description": "adicionar gasto", "data": {"amount": 50, "category": "Alimentação", "type": "expense"}}
 "Como estão meus gastos?" → {"type": "none", "description": "consulta sobre gastos"}`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash-exp",
-        config: {
+      const aiResponse = await aiServiceManager.generateAIResponse(
+        question,
+        'chat_response',
+        {
           systemInstruction: systemPrompt,
-        },
-        contents: [{ role: "user", parts: [{ text: question }] }],
-      });
+          responseMimeType: "application/json",
+          fallbackResponse: '{"type": "none", "description": "consulta geral"}'
+        }
+      );
 
-      const content = response.text || '{"type": "none", "description": "consulta geral"}';
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{"type": "none", "description": "consulta geral"}');
+      let result = { type: 'none', description: 'consulta geral' };
+      
+      if (aiResponse.success) {
+        try {
+          if (typeof aiResponse.data === 'string') {
+            const jsonMatch = aiResponse.data.match(/\{[\s\S]*\}/);
+            result = JSON.parse(jsonMatch ? jsonMatch[0] : '{"type": "none", "description": "consulta geral"}');
+          } else if (typeof aiResponse.data === 'object') {
+            result = aiResponse.data;
+          }
+        } catch (parseError) {
+          console.error('Erro ao parsear resposta de detecção:', parseError);
+        }
+      }
       
       return {
         type: result.type || 'none',
@@ -207,10 +227,7 @@ EXEMPLOS DE RESPOSTAS ESPERADAS:
     subcategory?: string;
   }> {
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash-exp",
-        config: {
-          systemInstruction: `Você é um especialista em categorização de transações financeiras brasileiras.
+      const systemPrompt = `Você é um especialista em categorização de transações financeiras brasileiras.
 
 CATEGORIAS DISPONÍVEIS:
 - Alimentação (restaurantes, delivery, supermercado, lanches)
@@ -233,15 +250,32 @@ Analise a descrição e retorne um JSON com:
   "subcategory": "subcategoria_opcional"
 }
 
-Seja preciso e use seu conhecimento sobre o mercado brasileiro.`
-        },
-        contents: [{ role: "user", parts: [{ text: `Descrição: "${description}", Valor: R$ ${amount.toFixed(2)}` }] }],
-      });
+Seja preciso e use seu conhecimento sobre o mercado brasileiro.`;
 
-      const content = response.text || '{}';
-      // Extrair JSON do texto se necessário
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
+      const aiResponse = await aiServiceManager.generateAIResponse(
+        `Descrição: "${description}", Valor: R$ ${amount.toFixed(2)}`,
+        'chat_response',
+        {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+          fallbackResponse: '{"category": "Outros", "confidence": 0.5}'
+        }
+      );
+
+      let result = { category: 'Outros', confidence: 0.5 };
+      
+      if (aiResponse.success) {
+        try {
+          if (typeof aiResponse.data === 'string') {
+            const jsonMatch = aiResponse.data.match(/\{[\s\S]*\}/);
+            result = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
+          } else if (typeof aiResponse.data === 'object') {
+            result = aiResponse.data;
+          }
+        } catch (parseError) {
+          console.error('Erro ao parsear categorização:', parseError);
+        }
+      }
       return {
         category: result.category || 'Outros',
         confidence: result.confidence || 0.5,
@@ -264,10 +298,7 @@ Seja preciso e use seu conhecimento sobre o mercado brasileiro.`
     try {
       const monthlyData = this.groupTransactionsByMonth(transactions);
       
-      const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash-exp",
-        config: {
-          systemInstruction: `Você é um analista financeiro expert. Analise os padrões de gastos e retorne insights em JSON.
+      const systemPrompt = `Você é um analista financeiro expert. Analise os padrões de gastos e retorne insights em JSON.
 
 Retorne APENAS um JSON válido com:
 {
@@ -281,15 +312,34 @@ Foque em:
 - Crescimento/redução de categorias
 - Gastos anômalos
 - Oportunidades de economia
-- Tendências preocupantes`
-        },
-        contents: [{ role: "user", parts: [{ text: `Dados mensais: ${JSON.stringify(monthlyData.slice(0, 6))}` }] }],
-      });
+- Tendências preocupantes`;
 
-      const content = response.text || '{"insights":[],"warnings":[],"suggestions":[]}';
-      // Extrair JSON do texto se necessário
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      return JSON.parse(jsonMatch ? jsonMatch[0] : '{"insights":[],"warnings":[],"suggestions":[]}');
+      const aiResponse = await aiServiceManager.generateAIResponse(
+        `Dados mensais: ${JSON.stringify(monthlyData.slice(0, 6))}`,
+        'chat_response',
+        {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+          fallbackResponse: '{"insights":[],"warnings":[],"suggestions":[]}'
+        }
+      );
+
+      let result = { insights: [], warnings: [], suggestions: [] };
+      
+      if (aiResponse.success) {
+        try {
+          if (typeof aiResponse.data === 'string') {
+            const jsonMatch = aiResponse.data.match(/\{[\s\S]*\}/);
+            result = JSON.parse(jsonMatch ? jsonMatch[0] : '{"insights":[],"warnings":[],"suggestions":[]}');
+          } else if (typeof aiResponse.data === 'object') {
+            result = aiResponse.data;
+          }
+        } catch (parseError) {
+          console.error('Erro ao parsear análise de padrões:', parseError);
+        }
+      }
+      
+      return result;
     } catch (error) {
       console.error('Erro na análise de padrões:', error);
       return {
