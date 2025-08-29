@@ -1800,11 +1800,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Extract text is required" });
       }
 
-      // 🤖 GEMINI GRATUITO: Extração confiável e rápida
+      // 🤖 GEMINI CORRIGIDO: Extração com preservação de sinais
       console.log(`🤖 [Gemini] Iniciando extração de ${extractText.length} caracteres...`);
       let result;
       try {
-        const geminiResult = await extractWithGemini(extractText, availableCategories);
+        const geminiResult = await analyzeExtractWithAI(extractText, availableCategories.map(c => c.name));
         
         if (geminiResult && geminiResult.length > 0) {
           console.log(`✅ [Gemini] Sucesso: ${geminiResult.length} transações encontradas`);
@@ -2891,8 +2891,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 🤖 FUNÇÃO GEMINI DIRETA (API REST) - FUNCIONAMENTO GARANTIDO
-  async function extractWithGemini(extractText: string, availableCategories: any[]): Promise<any[]> {
+  // 🚫 REMOVIDA - CONFLITAVA COM IMPLEMENTAÇÃO CORRIGIDA
+  // async function extractWithGemini(extractText: string, availableCategories: any[]): Promise<any[]> {
     try {
       const categories = availableCategories.map(c => c.name).join(', ');
       
@@ -2971,11 +2971,7 @@ RESPONDA APENAS JSON:
         return await extractWithRegexFallback(extractText);
       }
 
-    } catch (error) {
-      console.error(`[Gemini] Erro na extração:`, error);
-      return await extractWithRegexFallback(extractText);
-    }
-  }
+  // 🚫 FUNÇÃO REMOVIDA - USAMOS analyzeExtractWithAI
 
   function inferCategoryFromDescription(description: string): string {
     const desc = description.toLowerCase();
