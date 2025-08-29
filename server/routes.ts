@@ -1317,7 +1317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Helper function to process single PDF chunk via OCR
-  async function processPDFChunk(base64Data: string, startPage: number = 1, endPage: number = 3) {
+  async function processPDFChunk(base64Data: string, startPage: number = 1, endPage: number = 10) {
     const formData = new FormData();
     formData.append('base64Image', `data:application/pdf;base64,${base64Data}`);
     formData.append('language', 'por');
@@ -2698,6 +2698,22 @@ RESPONDA APENAS JSON:
       
       processedLines++;
       
+      // FILTRAR CABEÇALHOS E METADADOS ANTES DE PROCESSAR
+      const isHeader = line.toLowerCase().includes('sicredi') ||
+                      line.toLowerCase().includes('associado:') ||
+                      line.toLowerCase().includes('cooperativa:') ||
+                      line.toLowerCase().includes('conta:') ||
+                      line.toLowerCase().includes('extrato') ||
+                      line.toLowerCase().includes('período') ||
+                      line.toLowerCase().includes('data') ||
+                      line.toLowerCase().includes('descrição') ||
+                      line.toLowerCase().includes('saldo anterior') ||
+                      line.match(/^\d{4}$/) || // Apenas números como "0715"
+                      line.match(/^\d{5}-\d$/) || // Formato conta "47413-6"
+                      line.length < 10; // Linhas muito curtas
+      
+      if (isHeader) continue;
+      
       // ESTRATÉGIA 1: Buscar qualquer coisa que pareça valor monetário
       const monetaryMatches = line.match(/([\d]{1,3}(?:\.[\d]{3})*,[\d]{2}|[\d]{2,}(?:,[\d]{2})?)/g);
       
@@ -2773,18 +2789,28 @@ RESPONDA APENAS JSON:
     
     console.log(`[Extrator] Processadas ${processedLines} linhas, encontradas ${foundTransactions} transações`);
     
-    // Remover duplicatas simples (mesmo valor e descrição similar)
+    // Remover duplicatas mais rigorosamente 
     const uniqueTransactions = transactions.filter((transaction, index, self) => {
+      // Filtrar transações com valores muito baixos ou muito altos (provavelmente erros)
+      if (Math.abs(transaction.amount) < 5 || Math.abs(transaction.amount) > 50000) return false;
+      
+      // Filtrar descrições que são claramente dados ou metadados
+      const desc = transaction.description.toLowerCase();
+      if (desc.includes('sicredi') || desc.includes('associado') || 
+          desc.includes('cooperativa') || desc.includes('conta') ||
+          desc.includes('extrato') || desc.includes('período') ||
+          desc.length < 5) return false;
+      
       return index === self.findIndex(t => 
         Math.abs(t.amount - transaction.amount) < 0.01 &&
-        t.description.substring(0, 20) === transaction.description.substring(0, 20)
+        t.description.substring(0, 15) === transaction.description.substring(0, 15)
       );
     });
     
     console.log(`[Extrator] ${transactions.length} brutas → ${uniqueTransactions.length} únicas`);
     
     // Log das primeiras transações para verificação
-    console.log(`[Extrator] Primeiras 5 transações:`);
+    console.log(`[Extrator] Primeiras 5 transações VÁLIDAS:`);
     uniqueTransactions.slice(0, 5).forEach((t, i) => {
       console.log(`  ${i+1}. ${t.date} | ${t.description.substring(0, 40)} | R$ ${t.amount.toFixed(2)}`);
     });
