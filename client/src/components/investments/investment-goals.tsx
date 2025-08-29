@@ -139,6 +139,18 @@ export function InvestmentGoals() {
 
   const investmentGoals = goals.filter(goal => !goal.categoryId); // Investment goals without specific category
 
+  // Fetch current investments to calculate real progress
+  const { data: investments = [] } = useQuery({
+    queryKey: ['/api/investments'],
+    queryFn: async () => {
+      const response = await fetch('/api/investments', {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch investments');
+      return response.json();
+    },
+  });
+
   const scrollPrev = () => {
     if (emblaApi) emblaApi.scrollPrev();
   };
@@ -248,7 +260,10 @@ export function InvestmentGoals() {
               <div className="flex gap-4">
                 {investmentGoals.map((goal) => {
                   const targetAmount = parseFloat(goal.targetAmount);
-                  const currentAmount = 800; // This would come from actual investment data
+                  // Calculate current amount from actual investments
+                  const currentAmount = investments.reduce((total: number, investment: any) => {
+                    return total + parseFloat(investment.currentAmount || 0);
+                  }, 0);
                   const percentage = Math.min((currentAmount / targetAmount) * 100, 100);
                   
                   return (
