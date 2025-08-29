@@ -29,6 +29,7 @@ import Tesseract from 'tesseract.js';
 import pdf2pic from 'pdf2pic';
 import fs from 'fs/promises';
 import Stripe from "stripe";
+import { DocumentProcessorServiceClient } from '@google-cloud/documentai';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -38,9 +39,93 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 // Store SSE connections for progress tracking
 export const extractProgressSessions = new Map<string, any>();
 
-// 🚀 FUNÇÃO OCR NATIVO SEM LIMITES - TESSERACT.JS PURO
+// 🎯 GOOGLE DOCUMENT AI - EXTRAÇÃO PROFISSIONAL
+async function extractWithGoogleDocumentAI(buffer: Buffer): Promise<{ text: string; pages: number; method: string }> {
+  console.log('[Google Document AI] Iniciando extração profissional...');
+  
+  try {
+    // Configurar credenciais do Google Cloud
+    const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS || '{}');
+    
+    // Inicializar cliente Document AI
+    const client = new DocumentProcessorServiceClient({
+      credentials: credentials,
+      projectId: credentials.project_id
+    });
+    
+    // Configurações do processador
+    const projectId = credentials.project_id;
+    const location = 'us'; // ou 'eu' dependendo da região
+    
+    // Primeiro tentar processador de documentos específico, depois genérico
+    let processorId = process.env.DOCUMENT_AI_PROCESSOR_ID || 'form-parser'; // Form parser para extratos bancários
+    
+    // Nome completo do processador
+    let name = `projects/${projectId}/locations/${location}/processors/${processorId}`;
+    
+    console.log(`[Google Document AI] Usando processador: ${name}`);
+    
+    // Converter buffer para base64
+    const encodedImage = buffer.toString('base64');
+    
+    // Preparar requisição
+    const request = {
+      name,
+      rawDocument: {
+        content: encodedImage,
+        mimeType: 'application/pdf',
+      },
+    };
+    
+    // Processar documento
+    console.log('[Google Document AI] Enviando documento para processamento...');
+    let result, document;
+    
+    try {
+      [result] = await client.processDocument(request);
+      document = result.document;
+    } catch (processorError) {
+      console.log(`[Google Document AI] Falha com ${processorId}, tentando processador genérico...`);
+      
+      // Fallback para processador genérico de texto
+      processorId = 'ocr';
+      name = `projects/${projectId}/locations/${location}/processors/${processorId}`;
+      request.name = name;
+      
+      try {
+        [result] = await client.processDocument(request);
+        document = result.document;
+      } catch (fallbackError) {
+        console.log('[Google Document AI] Fallback também falhou, usando Tesseract...');
+        throw new Error('Todos os processadores falharam');
+      }
+    }
+    
+    if (!document || !document.text) {
+      throw new Error('Nenhum texto extraído pelo Document AI');
+    }
+    
+    const extractedText = document.text;
+    const pageCount = document.pages ? document.pages.length : 1;
+    
+    console.log(`[Google Document AI] ✅ Extração concluída: ${extractedText.length} caracteres de ${pageCount} páginas`);
+    
+    return {
+      text: extractedText,
+      pages: pageCount,
+      method: 'google-document-ai'
+    };
+    
+  } catch (error) {
+    console.error('[Google Document AI] Erro na extração:', error);
+    console.log('[Google Document AI] Fallback para Tesseract...');
+    return await extractWithNativeOCR(buffer);
+  }
+}
+
+// 🚀 FUNÇÃO OCR NATIVO SEM LIMITES - TESSERACT.JS PURO (FALLBACK)
 async function extractWithNativeOCR(buffer: Buffer): Promise<{ text: string; pages: number; method: string }> {
-  console.log('[OCR NATIVO] Iniciando extração com Tesseract.js - SEM LIMITES!');
+  console.log('[OCR NATIVO] Iniciando extração com Tesseract.js - FALLBACK');
   
   try {
     console.log('[OCR NATIVO] Convertendo PDF para imagens...');
@@ -1381,16 +1466,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Store PDF processing sessions
   const pdfProcessingSessions = new Map<string, any>();
 
-  // Simple PDF extraction with improved OCR handling
+  // Simple PDF extraction with Google Document AI primary
   async function extractPDFText(buffer: Buffer): Promise<{ text: string; pages: number; method: string }> {
     try {
-      console.log('Starting PDF text extraction via OCR...');
-      const base64Data = buffer.toString('base64');
-          // 🚀 NOVO: OCR NATIVO SEM LIMITES
-      console.log('[OCR NATIVO] Processando PDF com OCR local - SEM LIMITES!');
-      const result = await extractWithNativeOCR(buffer);
+      console.log('Starting PDF text extraction via Google Document AI...');
       
-      // Usar resultado do OCR nativo
+      // Use Google Document AI as primary method
+      const result = await extractWithGoogleDocumentAI(buffer);
+      
       return {
         text: result.text,
         pages: result.pages,
