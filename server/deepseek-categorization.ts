@@ -69,7 +69,7 @@ export class DeepSeekCategorizationService {
    * Processa texto grande em chunks menores
    */
   private async processInChunks(extractText: string): Promise<CategorizedTransaction[]> {
-    const chunkSize = 4000; // Tamanho reduzido para processamento mais rápido
+    const chunkSize = 8000; // Chunks maiores para menos requisições
     const chunks: string[] = [];
     
     // Dividir por linhas para não cortar transações
@@ -91,32 +91,27 @@ export class DeepSeekCategorizationService {
     
     console.log(`[DeepSeek] Dividido em ${chunks.length} chunks de ~${chunkSize} caracteres`);
     
-    const allTransactions: CategorizedTransaction[] = [];
-    
-    // Processar cada chunk
-    for (let i = 0; i < chunks.length; i++) {
+    // Processar chunks em paralelo para maior velocidade
+    const chunkPromises = chunks.map(async (chunk, index) => {
       try {
-        console.log(`[DeepSeek] Processando chunk ${i + 1}/${chunks.length} (${chunks[i].length} chars)`);
+        console.log(`[DeepSeek] Processando chunk ${index + 1}/${chunks.length} (${chunk.length} chars)`);
         
-        const prompt = this.buildExtractionPrompt(chunks[i]);
+        const prompt = this.buildExtractionPrompt(chunk);
         const response = await this.callDeepSeekAPI(prompt);
         const chunkTransactions = this.parseExtractionResponse(response);
         
-        if (chunkTransactions.length > 0) {
-          allTransactions.push(...chunkTransactions);
-          console.log(`[DeepSeek] Chunk ${i + 1}: ${chunkTransactions.length} transações encontradas`);
-        }
-        
-        // Pequena pausa entre chunks para não sobrecarregar a API
-        if (i < chunks.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
+        console.log(`[DeepSeek] Chunk ${index + 1}: ${chunkTransactions.length} transações encontradas`);
+        return chunkTransactions;
         
       } catch (error) {
-        console.error(`[DeepSeek] Erro no chunk ${i + 1}:`, error);
-        // Continua com próximo chunk
+        console.error(`[DeepSeek] Erro no chunk ${index + 1}:`, error);
+        return [];
       }
-    }
+    });
+    
+    // Aguardar todos os chunks processarem em paralelo
+    const allChunkResults = await Promise.all(chunkPromises);
+    const allTransactions = allChunkResults.flat();
     
     console.log(`[DeepSeek] Processamento em chunks concluído: ${allTransactions.length} transações total`);
     return allTransactions;
@@ -152,47 +147,17 @@ export class DeepSeekCategorizationService {
    * Constrói o prompt OTIMIZADO para extração rápida
    */
   private buildExtractionPrompt(extractText: string): string {
-    return `Você é um especialista em extrair transações de extratos bancários brasileiros.
+    return `Extraia transações de extrato bancário. Ignore saldos/cabeçalhos.
 
-INSTRUÇÕES CRÍTICAS:
-1. EXTRAIA APENAS transações financeiras reais (com data, valor e descrição)
-2. IGNORE cabeçalhos, rodapés, saldos, informações do banco, propagandas
-3. CLASSIFIQUE corretamente como income (receita) ou expense (despesa)
+RECEITA: PIX/TED recebido, depósitos, salários
+DESPESA: PIX enviado, compras, saques, tarifas
 
-REGRAS PARA TIPO DE TRANSAÇÃO:
-INCOME (receitas):
-- PIX recebido, TED recebido, DOC recebido
-- Depósitos, créditos em conta
-- Salários, pagamentos recebidos
-- Estornos, reembolsos
-- Transferências recebidas
+CATEGORIAS: Alimentação, Transporte, Casa, Saúde, Outros
 
-EXPENSE (despesas):
-- PIX enviado, TED enviado, DOC enviado
-- Compras (cartão, débito)
-- Pagamentos, boletos
-- Saques
-- Tarifas bancárias
-- Transferências enviadas
-
-CATEGORIAS ESPECÍFICAS:
-- Alimentação: supermercados (EXTRA, CARREFOUR, PÃO DE AÇÚCAR), restaurantes, delivery (IFOOD, UBER EATS)
-- Transporte: combustível (POSTO, SHELL, BR), Uber, 99, metrô, pedágio
-- Casa: aluguel, condomínio, energia (CEMIG, CPFL), água (SABESP), internet (VIVO, CLARO)
-- Saúde: farmácias (DROGA RAIA, PAGUE MENOS), hospitais, laboratórios
-- Educação: escolas, cursos, livros
-- Entretenimento: cinema, streaming (NETFLIX, SPOTIFY), viagens
-- Vestuário: lojas de roupas, calçados
-- Serviços: salão, barbeiro, consertos
-- Investimentos: corretoras, fundos, poupança
-- Outros: se não se encaixar em nenhuma categoria
-
-TEXTO DO EXTRATO:
+TEXTO:
 ${extractText}
 
-IMPORTANTE: Se encontrar menos de 3 transações válidas, retorne array vazio.
-
-RESPONDA APENAS JSON VÁLIDO:
+JSON:
 {"transactions":[{"date":"AAAA-MM-DD","description":"DESC","amount":VALOR,"type":"income/expense","category":"CATEGORIA","confidence":0.9}]}`;
   }
 
@@ -417,7 +382,7 @@ RESPONDA APENAS COM JSON:
    */
   private async callDeepSeekAPI(prompt: string): Promise<any> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout mais agressivo
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // Timeout mais rápido - 8s
 
     try {
       const response = await fetch(this.baseUrl, {

@@ -47,12 +47,12 @@ async function extractWithNativeOCR(buffer: Buffer): Promise<{ text: string; pag
     
     // First convert PDF to images using pdf2pic
     const options = {
-      density: 200,
+      density: 150, // Menor densidade para ser mais rápido
       saveFilename: "page",
       savePath: "/tmp",
-      format: "png",
-      width: 2000,
-      height: 2000
+      format: "jpg", // JPG é mais rápido que PNG
+      width: 1200, // Menor resolução para OCR mais rápido
+      height: 1600
     };
     
     const convert = pdf2pic.fromBuffer(buffer, options);
@@ -63,25 +63,34 @@ async function extractWithNativeOCR(buffer: Buffer): Promise<{ text: string; pag
     let allText = '';
     const totalPages = images.length;
     
-    // Process each page with Tesseract
-    for (let i = 0; i < images.length; i++) {
-      console.log(`[OCR NATIVO] Processando página ${i + 1}/${totalPages}...`);
+    // Process pages in parallel for speed (limit to 3 at a time to avoid memory issues)
+    const batchSize = 3;
+    for (let i = 0; i < images.length; i += batchSize) {
+      const batch = images.slice(i, i + batchSize);
       
-      const imagePath = images[i].path;
-      if (!imagePath) {
-        console.log(`[OCR NATIVO] Erro: caminho da imagem indefinido para página ${i + 1}`);
-        continue;
-      }
-      
-      const { data: { text } } = await Tesseract.recognize(imagePath, 'por', {
-        logger: m => {
-          if (m.status === 'recognizing text') {
-            console.log(`[OCR NATIVO] Página ${i + 1} - Progresso: ${Math.round(m.progress * 100)}%`);
-          }
+      const batchPromises = batch.map(async (image, batchIndex) => {
+        const pageNum = i + batchIndex + 1;
+        console.log(`[OCR NATIVO] Processando página ${pageNum}/${totalPages}...`);
+        
+        const imagePath = image.path;
+        if (!imagePath) {
+          console.log(`[OCR NATIVO] Erro: caminho da imagem indefinido para página ${pageNum}`);
+          return '';
         }
+        
+        const { data: { text } } = await Tesseract.recognize(imagePath, 'por', {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              console.log(`[OCR NATIVO] Página ${pageNum} - Progresso: ${Math.round(m.progress * 100)}%`);
+            }
+          }
+        });
+        
+        return text;
       });
       
-      allText += text + '\n';
+      const batchResults = await Promise.all(batchPromises);
+      allText += batchResults.join('\n') + '\n';
     }
     
     // Cleanup temporary image files
