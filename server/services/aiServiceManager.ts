@@ -30,31 +30,31 @@ export class AIServiceManager {
 
   // Inicializar configurações dos provedores
   private initializeProviders() {
-    // Gemini - 50 requisições por dia grátis
+    // OpenAI - primeira prioridade
+    this.providers.set('openai', {
+      name: 'OpenAI',
+      enabled: !!process.env.OPENAI_API_KEY,
+      quotaLimit: 100, // Depende do tier
+      quotaUsed: 0,
+      resetDate: this.getNextMonthReset(),
+      priority: 1
+    });
+
+    // Gemini - segunda prioridade
     this.providers.set('gemini', {
       name: 'Gemini',
       enabled: !!process.env.GEMINI_API_KEY,
       quotaLimit: 50,
       quotaUsed: 0,
       resetDate: this.getNextDayReset(),
-      priority: 1
+      priority: 2
     });
 
-    // Hugging Face - 1000 requisições por mês grátis
+    // Hugging Face - terceira prioridade
     this.providers.set('huggingface', {
       name: 'Hugging Face',
       enabled: !!process.env.HUGGINGFACE_API_KEY,
       quotaLimit: 1000,
-      quotaUsed: 0,
-      resetDate: this.getNextMonthReset(),
-      priority: 2
-    });
-
-    // OpenAI - se disponível
-    this.providers.set('openai', {
-      name: 'OpenAI',
-      enabled: !!process.env.OPENAI_API_KEY,
-      quotaLimit: 100, // Depende do tier
       quotaUsed: 0,
       resetDate: this.getNextMonthReset(),
       priority: 3
@@ -141,8 +141,8 @@ export class AIServiceManager {
     if (availableProviders.length === 0) {
       return {
         success: false,
-        error: 'Nenhum provedor de IA disponível',
-        provider: 'none',
+        error: 'Assistente temporariamente indisponível',
+        provider: 'assistant',
         timestamp: new Date()
       };
     }
@@ -150,7 +150,6 @@ export class AIServiceManager {
     // Tentar cada provedor em ordem de prioridade
     for (const providerName of availableProviders) {
       try {
-        console.log(`Tentando provedor: ${providerName} para ${type}`);
         
         let result: any;
         switch (providerName) {
@@ -175,12 +174,12 @@ export class AIServiceManager {
           return {
             success: true,
             data: result,
-            provider: providerName,
+            provider: 'assistant',
             timestamp: new Date()
           };
         }
       } catch (error) {
-        console.error(`Erro no provedor ${providerName}:`, error);
+        // Falha silenciosa - tenta próximo provedor
         continue;
       }
     }
@@ -191,14 +190,14 @@ export class AIServiceManager {
       return {
         success: true,
         data: localResult,
-        provider: 'local_fallback',
+        provider: 'assistant',
         timestamp: new Date()
       };
     } catch (error) {
       return {
         success: false,
-        error: 'Todos os provedores falharam',
-        provider: 'none',
+        error: 'Assistente temporariamente indisponível',
+        provider: 'assistant',
         timestamp: new Date()
       };
     }
@@ -214,8 +213,8 @@ export class AIServiceManager {
     if (availableProviders.length === 0) {
       return {
         success: false,
-        error: 'Nenhum provedor de IA disponível',
-        provider: 'none',
+        error: 'Assistente temporariamente indisponível',
+        provider: 'assistant',
         timestamp: new Date()
       };
     }
@@ -223,7 +222,7 @@ export class AIServiceManager {
     // Tentar cada provedor em ordem de prioridade
     for (const providerName of availableProviders) {
       try {
-        console.log(`Tentando provedor: ${providerName}`);
+        // Tentando próximo serviço disponível
         
         let result: any;
         switch (providerName) {
@@ -248,12 +247,12 @@ export class AIServiceManager {
           return {
             success: true,
             data: result,
-            provider: providerName,
+            provider: 'assistant',
             timestamp: new Date()
           };
         }
       } catch (error) {
-        console.error(`Erro no provedor ${providerName}:`, error);
+        // Falha silenciosa - tenta próximo provedor
         continue;
       }
     }
@@ -270,8 +269,8 @@ export class AIServiceManager {
     } catch (error) {
       return {
         success: false,
-        error: 'Todos os provedores falharam',
-        provider: 'none',
+        error: 'Assistente temporariamente indisponível',
+        provider: 'assistant',
         timestamp: new Date()
       };
     }

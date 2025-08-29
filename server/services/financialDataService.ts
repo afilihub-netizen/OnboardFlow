@@ -85,19 +85,19 @@ export class FinancialDataService {
       const response = await aiServiceManager.generateInvestmentSuggestions(userPortfolio, riskProfile);
       
       if (response.success) {
-        console.log(`✅ Sugestões geradas com sucesso usando: ${response.provider}`);
+        console.log(`✅ Sugestões de investimento geradas com sucesso`);
         return {
           ...response.data,
-          provider_used: response.provider,
+          generated_by: 'assistente_financeiro',
           generation_time: response.timestamp,
           hybrid_system: true
         };
       } else {
-        console.log('⚠️ Sistema híbrido falhou, usando fallback local');
+        console.log('⚠️ Gerando sugestões alternativas');
         return this.getAdvancedFallbackSuggestions(userPortfolio, riskProfile);
       }
     } catch (error) {
-      console.error('Erro no sistema híbrido:', error);
+      console.error('Erro na geração de sugestões:', error);
       return this.getAdvancedFallbackSuggestions(userPortfolio, riskProfile);
     }
   }
