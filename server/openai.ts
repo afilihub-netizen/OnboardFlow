@@ -287,8 +287,8 @@ EXEMPLO OBRIGATÓRIO:
     // Log specific error type
     if (error instanceof Error) {
       console.error("Error details:", error.message);
-      if (error.message.includes('timeout')) {
-        console.log("AI request timed out, this chunk will be skipped");
+      if (error.message.includes('timeout') || error.message.includes('fetch failed')) {
+        console.log("AI request failed (timeout/network), this chunk will be skipped");
       }
     }
     
