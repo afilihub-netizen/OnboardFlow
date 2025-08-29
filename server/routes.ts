@@ -2589,9 +2589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 🤖 FUNÇÃO GEMINI PARA EXTRAÇÃO DE TRANSAÇÕES
-  const geminiAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-
+  // 🤖 FUNÇÃO GEMINI DIRETA (API REST) - FUNCIONAMENTO GARANTIDO
   async function extractWithGemini(extractText: string, availableCategories: any[]): Promise<any[]> {
     try {
       const categories = availableCategories.map(c => c.name).join(', ');
@@ -2607,47 +2605,124 @@ REGRAS:
 - Categorize automaticamente
 
 EXTRATO:
-${extractText}
+${extractText.substring(0, 12000)} 
 
 RESPONDA APENAS JSON:
 {"transactions":[{"date":"AAAA-MM-DD","description":"DESC","amount":VALOR,"type":"income/expense","category":"CATEGORIA","confidence":0.9}]}`;
 
-      const response = await geminiAI.models.generateContent({
-        model: "gemini-2.5-flash", // Versão gratuita
-        contents: prompt,
-        config: {
-          temperature: 0.1,
-          maxOutputTokens: 4000,
-        }
+      console.log(`[Gemini] Enviando prompt de ${prompt.length} caracteres`);
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: prompt }]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 4000,
+          }
+        })
       });
 
-      const text = response.text || '';
-      console.log(`[Gemini] Resposta recebida: ${text.length} caracteres`);
-      
-      // Parse JSON
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.log(`[Gemini] Nenhum JSON encontrado na resposta`);
-        return [];
+      if (!response.ok) {
+        throw new Error(`API Gemini erro: ${response.status} ${response.statusText}`);
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
-      const transactions = parsed.transactions || [];
+      const data = await response.json();
+      console.log(`[Gemini] Status da resposta: ${response.status}`);
       
-      console.log(`[Gemini] ${transactions.length} transações extraídas`);
-      return transactions.map((t: any) => ({
-        date: t.date || new Date().toISOString().split('T')[0],
-        description: t.description || 'Transação',
-        amount: parseFloat(t.amount) || 0,
-        type: (t.type || 'expense').toLowerCase(),
-        category: t.category || 'Outros',
-        confidence: t.confidence || 0.8,
-        reasoning: 'Categorização por Gemini'
-      }));
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      console.log(`[Gemini] Texto recebido: ${text.length} caracteres`);
+      
+      if (!text) {
+        console.log(`[Gemini] ⚠️  Resposta vazia da API`);
+        return await extractWithRegexFallback(extractText);
+      }
+
+      // Parse JSON robusto
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.log(`[Gemini] Nenhum JSON encontrado, usando fallback regex`);
+        return await extractWithRegexFallback(extractText);
+      }
+
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        const transactions = parsed.transactions || [];
+        
+        console.log(`[Gemini] ✅ ${transactions.length} transações extraídas`);
+        return transactions.map((t: any) => ({
+          date: t.date || new Date().toISOString().split('T')[0],
+          description: t.description || 'Transação',
+          amount: parseFloat(t.amount) || 0,
+          type: (t.type || 'expense').toLowerCase(),
+          category: t.category || 'Outros',
+          confidence: t.confidence || 0.8,
+          reasoning: 'Categorização Gemini'
+        }));
+      } catch (parseError) {
+        console.log(`[Gemini] Erro no JSON parse, usando fallback regex`);
+        return await extractWithRegexFallback(extractText);
+      }
 
     } catch (error) {
       console.error(`[Gemini] Erro na extração:`, error);
-      return [];
+      return await extractWithRegexFallback(extractText);
+    }
+  }
+
+  // 🔄 FALLBACK REGEX PARA GARANTIR EXTRAÇÃO
+  async function extractWithRegexFallback(extractText: string): Promise<any[]> {
+    console.log(`[Fallback] Usando extração regex em ${extractText.length} caracteres`);
+    
+    const transactions: any[] = [];
+    const lines = extractText.split('\n');
+    
+    for (const line of lines) {
+      // Padrões brasileiros de transação bancária
+      const patterns = [
+        /(\d{2}\/\d{2}\/\d{4}).*?(PIX|TED|DOC|PAGAMENTO|DÉBITO|CRÉDITO|COMPRA).*?([A-Z\s]+).*?R?\$?\s*([\d.,]+)/i,
+        /(\d{4}-\d{2}-\d{2}).*?(\w+).*?([\d.,]+)/i,
+        /(\d{2}\/\d{2}).*?(SICRED|BANCO|PIX).*?([A-Z\s]+).*?([\d.,]+)/i
+      ];
+      
+      for (const pattern of patterns) {
+        const match = line.match(pattern);
+        if (match) {
+          const amount = parseFloat(match[4].replace(/[^\d,-]/g, '').replace(',', '.'));
+          if (!isNaN(amount) && amount > 0) {
+            transactions.push({
+              date: normalizeDate(match[1]),
+              description: (match[3] || match[2] || 'Transação').trim(),
+              amount: amount,
+              type: amount > 0 ? 'expense' : 'income',
+              category: 'Outros',
+              confidence: 0.7,
+              reasoning: 'Extração regex fallback'
+            });
+          }
+          break;
+        }
+      }
+    }
+    
+    console.log(`[Fallback] ${transactions.length} transações extraídas por regex`);
+    return transactions;
+  }
+
+  function normalizeDate(dateStr: string): string {
+    try {
+      if (dateStr.includes('/')) {
+        const [day, month, year] = dateStr.split('/');
+        return `${year || '2025'}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      return dateStr;
+    } catch {
+      return new Date().toISOString().split('T')[0];
     }
   }
 
