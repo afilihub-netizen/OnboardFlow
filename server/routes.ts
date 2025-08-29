@@ -2824,14 +2824,13 @@ RESPONDA APENAS JSON:
     }
   }
 
-  // 🚀 EXTRATOR BANCÁRIO BRASILEIRO ULTRA-ROBUSTO - TODAS AS TRANSAÇÕES
+  // 🎯 EXTRATOR ESPECÍFICO PARA EXTRATOS BRASILEIROS (SICREDI, SANTANDER, ETC.)
   async function extractWithRegexFallback(extractText: string): Promise<any[]> {
-    console.log(`[Extrator] Processando ${extractText.length} caracteres - EXTRAÇÃO COMPLETA`);
+    console.log(`[Extrator] Processando ${extractText.length} caracteres - FILTRO RIGOROSO`);
     
     const transactions: any[] = [];
     const lines = extractText.split('\n');
     
-    // Log de amostra para debug
     console.log(`[Extrator] Total de linhas: ${lines.length}`);
     console.log(`[Extrator] Primeiras 10 linhas:`);
     lines.slice(0, 10).forEach((line, i) => {
@@ -2843,124 +2842,90 @@ RESPONDA APENAS JSON:
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      if (!line || line.length < 5) continue;
+      if (!line || line.length < 20) continue; // Linhas muito curtas não são transações
       
       processedLines++;
       
-      // FILTRAR CABEÇALHOS E METADADOS ANTES DE PROCESSAR
-      const isHeader = line.toLowerCase().includes('sicredi') ||
-                      line.toLowerCase().includes('associado:') ||
-                      line.toLowerCase().includes('cooperativa:') ||
-                      line.toLowerCase().includes('conta:') ||
-                      line.toLowerCase().includes('extrato') ||
-                      line.toLowerCase().includes('período') ||
-                      line.toLowerCase().includes('data') ||
-                      line.toLowerCase().includes('descrição') ||
-                      line.toLowerCase().includes('saldo anterior') ||
-                      line.match(/^\d{4}$/) || // Apenas números como "0715"
-                      line.match(/^\d{5}-\d$/) || // Formato conta "47413-6"
-                      line.length < 10; // Linhas muito curtas
+      // ❌ IGNORAR TOTALMENTE: saldos, cabeçalhos, metadados
+      const shouldIgnore = line.toLowerCase().includes('sicredi') ||
+                          line.toLowerCase().includes('associado') ||
+                          line.toLowerCase().includes('cooperativa') ||
+                          line.toLowerCase().includes('conta:') ||
+                          line.toLowerCase().includes('extrato') ||
+                          line.toLowerCase().includes('período') ||
+                          line.toLowerCase().includes('data         descrição') ||
+                          line.toLowerCase().includes('valor (r$)') ||
+                          line.toLowerCase().includes('saldo (r') ||
+                          line.toLowerCase().includes('saldo anterior') ||
+                          line.toLowerCase().includes('saldo atual') ||
+                          line.toLowerCase().includes('limite') ||
+                          line.match(/^\s*\d{4}\s*$/) || // "0715"
+                          line.match(/^\s*\d{5}-\d\s*$/) || // "47413-6"
+                          line.match(/^\s*al e.*$/) || // Ruído OCR
+                          line.length < 25; // Transações reais têm pelo menos 25 chars
       
-      if (isHeader) continue;
+      if (shouldIgnore) continue;
       
-      // ESTRATÉGIA 1: Buscar qualquer coisa que pareça valor monetário
-      const monetaryMatches = line.match(/([\d]{1,3}(?:\.[\d]{3})*,[\d]{2}|[\d]{2,}(?:,[\d]{2})?)/g);
+      // ✅ BUSCAR APENAS TRANSAÇÕES VÁLIDAS COM PADRÃO ESPECÍFICO
+      // Formato Sicredi: "01/08/2025   RECEBIMENTO PIX 31663906000110 THE ONE PRESTACAO   PIX_CRED        393,67       2.456,40"
+      const transactionPattern = /(\d{2}\/\d{2}\/\d{4})\s+(RECEBIMENTO PIX|PAGAMENTO PIX|COMPRAS NACIONAIS|TED|DOC|DEB\.CTA|LIQUIDACAO|IOF|JUROS|CESTA|DEVOLUCAO|EST\.|DEBITO CONVENIOS)\s+.*?(-?\d{1,3}(?:\.\d{3})*,\d{2})\s+\d/i;
       
-      if (monetaryMatches) {
-        for (const match of monetaryMatches) {
-          // Converter para número
-          let amount = 0;
-          let cleanValue = match.replace(/[^\d,.-]/g, '');
+      const match = line.match(transactionPattern);
+      if (match) {
+        const dateStr = match[1];
+        const operation = match[2];
+        const valueStr = match[3];
+        
+        // Converter valor brasileiro para número
+        const amount = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
+        
+        if (!isNaN(amount) && Math.abs(amount) >= 0.01) {
+          // Extrair descrição completa da operação
+          const fullDescription = line.substring(line.indexOf(operation)).split(/\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})/)[0].trim();
           
-          if (cleanValue.includes('.') && cleanValue.includes(',')) {
-            // Formato brasileiro: 1.234,56
-            amount = parseFloat(cleanValue.replace(/\./g, '').replace(',', '.'));
-          } else if (cleanValue.includes(',')) {
-            // Formato: 1234,56
-            amount = parseFloat(cleanValue.replace(',', '.'));
-          } else {
-            // Só números: 1234
-            amount = parseFloat(cleanValue);
+          // Determinar tipo baseado na operação
+          let type: 'income' | 'expense' = 'expense';
+          if (operation.toLowerCase().includes('recebimento') ||
+              operation.toLowerCase().includes('depósito') ||
+              operation.toLowerCase().includes('crédito') ||
+              operation.toLowerCase().includes('devolucao') ||
+              operation.toLowerCase().includes('est.')) {
+            type = 'income';
           }
           
-          // Se é um valor válido (entre R$ 1 e R$ 50.000)
-          if (amount >= 1 && amount <= 50000) {
-            
-            // Extrair data da linha (se houver)
-            const dateMatch = line.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-](?:\d{4}|\d{2}))/);
-            const dateStr = dateMatch ? dateMatch[1] : '';
-            
-            // Extrair descrição (tudo que não for número ou data)
-            let description = line
-              .replace(/[\d]{1,3}(?:\.[\d]{3})*,[\d]{2}/g, '') // Remove valores
-              .replace(/[\d]{2,}/g, '') // Remove números grandes
-              .replace(/\d{1,2}[\/\-]\d{1,2}[\/\-](?:\d{4}|\d{2})/g, '') // Remove datas
-              .replace(/\s+/g, ' ') // Normaliza espaços
-              .trim();
-            
-            // Se sobrou descrição válida
-            if (description.length >= 3 && description.length <= 100) {
-              
-              // Determinar tipo da transação
-              const isCredit = line.toLowerCase().includes('créd') || 
-                              line.toLowerCase().includes('receita') ||
-                              line.toLowerCase().includes('deposito') ||
-                              line.toLowerCase().includes('+');
-              
-              const isDebit = line.toLowerCase().includes('déb') || 
-                             line.toLowerCase().includes('pix') ||
-                             line.toLowerCase().includes('ted') ||
-                             line.toLowerCase().includes('doc') ||
-                             line.toLowerCase().includes('compra') ||
-                             line.toLowerCase().includes('pagamento') ||
-                             line.toLowerCase().includes('saque') ||
-                             line.toLowerCase().includes('-');
-              
-              // Se não conseguir determinar, assume débito (mais comum)
-              const finalIsCredit = isCredit && !isDebit;
-              
-              transactions.push({
-                date: normalizeDate(dateStr) || new Date().toISOString().split('T')[0],
-                description: description.substring(0, 80),
-                amount: finalIsCredit ? Math.abs(amount) : -Math.abs(amount),
-                type: finalIsCredit ? 'income' : 'expense',
-                category: 'Outros',
-                confidence: 0.7,
-                reasoning: `Extração de valor monetário`
-              });
-              
-              foundTransactions++;
-            }
-          }
+          transactions.push({
+            date: normalizeDate(dateStr),
+            description: fullDescription.substring(0, 100),
+            amount: Math.abs(amount), // Sempre positivo
+            type: type,
+            category: inferCategoryFromDescription(fullDescription),
+            confidence: 0.9,
+            reasoning: 'Transação bancária válida'
+          });
+          
+          foundTransactions++;
         }
       }
     }
     
-    console.log(`[Extrator] Processadas ${processedLines} linhas, encontradas ${foundTransactions} transações`);
+    console.log(`[Extrator] Processadas ${processedLines} linhas, encontradas ${foundTransactions} transações VÁLIDAS`);
     
-    // Filtros MUITO mais flexíveis - preservar máximo de transações
+    // Remoção rigorosa de duplicatas
     const uniqueTransactions = transactions.filter((transaction, index, self) => {
-      // Apenas filtrar valores EXTREMAMENTE inválidos
-      if (Math.abs(transaction.amount) < 0.50 || Math.abs(transaction.amount) > 500000) return false;
+      // Criar chave única
+      const key = `${transaction.date}_${transaction.description.substring(0, 30)}_${transaction.amount.toFixed(2)}`;
       
-      // Filtrar apenas strings OBVIAMENTE inválidas
-      const desc = transaction.description.toLowerCase().trim();
-      if (desc.length < 2 || desc === 'data' || desc === 'descrição') return false;
-      
-      // Remover duplicatas apenas se forem TOTALMENTE idênticas
       return index === self.findIndex(t => 
-        Math.abs(t.amount - transaction.amount) < 0.01 &&
-        t.description.substring(0, 25) === transaction.description.substring(0, 25) &&
-        t.date === transaction.date
+        `${t.date}_${t.description.substring(0, 30)}_${t.amount.toFixed(2)}` === key
       );
     });
     
-    console.log(`[Extrator] ${transactions.length} brutas → ${uniqueTransactions.length} únicas`);
+    console.log(`[Extrator] ${transactions.length} extraídas → ${uniqueTransactions.length} únicas válidas`);
     
     // Log das primeiras transações para verificação
-    console.log(`[Extrator] Primeiras 5 transações VÁLIDAS:`);
+    console.log(`[Extrator] Primeiras 5 transações FINAIS:`);
     uniqueTransactions.slice(0, 5).forEach((t, i) => {
-      console.log(`  ${i+1}. ${t.date} | ${t.description.substring(0, 40)} | R$ ${t.amount.toFixed(2)}`);
+      console.log(`  ${i+1}. ${t.date} | ${t.description.substring(0, 40)} | R$ ${t.amount.toFixed(2)} (${t.type})`);
     });
     
     return uniqueTransactions;
@@ -2976,6 +2941,31 @@ RESPONDA APENAS JSON:
     } catch {
       return new Date().toISOString().split('T')[0];
     }
+  }
+
+  function inferCategoryFromDescription(description: string): string {
+    const desc = description.toLowerCase();
+    
+    if (desc.includes('posto') || desc.includes('combustível') || desc.includes('shell') || desc.includes('br petrobras')) {
+      return 'Transporte';
+    }
+    if (desc.includes('superm') || desc.includes('mercado') || desc.includes('ifood') || desc.includes('uber eats')) {
+      return 'Alimentação';
+    }
+    if (desc.includes('farmacia') || desc.includes('droga') || desc.includes('hospital') || desc.includes('medicina')) {
+      return 'Saúde';
+    }
+    if (desc.includes('cpfl') || desc.includes('energia') || desc.includes('sabesp') || desc.includes('água') || desc.includes('aluguel')) {
+      return 'Casa';
+    }
+    if (desc.includes('tarifa') || desc.includes('iof') || desc.includes('juros') || desc.includes('taxa')) {
+      return 'Tarifas';
+    }
+    if (desc.includes('salário') || desc.includes('pagamento') || desc.includes('recebimento pix')) {
+      return 'Receitas';
+    }
+    
+    return 'Outros';
   }
 
   const httpServer = createServer(app);
