@@ -159,8 +159,8 @@ export class AIServiceManager {
             continue;
         }
 
-        if (result && result.trim() !== '') {
-          console.log(`[${providerName}] Resultado obtido com sucesso:`, result.substring(0, 100) + '...');
+        if (result && (typeof result === 'string' ? result.trim() !== '' : result !== null)) {
+          console.log(`[${providerName}] Resultado obtido com sucesso:`, typeof result === 'string' ? result.substring(0, 100) + '...' : JSON.stringify(result).substring(0, 100) + '...');
           this.incrementQuota(providerName);
           return {
             success: true,
@@ -231,8 +231,8 @@ export class AIServiceManager {
             continue;
         }
 
-        if (result && result.trim() !== '') {
-          console.log(`[${providerName}] Resultado obtido com sucesso:`, result.substring(0, 100) + '...');
+        if (result && (typeof result === 'string' ? result.trim() !== '' : result !== null)) {
+          console.log(`[${providerName}] Resultado obtido com sucesso:`, typeof result === 'string' ? result.substring(0, 100) + '...' : JSON.stringify(result).substring(0, 100) + '...');
           this.incrementQuota(providerName);
           return {
             success: true,

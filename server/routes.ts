@@ -2113,7 +2113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Insights Routes
-  app.get("/api/ai-insights", isAuthenticated, async (req: any, res) => {
+  app.get("/api/stored-insights", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
       const organizationId = req.query.organizationId;
@@ -2122,8 +2122,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const insights = await storage.getAiInsights(userId, organizationId, limit);
       res.json({ insights });
     } catch (error) {
-      console.error("Error fetching AI insights:", error);
-      res.status(500).json({ message: "Failed to fetch AI insights" });
+      console.error("Error fetching stored insights:", error);
+      res.status(500).json({ message: "Failed to fetch stored insights" });
     }
   });
 
