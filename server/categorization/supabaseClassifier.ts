@@ -1,4 +1,6 @@
 import { storage } from '../storage.js';
+import { db } from '../db.js';
+import { sql } from 'drizzle-orm';
 import { 
   detectTipo, 
   extractMerchant, 
@@ -45,7 +47,8 @@ function rulesMatch(merchantNorm: string) {
 // Carrega dicionário do banco Supabase
 async function loadDictionary(userId: string = 'demo-user'): Promise<DictEntry[]> {
   try {
-    const query = `
+    // Usar sql() do drizzle para query raw
+    const result = await db.execute(sql`
       SELECT 
         mm.pattern_substring,
         m.nome as merchant_canonico,
@@ -54,19 +57,21 @@ async function loadDictionary(userId: string = 'demo-user'): Promise<DictEntry[]
         mm.confianca
       FROM public.merchant_map mm
       JOIN public.merchants m ON mm.merchant_id = m.id
-      WHERE mm.user_id = $1
+      WHERE mm.user_id = ${userId}
       ORDER BY length(mm.pattern_substring) DESC
-    `;
+    `);
     
-    const result = await storage.query(query, [userId]);
-    
-    return result.rows.map(row => ({
+    const rows = result.rows as any[];
+    const dict = rows.map(row => ({
       pattern_substring: row.pattern_substring,
       merchant_canonico: row.merchant_canonico,
       cnpj: row.cnpj,
       categoria: row.categoria,
       confianca: row.confianca || 0.99
     }));
+    
+    console.log(`📚 [DICT] Carregado ${dict.length} entradas do dicionário para usuário ${userId}`);
+    return dict;
     
   } catch (error) {
     console.error('❌ [DICT] Erro ao carregar dicionário:', error);
@@ -217,26 +222,36 @@ export async function classifyBatchSupabase(rows: RawBankRow[], userId: string =
 
 // Função para converter resultado do classificador para formato do sistema
 export function convertFromTxNormalizedSupabase(tx: TxNormalized): any {
-  // Determina o valor correto baseado na natureza
+  console.log(`🔄 [CONVERT] Convertendo: ${tx.descricao_raw}`);
+  console.log(`   📊 Valor original: ${tx.valor} | Natureza detectada: ${tx.natureza}`);
+  
+  // Determina o tipo e valor correto baseado na natureza
   let finalAmount: number;
+  let transactionType: string;
   
   if (tx.natureza === 'Entrada') {
-    // Para entradas, garante que o valor seja positivo
+    // Para entradas, valor positivo e type = 'income'
     finalAmount = Math.abs(tx.valor);
+    transactionType = 'income';
+    console.log(`   📈 [RESULTADO] ${tx.nome_canonico}: type="${transactionType}" amount="${finalAmount}" (ENTRADA)`);
   } else if (tx.natureza === 'Saída') {
-    // Para saídas, garante que o valor seja negativo  
+    // Para saídas, valor negativo e type = 'expense'  
     finalAmount = -Math.abs(tx.valor);
+    transactionType = 'expense';
+    console.log(`   📉 [RESULTADO] ${tx.nome_canonico}: type="${transactionType}" amount="${finalAmount}" (SAÍDA)`);
   } else {
     // Neutra: mantém o valor original
     finalAmount = tx.valor;
+    transactionType = tx.valor >= 0 ? 'income' : 'expense';
+    console.log(`   🔄 [RESULTADO] ${tx.nome_canonico}: type="${transactionType}" amount="${finalAmount}" (NEUTRA)`);
   }
   
-  return {
+  const result = {
     date: tx.data,
     description: tx.descricao_raw,
     merchant: tx.nome_canonico,
     category: tx.categoria,
-    type: tx.natureza === 'Entrada' ? 'income' : 'expense',
+    type: transactionType,
     amount: finalAmount.toString(),
     confidence: tx.confidence,
     sources: tx.fontes,
@@ -245,6 +260,9 @@ export function convertFromTxNormalizedSupabase(tx: TxNormalized): any {
     cnpj: tx.cnpj,
     reasoning: `Categorizado via: ${tx.fontes.join(' → ')}`
   };
+  
+  console.log(`   ✅ [FINAL] Enviando para frontend: type="${result.type}" amount="${result.amount}"`);
+  return result;
 }
 
 function getPaymentMethodFromTipo(tipo: string): string {
