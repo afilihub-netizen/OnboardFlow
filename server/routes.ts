@@ -30,6 +30,7 @@ import pdf2pic from 'pdf2pic';
 import fs from 'fs/promises';
 import Stripe from "stripe";
 import { DocumentProcessorServiceClient } from '@google-cloud/documentai';
+import { enriquecerTransacaoComCNPJ, extrairCNPJsDoTexto } from './cnpj-service';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -3069,14 +3070,36 @@ RESPONDA APENAS JSON:
           reasoning: `Transação ${type === 'income' ? 'de entrada' : 'de saída'} - ${category}`
         });
         
-        console.log(`[DEBUG] ✅ Transação: ${description.substring(0, 30)} - R$ ${amount.toFixed(2)}`);
+        console.log(`[DEBUG] ✅ Transação: ${description.substring(0, 30)} - R$ ${amount.toFixed(2)} (${type})`);
       }
     }
     
     console.log(`[Extrator] Encontradas ${transactions.length} transações TOTAIS`);
+    console.log(`[CNPJ] Iniciando enriquecimento com dados empresariais...`);
     
-    // Remoção rigorosa de duplicatas
-    const uniqueTransactions = transactions.filter((transaction, index, self) => {
+    // Enriquecer transações com dados de CNPJ
+    const transacoesEnriquecidas = await Promise.all(
+      transactions.map(async (transacao, index) => {
+        try {
+          console.log(`[CNPJ] Processando ${index + 1}/${transactions.length}: ${transacao.description.substring(0, 40)}...`);
+          const transacaoEnriquecida = await enriquecerTransacaoComCNPJ(transacao);
+          
+          if (transacaoEnriquecida.cnpjInfo) {
+            console.log(`[CNPJ] ✅ ${transacaoEnriquecida.cnpjInfo.razaoSocial} - ${transacaoEnriquecida.category}`);
+          }
+          
+          return transacaoEnriquecida;
+        } catch (error) {
+          console.log(`[CNPJ] ❌ Erro ao enriquecer transação ${index + 1}:`, error);
+          return transacao;
+        }
+      })
+    );
+    
+    console.log(`[CNPJ] Enriquecimento concluído: ${transacoesEnriquecidas.filter(t => t.cnpjInfo).length}/${transactions.length} com dados empresariais`);
+    
+    // Remoção rigorosa de duplicatas das transações enriquecidas
+    const uniqueTransactions = transacoesEnriquecidas.filter((transaction, index, self) => {
       // Criar chave única
       const key = `${transaction.date}_${transaction.description.substring(0, 30)}_${transaction.amount.toFixed(2)}`;
       
@@ -3086,6 +3109,9 @@ RESPONDA APENAS JSON:
     });
     
     console.log(`[Extrator] ${transactions.length} extraídas → ${uniqueTransactions.length} únicas válidas`);
+    
+    const comCNPJ = uniqueTransactions.filter(t => t.cnpjInfo).length;
+    console.log(`[CNPJ] ${comCNPJ}/${uniqueTransactions.length} transações enriquecidas com dados empresariais`);
     
     // Log das primeiras transações para verificação
     console.log(`[Extrator] Primeiras 5 transações FINAIS:`);
