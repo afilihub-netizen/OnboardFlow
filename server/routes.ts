@@ -2910,23 +2910,62 @@ RESPONDA APENAS JSON:
   function inferCategoryFromDescription(description: string): string {
     const desc = description.toLowerCase();
     
-    if (desc.includes('posto') || desc.includes('combustível') || desc.includes('shell') || desc.includes('br petrobras')) {
+    // 🚗 TRANSPORTE
+    if (desc.includes('posto') || desc.includes('combustível') || desc.includes('shell') || 
+        desc.includes('br petrobras') || desc.includes('auto posto') || desc.includes('ipiranga') ||
+        desc.includes('uber') || desc.includes('99') || desc.includes('taxi') || desc.includes('gasolina')) {
       return 'Transporte';
     }
-    if (desc.includes('superm') || desc.includes('mercado') || desc.includes('ifood') || desc.includes('uber eats')) {
+    
+    // 🍽️ ALIMENTAÇÃO  
+    if (desc.includes('superm') || desc.includes('mercado') || desc.includes('ifood') || 
+        desc.includes('uber eats') || desc.includes('padaria') || desc.includes('açougue') ||
+        desc.includes('restaurante') || desc.includes('lanchonete') || desc.includes('bar ') ||
+        desc.includes('pizzaria') || desc.includes('hamburger')) {
       return 'Alimentação';
     }
-    if (desc.includes('farmacia') || desc.includes('droga') || desc.includes('hospital') || desc.includes('medicina')) {
+    
+    // 🏥 SAÚDE
+    if (desc.includes('farmacia') || desc.includes('droga') || desc.includes('hospital') || 
+        desc.includes('medicina') || desc.includes('clinica') || desc.includes('medico') ||
+        desc.includes('laboratorio') || desc.includes('exame')) {
       return 'Saúde';
     }
-    if (desc.includes('cpfl') || desc.includes('energia') || desc.includes('sabesp') || desc.includes('água') || desc.includes('aluguel')) {
+    
+    // 🏠 CASA E MORADIA
+    if (desc.includes('cpfl') || desc.includes('energia') || desc.includes('sabesp') || 
+        desc.includes('água') || desc.includes('aluguel') || desc.includes('luz ') ||
+        desc.includes('internet') || desc.includes('vivo') || desc.includes('claro') ||
+        desc.includes('tim ') || desc.includes('gas ') || desc.includes('condominio')) {
       return 'Casa';
     }
-    if (desc.includes('tarifa') || desc.includes('iof') || desc.includes('juros') || desc.includes('taxa')) {
+    
+    // 🛍️ COMPRAS E VAREJO
+    if (desc.includes('lojas americanas') || desc.includes('magazine luiza') || desc.includes('casas bahia') ||
+        desc.includes('extra ') || desc.includes('carrefour') || desc.includes('walmart') ||
+        desc.includes('shopping') || desc.includes('loja ') || desc.includes('varejo')) {
+      return 'Compras';
+    }
+    
+    // 💰 RECEITAS E RENDIMENTOS
+    if (desc.includes('salário') || desc.includes('recebimento pix') || desc.includes('transferencia recebida') ||
+        desc.includes('deposito') || desc.includes('rendimento') || desc.includes('freelance') ||
+        desc.includes('estorno') || desc.includes('devolução')) {
+      return 'Receitas';
+    }
+    
+    // 💳 TARIFAS E TAXAS BANCÁRIAS
+    if (desc.includes('tarifa') || desc.includes('iof') || desc.includes('juros') || 
+        desc.includes('taxa') || desc.includes('anuidade') || desc.includes('manutenção') ||
+        desc.includes('saque ') || desc.includes('transferencia')) {
       return 'Tarifas';
     }
-    if (desc.includes('salário') || desc.includes('pagamento') || desc.includes('recebimento pix')) {
-      return 'Receitas';
+    
+    // 📱 SERVIÇOS E ASSINATURAS
+    if (desc.includes('netflix') || desc.includes('spotify') || desc.includes('amazon') ||
+        desc.includes('google') || desc.includes('apple') || desc.includes('youtube') ||
+        desc.includes('whatsapp') || desc.includes('telegram')) {
+      return 'Assinaturas';
     }
     
     return 'Outros';
@@ -2997,15 +3036,37 @@ RESPONDA APENAS JSON:
           description = 'Transação bancária';
         }
         
+        // Determinar se é entrada ou saída baseado na descrição
+        let type: 'income' | 'expense' = 'expense'; // padrão
+        const descLower = description.toLowerCase();
+        
+        // Palavras-chave para ENTRADAS (receitas)
+        if (descLower.includes('recebimento') ||
+            descLower.includes('deposito') ||
+            descLower.includes('depósito') ||
+            descLower.includes('estorno') ||
+            descLower.includes('devolucao') ||
+            descLower.includes('devolução') ||
+            descLower.includes('credito') ||
+            descLower.includes('crédito') ||
+            descLower.includes('transferencia recebida') ||
+            descLower.includes('salario') ||
+            descLower.includes('salário')) {
+          type = 'income';
+        }
+        
+        // Categorizar baseado na descrição
+        const category = inferCategoryFromDescription(description);
+        
         // Adicionar transação
         transactions.push({
           date: normalizeDate(dateStr),
           description: description.substring(0, 100),
           amount: amount,
-          type: 'expense',
-          category: 'Outros',
-          confidence: 0.8,
-          reasoning: 'Extração simples'
+          type: type,
+          category: category,
+          confidence: 0.9,
+          reasoning: `Transação ${type === 'income' ? 'de entrada' : 'de saída'} - ${category}`
         });
         
         console.log(`[DEBUG] ✅ Transação: ${description.substring(0, 30)} - R$ ${amount.toFixed(2)}`);
