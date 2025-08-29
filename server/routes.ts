@@ -6,6 +6,7 @@ import { notificationService } from "./notificationService";
 import { financialAssistant, type FinancialData, type ChatMessage } from "./ai-assistant";
 import { insertNotificationSchema, insertWorkflowTriggerSchema, insertEmailPreferencesSchema } from "@shared/schema";
 import { analyzeExtractWithAI, generateFinancialInsights, setProgressSessions } from "./openai";
+import { financialDataService } from "./services/financialDataService.js";
 import {
   insertCategorySchema,
   insertTransactionSchema,
@@ -969,6 +970,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting investment:", error);
       res.status(500).json({ message: "Failed to delete investment" });
+    }
+  });
+
+  // Financial data routes - Real-time market data
+  app.get("/api/financial/stock/:symbol", isAuthenticated, async (req: any, res) => {
+    try {
+      const { symbol } = req.params;
+      const stockData = await financialDataService.getBrazilianStockData(symbol);
+      
+      if (!stockData) {
+        return res.status(404).json({ message: "Stock data not found" });
+      }
+      
+      res.json(stockData);
+    } catch (error) {
+      console.error(`Error fetching stock data for ${req.params.symbol}:`, error);
+      res.status(500).json({ message: "Failed to fetch stock data" });
+    }
+  });
+
+  app.get("/api/financial/crypto/:symbol", isAuthenticated, async (req: any, res) => {
+    try {
+      const { symbol } = req.params;
+      const cryptoData = await financialDataService.getCryptoData(symbol);
+      
+      if (!cryptoData) {
+        return res.status(404).json({ message: "Crypto data not found" });
+      }
+      
+      res.json(cryptoData);
+    } catch (error) {
+      console.error(`Error fetching crypto data for ${req.params.symbol}:`, error);
+      res.status(500).json({ message: "Failed to fetch crypto data" });
+    }
+  });
+
+  app.get("/api/financial/fii/:symbol", isAuthenticated, async (req: any, res) => {
+    try {
+      const { symbol } = req.params;
+      const fiiData = await financialDataService.getFIIData(symbol);
+      
+      if (!fiiData) {
+        return res.status(404).json({ message: "FII data not found" });
+      }
+      
+      res.json(fiiData);
+    } catch (error) {
+      console.error(`Error fetching FII data for ${req.params.symbol}:`, error);
+      res.status(500).json({ message: "Failed to fetch FII data" });
+    }
+  });
+
+  // AI Investment Suggestions
+  app.post("/api/investments/suggestions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const { riskProfile = 'moderado' } = req.body;
+      
+      // Get user's current portfolio
+      const userPortfolio = await storage.getInvestments(userId);
+      
+      const suggestions = await financialDataService.generateInvestmentSuggestions(
+        userPortfolio, 
+        riskProfile
+      );
+      
+      res.json({
+        success: true,
+        portfolio_summary: {
+          total_investments: userPortfolio.length,
+          total_value: userPortfolio.reduce((sum, inv) => sum + parseFloat(inv.currentAmount), 0)
+        },
+        suggestions,
+        generated_at: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error generating investment suggestions:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to generate investment suggestions" 
+      });
+    }
+  });
+
+  // Batch market data for portfolio
+  app.post("/api/financial/portfolio-data", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      const userPortfolio = await storage.getInvestments(userId);
+      
+      const portfolioWithRealTimeData = await Promise.all(
+        userPortfolio.map(async (investment) => {
+          let marketData = null;
+          
+          // Extract symbol from investment name (e.g., "Bitcoin (BTC)" -> "BTC")
+          const symbolMatch = investment.name.match(/\(([A-Z0-9]+)\)|\b([A-Z0-9]{3,5})\b/);
+          const symbol = symbolMatch ? (symbolMatch[1] || symbolMatch[2]) : investment.name;
+          
+          try {
+            if (investment.type === 'stocks') {
+              marketData = await financialDataService.getBrazilianStockData(symbol);
+            } else if (investment.type === 'crypto') {
+              marketData = await financialDataService.getCryptoData(symbol);
+            } else if (investment.type === 'real_estate_fund') {
+              marketData = await financialDataService.getFIIData(symbol);
+            }
+          } catch (error) {
+            console.error(`Failed to fetch data for ${symbol}:`, error);
+          }
+          
+          return {
+            ...investment,
+            marketData,
+            realTimePrice: marketData?.price || marketData?.price_brl,
+            priceChange: marketData?.change || marketData?.change_24h,
+            lastUpdated: marketData?.last_updated
+          };
+        })
+      );
+      
+      res.json(portfolioWithRealTimeData);
+    } catch (error) {
+      console.error("Error fetching portfolio real-time data:", error);
+      res.status(500).json({ message: "Failed to fetch portfolio data" });
     }
   });
 

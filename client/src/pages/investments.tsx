@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/header";
 import { InvestmentOverview } from "@/components/investments/investment-overview";
 import { Portfolio } from "@/components/investments/portfolio";
 import { InvestmentNotifications } from "@/components/investments/investment-notifications";
+import { AISuggestions } from "@/components/investments/ai-suggestions";
 
 export default function Investments() {
   const { toast } = useToast();
@@ -43,6 +44,7 @@ export default function Investments() {
         <div className="p-6 space-y-6">
           <InvestmentNotifications />
           <InvestmentOverview />
+          <AISuggestions />
           <Portfolio />
         </div>
       </main>

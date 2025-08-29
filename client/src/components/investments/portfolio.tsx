@@ -48,14 +48,19 @@ export function Portfolio() {
   });
 
   const { data: investments, isLoading } = useQuery({
-    queryKey: ['/api/investments'],
+    queryKey: ['/api/financial/portfolio-data'],
     queryFn: async () => {
-      const response = await fetch('/api/investments', {
+      const response = await fetch('/api/financial/portfolio-data', {
+        method: 'POST',
         credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
       if (!response.ok) throw new Error('Failed to fetch investments');
       return response.json();
     },
+    refetchInterval: 30000, // Atualiza a cada 30 segundos
   });
 
   const createInvestmentMutation = useMutation({
@@ -73,7 +78,7 @@ export function Portfolio() {
       });
       form.reset();
       setIsDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['/api/investments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/financial/portfolio-data'] });
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
@@ -415,7 +420,11 @@ export function Portfolio() {
                 investment.currentAmount
               );
               const portfolioPercentage = getPortfolioPercentage(investment.currentAmount);
-              const marketPrice = getMarketPrice(investment.name, investment.type);
+              
+              // Usar dados em tempo real se disponível
+              const realTimePrice = investment.realTimePrice;
+              const priceChange = investment.priceChange;
+              const isRealTimeData = !!investment.marketData;
               
               return (
                 <div 
@@ -435,23 +444,44 @@ export function Portfolio() {
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           {typeInfo.label}
                         </p>
-                        {marketPrice && (
-                          <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                            Preço: {investment.type === 'crypto' ? `$${marketPrice.toFixed(2)}` : `R$ ${marketPrice.toFixed(2)}`}
-                          </p>
+                        {isRealTimeData && realTimePrice && (
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                              Tempo Real: {investment.type === 'crypto' ? 
+                                `R$ ${realTimePrice.toFixed(2)}` : 
+                                `R$ ${realTimePrice.toFixed(2)}`
+                              }
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="flex items-center">
-                        {gain >= 0 ? (
-                          <TrendingUp className="w-3 h-3 text-green-600 mr-1" />
+                        {priceChange !== undefined ? (
+                          <>
+                            {priceChange >= 0 ? (
+                              <TrendingUp className="w-3 h-3 text-green-600 mr-1" />
+                            ) : (
+                              <TrendingDown className="w-3 h-3 text-red-600 mr-1" />
+                            )}
+                            <p className={`text-xs ${priceChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+                            </p>
+                          </>
                         ) : (
-                          <TrendingDown className="w-3 h-3 text-red-600 mr-1" />
+                          <>
+                            {gain >= 0 ? (
+                              <TrendingUp className="w-3 h-3 text-green-600 mr-1" />
+                            ) : (
+                              <TrendingDown className="w-3 h-3 text-red-600 mr-1" />
+                            )}
+                            <p className={`text-xs ${gain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {gainPercentage.toFixed(1)}%
+                            </p>
+                          </>
                         )}
-                        <p className={`text-xs ${gain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {gainPercentage.toFixed(1)}%
-                        </p>
                       </div>
                     </div>
                   </div>
@@ -463,6 +493,11 @@ export function Portfolio() {
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Rendimento: {gain >= 0 ? '+' : ''}{formatCurrency(gain.toString())}
                     </p>
+                    {isRealTimeData && (
+                      <p className="text-xs text-green-600 dark:text-green-400 font-medium">
+                        🟢 Dados atualizados em tempo real
+                      </p>
+                    )}
                     <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1">
                       <div 
                         className={`bg-${typeInfo.color}-500 h-1 rounded-full`} 
