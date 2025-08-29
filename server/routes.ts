@@ -2824,6 +2824,31 @@ RESPONDA APENAS JSON:
     }
   }
 
+  function inferCategoryFromDescription(description: string): string {
+    const desc = description.toLowerCase();
+    
+    if (desc.includes('posto') || desc.includes('combustível') || desc.includes('shell') || desc.includes('br petrobras')) {
+      return 'Transporte';
+    }
+    if (desc.includes('superm') || desc.includes('mercado') || desc.includes('ifood') || desc.includes('uber eats')) {
+      return 'Alimentação';
+    }
+    if (desc.includes('farmacia') || desc.includes('droga') || desc.includes('hospital') || desc.includes('medicina')) {
+      return 'Saúde';
+    }
+    if (desc.includes('cpfl') || desc.includes('energia') || desc.includes('sabesp') || desc.includes('água') || desc.includes('aluguel')) {
+      return 'Casa';
+    }
+    if (desc.includes('tarifa') || desc.includes('iof') || desc.includes('juros') || desc.includes('taxa')) {
+      return 'Tarifas';
+    }
+    if (desc.includes('salário') || desc.includes('pagamento') || desc.includes('recebimento pix')) {
+      return 'Receitas';
+    }
+    
+    return 'Outros';
+  }
+
   // 🎯 EXTRATOR ESPECÍFICO PARA EXTRATOS BRASILEIROS (SICREDI, SANTANDER, ETC.)
   async function extractWithRegexFallback(extractText: string): Promise<any[]> {
     console.log(`[Extrator] Processando ${extractText.length} caracteres - FILTRO RIGOROSO`);
@@ -2866,44 +2891,64 @@ RESPONDA APENAS JSON:
       
       if (shouldIgnore) continue;
       
-      // ✅ BUSCAR APENAS TRANSAÇÕES VÁLIDAS COM PADRÃO ESPECÍFICO
-      // Formato Sicredi: "01/08/2025   RECEBIMENTO PIX 31663906000110 THE ONE PRESTACAO   PIX_CRED        393,67       2.456,40"
-      const transactionPattern = /(\d{2}\/\d{2}\/\d{4})\s+(RECEBIMENTO PIX|PAGAMENTO PIX|COMPRAS NACIONAIS|TED|DOC|DEB\.CTA|LIQUIDACAO|IOF|JUROS|CESTA|DEVOLUCAO|EST\.|DEBITO CONVENIOS)\s+.*?(-?\d{1,3}(?:\.\d{3})*,\d{2})\s+\d/i;
+      // ✅ PADRÃO SIMPLIFICADO: Qualquer linha com data + valores monetários
+      const dateMatch = line.match(/(\d{2}\/\d{2}\/\d{4})/);
+      const moneyMatches = line.match(/(-?\d{1,3}(?:\.\d{3})*,\d{2})/g);
       
-      const match = line.match(transactionPattern);
-      if (match) {
-        const dateStr = match[1];
-        const operation = match[2];
-        const valueStr = match[3];
+      if (dateMatch && moneyMatches && moneyMatches.length >= 1) {
+        console.log(`[DEBUG] Processando linha: "${line.substring(0, 100)}"`);
         
-        // Converter valor brasileiro para número
+        const dateStr = dateMatch[1];
+        
+        // Pegar o primeiro valor (valor da transação)
+        const valueStr = moneyMatches[0];
         const amount = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
         
         if (!isNaN(amount) && Math.abs(amount) >= 0.01) {
-          // Extrair descrição completa da operação
-          const fullDescription = line.substring(line.indexOf(operation)).split(/\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})/)[0].trim();
+          // Extrair a descrição da operação (tudo entre data e primeiro valor)
+          const startPos = line.indexOf(dateStr) + dateStr.length;
+          const endPos = line.indexOf(valueStr);
+          const description = line.substring(startPos, endPos).trim();
           
-          // Determinar tipo baseado na operação
-          let type: 'income' | 'expense' = 'expense';
-          if (operation.toLowerCase().includes('recebimento') ||
-              operation.toLowerCase().includes('depósito') ||
-              operation.toLowerCase().includes('crédito') ||
-              operation.toLowerCase().includes('devolucao') ||
-              operation.toLowerCase().includes('est.')) {
-            type = 'income';
+          // Verificar se é uma operação bancária válida
+          const validOperations = [
+            'recebimento pix', 'pagamento pix', 'compras nacionais', 
+            'ted', 'doc', 'deb.cta', 'liquidacao', 'iof', 'juros', 
+            'cesta', 'devolucao', 'est.', 'debito convenios'
+          ];
+          
+          const isValidOperation = validOperations.some(op => 
+            description.toLowerCase().includes(op)
+          );
+          
+          if (isValidOperation && description.length >= 5) {
+            // Determinar tipo baseado na descrição
+            let type: 'income' | 'expense' = 'expense';
+            const descLower = description.toLowerCase();
+            
+            if (descLower.includes('recebimento') ||
+                descLower.includes('depósito') ||
+                descLower.includes('crédito') ||
+                descLower.includes('devolucao') ||
+                descLower.includes('est.')) {
+              type = 'income';
+            }
+            
+            transactions.push({
+              date: normalizeDate(dateStr),
+              description: description.substring(0, 100),
+              amount: Math.abs(amount),
+              type: type,
+              category: inferCategoryFromDescription(description),
+              confidence: 0.9,
+              reasoning: 'Transação bancária extraída'
+            });
+            
+            foundTransactions++;
+            console.log(`[DEBUG] ✅ Transação extraída: ${description.substring(0, 30)} - R$ ${amount}`);
+          } else {
+            console.log(`[DEBUG] ❌ Operação inválida: "${description.substring(0, 50)}"`);
           }
-          
-          transactions.push({
-            date: normalizeDate(dateStr),
-            description: fullDescription.substring(0, 100),
-            amount: Math.abs(amount), // Sempre positivo
-            type: type,
-            category: inferCategoryFromDescription(fullDescription),
-            confidence: 0.9,
-            reasoning: 'Transação bancária válida'
-          });
-          
-          foundTransactions++;
         }
       }
     }
@@ -2941,31 +2986,6 @@ RESPONDA APENAS JSON:
     } catch {
       return new Date().toISOString().split('T')[0];
     }
-  }
-
-  function inferCategoryFromDescription(description: string): string {
-    const desc = description.toLowerCase();
-    
-    if (desc.includes('posto') || desc.includes('combustível') || desc.includes('shell') || desc.includes('br petrobras')) {
-      return 'Transporte';
-    }
-    if (desc.includes('superm') || desc.includes('mercado') || desc.includes('ifood') || desc.includes('uber eats')) {
-      return 'Alimentação';
-    }
-    if (desc.includes('farmacia') || desc.includes('droga') || desc.includes('hospital') || desc.includes('medicina')) {
-      return 'Saúde';
-    }
-    if (desc.includes('cpfl') || desc.includes('energia') || desc.includes('sabesp') || desc.includes('água') || desc.includes('aluguel')) {
-      return 'Casa';
-    }
-    if (desc.includes('tarifa') || desc.includes('iof') || desc.includes('juros') || desc.includes('taxa')) {
-      return 'Tarifas';
-    }
-    if (desc.includes('salário') || desc.includes('pagamento') || desc.includes('recebimento pix')) {
-      return 'Receitas';
-    }
-    
-    return 'Outros';
   }
 
   const httpServer = createServer(app);
