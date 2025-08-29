@@ -152,14 +152,47 @@ export class DeepSeekCategorizationService {
    * Constrói o prompt OTIMIZADO para extração rápida
    */
   private buildExtractionPrompt(extractText: string): string {
-    return `Extraia transações bancárias brasileiras do texto.
+    return `Você é um especialista em extrair transações de extratos bancários brasileiros.
 
-CATEGORIAS: Alimentação, Transporte, Casa, Saúde, Educação, Entretenimento, Vestuário, Serviços, Assinaturas, Investimentos, Outros.
+INSTRUÇÕES CRÍTICAS:
+1. EXTRAIA APENAS transações financeiras reais (com data, valor e descrição)
+2. IGNORE cabeçalhos, rodapés, saldos, informações do banco, propagandas
+3. CLASSIFIQUE corretamente como income (receita) ou expense (despesa)
 
-TEXTO:
+REGRAS PARA TIPO DE TRANSAÇÃO:
+INCOME (receitas):
+- PIX recebido, TED recebido, DOC recebido
+- Depósitos, créditos em conta
+- Salários, pagamentos recebidos
+- Estornos, reembolsos
+- Transferências recebidas
+
+EXPENSE (despesas):
+- PIX enviado, TED enviado, DOC enviado
+- Compras (cartão, débito)
+- Pagamentos, boletos
+- Saques
+- Tarifas bancárias
+- Transferências enviadas
+
+CATEGORIAS ESPECÍFICAS:
+- Alimentação: supermercados (EXTRA, CARREFOUR, PÃO DE AÇÚCAR), restaurantes, delivery (IFOOD, UBER EATS)
+- Transporte: combustível (POSTO, SHELL, BR), Uber, 99, metrô, pedágio
+- Casa: aluguel, condomínio, energia (CEMIG, CPFL), água (SABESP), internet (VIVO, CLARO)
+- Saúde: farmácias (DROGA RAIA, PAGUE MENOS), hospitais, laboratórios
+- Educação: escolas, cursos, livros
+- Entretenimento: cinema, streaming (NETFLIX, SPOTIFY), viagens
+- Vestuário: lojas de roupas, calçados
+- Serviços: salão, barbeiro, consertos
+- Investimentos: corretoras, fundos, poupança
+- Outros: se não se encaixar em nenhuma categoria
+
+TEXTO DO EXTRATO:
 ${extractText}
 
-RESPONDA APENAS JSON:
+IMPORTANTE: Se encontrar menos de 3 transações válidas, retorne array vazio.
+
+RESPONDA APENAS JSON VÁLIDO:
 {"transactions":[{"date":"AAAA-MM-DD","description":"DESC","amount":VALOR,"type":"income/expense","category":"CATEGORIA","confidence":0.9}]}`;
   }
 
@@ -202,20 +235,80 @@ RESPONDA APENAS JSON:
       const transactions = parsed.transactions || [];
       console.log(`[DeepSeek] ${transactions.length} transações encontradas no JSON`);
 
-      return transactions.map((t: any) => ({
-        date: t.date || new Date().toISOString().split('T')[0],
-        description: t.description || 'Transação sem descrição',
-        amount: parseFloat(t.amount) || 0,
-        type: (t.type || 'expense').toLowerCase(),
-        category: t.category || 'Outros',
-        confidence: t.confidence || 0.8,
-        reasoning: t.reasoning || 'Categorização automática'
-      }));
+      const validTransactions = transactions
+        .map((t: any) => ({
+          date: t.date || new Date().toISOString().split('T')[0],
+          description: t.description || 'Transação sem descrição',
+          amount: parseFloat(t.amount) || 0,
+          type: (t.type || 'expense').toLowerCase(),
+          category: t.category || 'Outros',
+          confidence: t.confidence || 0.8,
+          reasoning: t.reasoning || 'Categorização automática'
+        }))
+        .filter(this.isValidTransaction);
+
+      console.log(`[DeepSeek] ${validTransactions.length}/${transactions.length} transações válidas após filtros`);
+      return validTransactions;
 
     } catch (error) {
       console.error('[DeepSeek] Erro ao processar resposta:', error);
       return this.extractWithRegex(response);
     }
+  }
+
+  /**
+   * Valida se uma transação é válida e não é ruído
+   */
+  private isValidTransaction(transaction: CategorizedTransaction): boolean {
+    // Verificar se o valor é válido (maior que R$ 0,01)
+    if (!transaction.amount || transaction.amount < 0.01) {
+      return false;
+    }
+
+    // Verificar se a descrição não é muito genérica ou vazia
+    const description = transaction.description.toLowerCase().trim();
+    const invalidDescriptions = [
+      'transação sem descrição',
+      'sem descrição',
+      'desc',
+      'saldo',
+      'saldo anterior',
+      'saldo atual',
+      'extrato',
+      'conta corrente',
+      'agência',
+      'banco',
+      'cpf',
+      'cnpj',
+      'página',
+      'período',
+      'total',
+      'limite'
+    ];
+
+    if (description.length < 3 || invalidDescriptions.some(inv => description.includes(inv))) {
+      return false;
+    }
+
+    // Verificar se a data é válida (últimos 2 anos)
+    const transactionDate = new Date(transaction.date);
+    const twoYearsAgo = new Date();
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    if (isNaN(transactionDate.getTime()) || 
+        transactionDate < twoYearsAgo || 
+        transactionDate > tomorrow) {
+      return false;
+    }
+
+    // Verificar se o tipo é válido
+    if (!['income', 'expense'].includes(transaction.type)) {
+      return false;
+    }
+
+    return true;
   }
 
   /**
@@ -254,8 +347,9 @@ RESPONDA APENAS JSON:
       }
     }
     
-    console.log(`[DeepSeek] Regex extraiu ${transactions.length} transações`);
-    return transactions;
+    const validTransactions = transactions.filter(this.isValidTransaction);
+    console.log(`[DeepSeek] Regex extraiu ${validTransactions.length}/${transactions.length} transações válidas`);
+    return validTransactions;
   }
 
   /**
