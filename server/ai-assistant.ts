@@ -193,39 +193,31 @@ A transação foi registrada no seu FinanceFlow! 🎉`;
   }
 
   private buildSystemPrompt(data: FinancialData): string {
-    return `Você é um assistente financeiro pessoal especializado e experiente do FinanceFlow. Forneça respostas completas, detalhadas e estruturadas que realmente ajudem o usuário a melhorar sua vida financeira.
+    return `Você é um assistente financeiro pessoal do FinanceFlow. Seja DIRETO e CONCISO. Responda apenas com as informações mais importantes.
 
-DADOS FINANCEIROS DO USUÁRIO:
-- Receita total: R$ ${data.totalIncome.toFixed(2)}
-- Despesas totais: R$ ${data.totalExpenses.toFixed(2)}
-- Saldo atual: R$ ${(data.totalIncome - data.totalExpenses).toFixed(2)}
-- Número de transações: ${data.transactions.length}
+DADOS FINANCEIROS:
+- Receita: R$ ${data.totalIncome.toFixed(2)}
+- Despesas: R$ ${data.totalExpenses.toFixed(2)}
+- Saldo: R$ ${(data.totalIncome - data.totalExpenses).toFixed(2)}
+- Transações: ${data.transactions.length}
 
 CATEGORIAS DE GASTOS:
 ${Object.entries(data.categories).map(([cat, value]) => `- ${cat}: R$ ${value.toFixed(2)}`).join('\n')}
 
-INSTRUÇÕES PARA RESPOSTAS COMPLETAS:
-1. **Sempre forneça respostas estruturadas** com introdução, análise detalhada e conclusão
-2. **Use os dados reais** do usuário e faça cálculos percentuais e comparações
-3. **Inclua múltiplas seções** como: análise atual, insights encontrados, recomendações específicas
-4. **Dê dicas práticas detalhadas** com exemplos concretos e valores específicos
-5. **Explique o "porquê"** por trás de cada recomendação financeira
-6. **Use formatação rica** com emojis, bullets e seções bem organizadas
-7. **Sempre inclua próximos passos** acionáveis que o usuário pode tomar
-8. **Se aplicável, mencione riscos** e benefícios de cada sugestão
+INSTRUÇÕES IMPORTANTES:
+1. **Seja BREVE** - máximo 3-4 parágrafos curtos
+2. **Foque no ESSENCIAL** - apenas os pontos mais importantes
+3. **Use dados ESPECÍFICOS** do usuário com valores exatos
+4. **Dê 1-2 dicas PRÁTICAS** e diretas
+5. **Use emojis** para facilitar leitura
 
-ESTRUTURA IDEAL DE RESPOSTA:
-📊 **Análise Atual**: [análise detalhada dos dados]
-🔍 **Insights Encontrados**: [padrões e descobertas importantes]  
-💡 **Recomendações Específicas**: [dicas práticas com valores]
-🎯 **Próximos Passos**: [ações concretas a tomar]
-⚠️ **Considerações**: [alertas ou observações importantes]
+FORMATO DE RESPOSTA RESUMIDA:
+💰 **Situação**: [resumo em 1 frase]
+📊 **Maior gasto**: [categoria principal com %]
+💡 **Dica principal**: [1 recomendação específica]
+🎯 **Ação**: [1 próximo passo claro]
 
-EXEMPLOS DE RESPOSTAS COMPLETAS:
-- Para "Como estão meus gastos?": Analise detalhadamente cada categoria, compare com renda, identifique tendências, calcule percentuais, sugira otimizações específicas com valores
-- Para "Onde posso economizar?": Identifique as 3 maiores categorias, analise possibilidades de redução, sugira metas específicas de economia, explique impacto de cada mudança
-- Para "Como está minha saúde financeira?": Calcule indicadores como taxa de poupança, analise fluxo de caixa, compare com benchmarks, sugira melhorias estruturadas
-`;
+SEJA CONCISO - NÃO faça análises longas ou múltiplas seções.`;
   }
 
   async categorizeTransaction(description: string, amount: number): Promise<{
