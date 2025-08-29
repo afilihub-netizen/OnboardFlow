@@ -32,6 +32,7 @@ import Stripe from "stripe";
 import { DocumentProcessorServiceClient } from '@google-cloud/documentai';
 import { enriquecerTransacaoComCNPJ, extrairCNPJsDoTexto } from './cnpj-service';
 import { enhancedCategorization, processTransactionBatch } from './utils/enhanced-categorization.js';
+import { classifyBatch, convertToRawBankRow, convertFromTxNormalized } from './categorization/classifier.js';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -1740,35 +1741,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Casos problemáticos mencionados pelo usuário
       const testCases = [
-        'CLARO -R$ 21,56',
-        'COMPRAS NACIONAIS LUIZ TONIN SAO JOAQUIM DBR VEO563899 -R$ 65,20',
-        'COMPRAS NACIONAIS SUPERM MEDEIROS S SAO JOAQUIM VEO531866 -R$ 40,91',
-        'COMPRAS NACIONAIS AUTO POSTO INNOVARE SAO JOAQUIM VEO090246 -R$ 60,00',
-        'WEBCLIX -R$ 89,90',
-        'TOSCANA TELEMARKETING E SERVICOS S.A. -R$ 70,12',
-        'BLUE PAY SOLUTIONS LTDA +R$ 445,61',
-        'PAGAMENTO PIX 504211698826 Kauane Vieira de Souza PIX DEB -R$ 80,38'
+        { descricao: 'CLARO -R$ 21,56', valor: -21.56, data: '2025-08-26' },
+        { descricao: 'COMPRAS NACIONAIS LUIZ TONIN SAO JOAQUIM DBR VEO563899 -R$ 65,20', valor: -65.20, data: '2025-08-26' },
+        { descricao: 'COMPRAS NACIONAIS SUPERM MEDEIROS S SAO JOAQUIM VEO531866 -R$ 40,91', valor: -40.91, data: '2025-08-26' },
+        { descricao: 'COMPRAS NACIONAIS AUTO POSTO INNOVARE SAO JOAQUIM VEO090246 -R$ 60,00', valor: -60.00, data: '2025-08-26' },
+        { descricao: 'WEBCLIX -R$ 89,90', valor: -89.90, data: '2025-08-26' },
+        { descricao: 'TOSCANA TELEMARKETING E SERVICOS S.A. -R$ 70,12', valor: -70.12, data: '2025-08-26' },
+        { descricao: 'BLUE PAY SOLUTIONS LTDA +R$ 445,61', valor: 445.61, data: '2025-08-26' },
+        { descricao: 'PAGAMENTO PIX 504211698826 Kauane Vieira de Souza PIX DEB -R$ 80,38', valor: -80.38, data: '2025-08-26' }
       ];
       
       const results = [];
       
-      for (const testCase of testCases) {
-        try {
-          const categorization = await enhancedCategorization(testCase, 0);
-          results.push({
-            original: testCase,
-            categorization: categorization
-          });
-          
-          console.log(`✅ [TEST] "${testCase}" → ${categorization.merchant} (${categorization.category}) [${Math.round(categorization.confidence * 100)}%] Sources: ${categorization.sources.join(', ')}`);
-          
-        } catch (error) {
-          console.error(`❌ [TEST] Erro ao testar "${testCase}":`, error);
-          results.push({
-            original: testCase,
-            error: error.message
-          });
-        }
+      // Testa o novo sistema determinístico
+      const classifiedResults = await classifyBatch(testCases);
+      
+      for (let i = 0; i < testCases.length; i++) {
+        const testCase = testCases[i];
+        const result = classifiedResults[i];
+        
+        results.push({
+          original: testCase.descricao,
+          classified: {
+            merchant: result.nome_canonico,
+            category: result.categoria,
+            confidence: result.confidence,
+            sources: result.fontes,
+            natureza: result.natureza,
+            cnpj: result.cnpj,
+            tipo: result.tipo
+          }
+        });
       }
       
       console.log(`🧪 [TEST] Teste concluído: ${results.length} casos testados`);
@@ -1805,44 +1808,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (geminiResult && geminiResult.length > 0) {
           console.log(`✅ [Gemini] Sucesso: ${geminiResult.length} transações encontradas`);
           
-          // 🚀 NOVA CATEGORIZAÇÃO APRIMORADA: Aplicar sistema melhorado
-          console.log(`🎯 [Enhanced] Aplicando categorização aprimorada...`);
+          // 🚀 NOVO SISTEMA DETERMINÍSTICO: Pipeline híbrido robusto
+          console.log(`🎯 [DETERMINISTIC] Aplicando sistema de categorização determinístico...`);
           
-          const enhancedTransactions = [];
-          for (const transaction of geminiResult) {
-            try {
-              const categorization = await enhancedCategorization(
-                transaction.description || '', 
-                parseFloat(transaction.amount) || 0
-              );
-              
-              // Merge dos dados originais com a categorização aprimorada
-              const enhancedTransaction = {
-                ...transaction,
-                merchant: categorization.merchant,
-                category: categorization.category,
-                businessType: categorization.businessType,
-                confidence: categorization.confidence,
-                sources: categorization.sources,
-                paymentMethod: categorization.paymentMethod || transaction.paymentMethod,
-                cnpj: categorization.cnpj
-              };
-              
-              enhancedTransactions.push(enhancedTransaction);
-              console.log(`✅ [Enhanced] ${transaction.description} → ${categorization.merchant} (${categorization.category}) [${Math.round(categorization.confidence * 100)}%]`);
-              
-            } catch (error) {
-              console.error(`❌ [Enhanced] Erro ao categorizar "${transaction.description}":`, error);
-              // Em caso de erro, mantém a transação original
-              enhancedTransactions.push(transaction);
-            }
+          try {
+            // Converte transações para formato do classificador
+            const rawRows = geminiResult.map(convertToRawBankRow);
             
-            // Pequeno delay para não sobrecarregar as APIs
-            await new Promise(resolve => setTimeout(resolve, 50));
+            // Aplica classificação em lote com pipeline híbrido
+            const classifiedRows = await classifyBatch(rawRows);
+            
+            // Converte de volta para formato do sistema
+            const enhancedTransactions = classifiedRows.map(convertFromTxNormalized);
+            
+            result = { transactions: enhancedTransactions };
+            console.log(`🎯 [DETERMINISTIC] Categorização determinística concluída: ${enhancedTransactions.length} transações processadas`);
+            
+            // Log de estatísticas de confiança
+            const highConfidence = enhancedTransactions.filter(t => t.confidence >= 0.9).length;
+            const mediumConfidence = enhancedTransactions.filter(t => t.confidence >= 0.7 && t.confidence < 0.9).length;
+            const lowConfidence = enhancedTransactions.filter(t => t.confidence < 0.7).length;
+            
+            console.log(`📊 [STATS] Alta confiança (≥90%): ${highConfidence} | Média (70-89%): ${mediumConfidence} | Baixa (<70%): ${lowConfidence}`);
+            
+          } catch (error) {
+            console.error(`❌ [DETERMINISTIC] Erro no sistema determinístico:`, error);
+            // Fallback para o sistema antigo em caso de erro
+            result = { transactions: geminiResult };
           }
-          
-          result = { transactions: enhancedTransactions };
-          console.log(`🎯 [Enhanced] Categorização concluída: ${enhancedTransactions.length} transações processadas`);
           
         } else {
           console.log(`⚠️ [Gemini] Nenhuma transação encontrada`);

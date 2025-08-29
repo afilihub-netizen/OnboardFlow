@@ -1,0 +1,572 @@
+abaixo está um kit pronto (TypeScript + SQL) para você plugar no backend e corrigir nome do local, categoria e entradas/saídas com pipeline híbrido (regras → CNPJ/CNAE → dicionário → ML leve).
+
+📁 Estrutura sugerida
+src/
+  types.ts
+  normalize.ts
+  rules.ts
+  cnaeCategoryMap.ts
+  cnpjResolver.ts
+  dict.ts
+  classifier.ts
+  demo.ts
+db/
+  schema.sql
+  subscriptions.sql
+
+src/types.ts
+export type Natureza = 'Entrada' | 'Saída' | 'Neutra';
+export type Tipo =
+  | 'PIX_DEB'
+  | 'PIX_CRED'
+  | 'COMPRA'
+  | 'TRANSFER_OUT'
+  | 'TRANSFER_IN'
+  | 'BOLETO'
+  | 'TARIFA'
+  | 'OUTRO';
+
+export interface RawBankRow {
+  data: string;           // '2025-08-26'
+  descricao: string;      // texto do extrato
+  valor: number;          // positivo ou negativo
+  saldo?: number | null;
+  moeda?: string;
+  conta_id?: string;
+}
+
+export interface Match {
+  nome?: string;          // nome canônico
+  cnpj?: string | null;
+  categoria?: string | null;
+  fonte?: string;         // 'rule' | 'cnpj' | 'dict' | 'ml' | 'fallback'
+  score: number;          // 0-1
+}
+
+export interface TxNormalized {
+  data: string;
+  descricao_raw: string;
+  merchant_raw: string;
+  merchant_norm: string;
+  merchant_slug: string;
+  tipo: Tipo;
+  natureza: Natureza;
+  valor: number;
+  categoria: string;
+  cnpj?: string | null;
+  nome_canonico: string;
+  confidence: number;
+  fontes: string[];       // ordem de decisão
+}
+
+export interface DictEntry {
+  pattern_substring: string; // ex.: 'TONIN'
+  merchant_canonico: string;
+  cnpj?: string | null;
+  categoria?: string | null;
+  confianca?: number;        // default 0.99
+}
+
+src/normalize.ts
+import { Tipo } from './types';
+
+// remove acento
+const deburr = (s: string) =>
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+const titleCase = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/(?:^|\s)\S/g, (a) => a.toUpperCase())
+    .trim();
+
+export function detectTipo(descricao: string, amount: number): Tipo {
+  const d = deburr(descricao.toUpperCase());
+
+  if (/PAGAMENTO\s+PIX/.test(d) && amount < 0) return 'PIX_DEB';
+  if (/(RECEBIMENTO\s+PIX|PIX\s+CRED)/.test(d) && amount > 0) return 'PIX_CRED';
+  if (/(COMPRA|COMPRAS\s+NACIONAIS)/.test(d)) return 'COMPRA';
+  if (/(TRANSFERENCIA|TED|DOC)/.test(d) && amount < 0) return 'TRANSFER_OUT';
+  if (/(TRANSFERENCIA|TED|DOC)/.test(d) && amount > 0) return 'TRANSFER_IN';
+  if (/BOLETO/.test(d)) return 'BOLETO';
+  if (/(TARIFA|PACOTE|MENSALIDADE)/.test(d)) return 'TARIFA';
+  return 'OUTRO';
+}
+
+// remove tokens "lixo" dos adquirentes/codigos/banco
+export function extractMerchant(descricao: string, tipo: Tipo): string {
+  let d = descricao;
+
+  // remove tokens comuns
+  d = d.replace(/\b(PAGAMENTO|RECEBIMENTO)\b\s+PIX\s+\d+/gi, ' ');
+  d = d.replace(/\bPIX\s+(DEB|CRED)\b/gi, ' ');
+  d = d.replace(/\bCOMPRAS?\b\s+NACIONAIS?/gi, ' ');
+  d = d.replace(/\bDBR\b|\bVEO\S*\b|\bAUT\s*\d+\b/gi, ' ');
+  d = d.replace(/\bSAO\s+JOAQUIM\b/gi, ' ');
+  d = d.replace(/\bDEB(?:ITO)?\b|\bCRED(?:ITO)?\b/gi, ' ');
+  d = d.replace(/[—–-]/g, ' ');
+  d = d.replace(/\s{2,}/g, ' ').trim();
+
+  // heurísticas por tipo
+  if (tipo === 'PIX_DEB' || tipo === 'PIX_CRED') {
+    // após remover prefixos, pegue o que sobrou
+    return d.replace(/\b(PAGAMENTO|RECEBIMENTO)\b\s*PIX/gi, '').trim();
+  }
+
+  return d.trim();
+}
+
+export function normalizeMerchantName(name: string): string {
+  let s = name;
+  s = s.replace(/\b(BR|BRASIL)\b/gi, ' ');
+  s = s.replace(/\b(LOJAS?|NACIONAL(IS)?)\b/gi, ' ');
+  s = s.replace(/\s{2,}/g, ' ').trim();
+  s = titleCase(s);
+  return s;
+}
+
+export function slugify(s: string): string {
+  return deburr(s)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+export function naturezaFrom(tipo: Tipo, amount: number): 'Entrada' | 'Saída' | 'Neutra' {
+  if (tipo === 'TRANSFER_IN' || tipo === 'PIX_CRED' || amount > 0) return 'Entrada';
+  if (tipo === 'TRANSFER_OUT' || tipo === 'PIX_DEB' || tipo === 'COMPRA' || amount < 0) return 'Saída';
+  return 'Neutra';
+}
+
+src/cnaeCategoryMap.ts
+// mapa mínimo (expanda conforme sua base)
+export const CNAE_TO_CATEGORY: Array<{ cnaePrefix: string; categoria: string }> = [
+  { cnaePrefix: '47.11', categoria: 'Alimentação > Supermercado' }, // comércio varejista de supermercado
+  { cnaePrefix: '47.29', categoria: 'Alimentação' },
+  { cnaePrefix: '47.30', categoria: 'Combustível' },                // lojas de conveniência podem variar
+  { cnaePrefix: '47.32', categoria: 'Farmácia' },
+  { cnaePrefix: '49.39', categoria: 'Transporte > Apps/Outros' },
+  { cnaePrefix: '47.30-1', categoria: 'Transporte > Combustível' },
+  { cnaePrefix: '61.',   categoria: 'Telefonia/Internet' },
+  { cnaePrefix: '64.',   categoria: 'Serviços Financeiros' },
+  { cnaePrefix: '82.20', categoria: 'Serviços' },                  // call centers/telemarketing
+];
+
+export function categoryFromCNAE(cnae: string | null | undefined): string | null {
+  if (!cnae) return null;
+  const hit = CNAE_TO_CATEGORY.find(m => cnae.startsWith(m.cnaePrefix));
+  return hit ? hit.categoria : null;
+}
+
+src/rules.ts
+import { Tipo } from './types';
+
+export type Rule = {
+  test: (merchantNorm: string, tipo: Tipo) => boolean;
+  to: { categoria: string; nome?: string };
+  score?: number;
+};
+
+const kw = (s: string) => (x: string) => x.toUpperCase().includes(s.toUpperCase());
+
+export const RULES: Rule[] = [
+  // Combustível
+  { test: (m) => /(POSTO|IPIRANGA|SHELL|BR|RAIZEN|ALE\b)/i.test(m), to: { categoria: 'Transporte > Combustível' }, score: 0.93 },
+  // Supermercado
+  { test: (m) => /(MERCADO|SUPERMERC|ATACAD|ASSAI|TONIN)/i.test(m), to: { categoria: 'Alimentação > Supermercado' }, score: 0.92 },
+  // Telefonia
+  { test: (m) => /(VIVO|CLARO|TIM|OI|ALGAR|NEXTEL)/i.test(m), to: { categoria: 'Telefonia/Internet' }, score: 0.92 },
+  // Apps transporte
+  { test: (m) => /(UBER|99APP|99POP|BUSER)/i.test(m), to: { categoria: 'Transporte > Apps' }, score: 0.9 },
+  // Serviços financeiros
+  { test: (m) => /(PAY|PAGAR\.ME|CIELO|STONE|RECEBIVEIS|GATEWAY|PAYPAL|MERCADO\s*PAGO|BLUE\s*PAY)/i.test(m), to: { categoria: 'Serviços Financeiros' }, score: 0.9 },
+  // Restaurantes
+  { test: (m) => /(LANCH|RESTAUR|PIZZA|BURGER|SUBWAY|MC ?DONALD|BK\b)/i.test(m), to: { categoria: 'Alimentação > Restaurantes' }, score: 0.88 },
+  // Saúde
+  { test: (m) => /(DROGARIA|FARMACIA|LABORATORIO|CLINICA)/i.test(m), to: { categoria: 'Saúde' }, score: 0.9 },
+];
+
+export function rulesMatch(merchantNorm: string, tipo: Tipo) {
+  for (const r of RULES) {
+    if (r.test(merchantNorm, tipo)) {
+      return { categoria: r.to.categoria, nome: r.to.nome, score: r.score ?? 0.9 };
+    }
+  }
+  return null;
+}
+
+src/cnpjResolver.ts
+import { categoryFromCNAE } from './cnaeCategoryMap';
+
+// Implementação com injeção de dependência.
+// Você pode plugar aqui BrasilAPI CNPJ, ReceitaWS, Serpro ou sua base local.
+// Este resolver aceita nome do comércio e tenta achar um CNPJ/cnae via sua cache/DB.
+
+export interface CnpjHit {
+  nome_fantasia?: string | null;
+  razao_social?: string | null;
+  cnpj: string;
+  cnae_principal?: string | null;
+  score: number; // similaridade do nome (0-1)
+}
+
+export interface CnpjResolver {
+  resolveByName(name: string): Promise<CnpjHit | null>;
+}
+
+// Exemplo simples usando uma “mini-base” em memória + Jaro-Winkler:
+function jaroWinkler(s1: string, s2: string): number {
+  // Implementação compacta (não perfeita, mas suficiente pro matching)
+  function jaro(a: string, b: string) {
+    const m = Math.floor(Math.max(a.length, b.length) / 2) - 1;
+    const aFlags = new Array(a.length);
+    const bFlags = new Array(b.length);
+    let matches = 0;
+    for (let i = 0; i < a.length; i++) {
+      const low = Math.max(0, i - m);
+      const hi = Math.min(i + m + 1, b.length);
+      for (let j = low; j < hi; j++) {
+        if (!bFlags[j] && a[i] === b[j]) {
+          aFlags[i] = bFlags[j] = true as any;
+          matches++;
+          break;
+        }
+      }
+    }
+    if (!matches) return 0;
+    let t = 0;
+    let k = 0;
+    for (let i = 0; i < a.length; i++) {
+      if (aFlags[i]) {
+        while (!bFlags[k]) k++;
+        if (a[i] !== b[k]) t++;
+        k++;
+      }
+    }
+    t /= 2;
+    return (matches / a.length + matches / b.length + (matches - t) / matches) / 3;
+  }
+  const j = jaro(s1, s2);
+  const p = 0.1;
+  let l = 0;
+  for (; l < Math.min(4, s1.length, s2.length); l++) {
+    if (s1[l] !== s2[l]) break;
+  }
+  return j + l * p * (1 - j);
+}
+
+const miniBase = [
+  { cnpj: '00.000.000/0001-00', nome_fantasia: 'Luiz Tonin Supermercados', cnae_principal: '47.11-3-01' },
+  { cnpj: '11.111.111/0001-11', nome_fantasia: 'Auto Posto Innovare',      cnae_principal: '47.30-1-00' },
+  { cnpj: '22.222.222/0001-22', nome_fantasia: 'Blue Pay Solutions',       cnae_principal: '64.99-9-99' },
+  { cnpj: '33.333.333/0001-33', nome_fantasia: 'Toscana Telemarketing',    cnae_principal: '82.20-2-00' },
+];
+
+export class InMemoryCnpjResolver implements CnpjResolver {
+  async resolveByName(name: string): Promise<CnpjHit | null> {
+    const norm = name.toUpperCase();
+    let best: CnpjHit | null = null;
+    for (const row of miniBase) {
+      const score = jaroWinkler(norm, row.nome_fantasia!.toUpperCase());
+      if (!best || score > best.score) {
+        best = { ...row, razao_social: row.nome_fantasia, score };
+      }
+    }
+    if (best && best.score >= 0.82) return best;
+    return null;
+  }
+}
+
+export async function cnpjToCategory(cnae: string | null | undefined): Promise<string | null> {
+  return categoryFromCNAE(cnae || null);
+}
+
+src/dict.ts
+import { DictEntry } from './types';
+
+// Em produção, isso vem do seu DB (tabela merchant_map).
+// Aqui deixo um exemplo inicial.
+export const DICT: DictEntry[] = [
+  { pattern_substring: 'TONIN', merchant_canonico: 'Luiz Tonin Supermercados', cnpj: '00.000.000/0001-00', categoria: 'Alimentação > Supermercado', confianca: 0.99 },
+  { pattern_substring: 'AUTO POSTO INNOVARE', merchant_canonico: 'Auto Posto Innovare', cnpj: '11.111.111/0001-11', categoria: 'Transporte > Combustível', confianca: 0.99 },
+  { pattern_substring: 'BLUE PAY', merchant_canonico: 'Blue Pay Solutions', cnpj: '22.222.222/0001-22', categoria: 'Serviços Financeiros', confianca: 0.99 },
+  { pattern_substring: 'TOSCANA TELEMARKETING', merchant_canonico: 'Toscana Telemarketing', cnpj: '33.333.333/0001-33', categoria: 'Serviços', confianca: 0.98 },
+];
+
+export function dictLookup(merchantNorm: string) {
+  const up = merchantNorm.toUpperCase();
+  for (const e of DICT) {
+    if (up.includes(e.pattern_substring.toUpperCase())) {
+      return {
+        nome: e.merchant_canonico,
+        cnpj: e.cnpj ?? null,
+        categoria: e.categoria ?? null,
+        score: e.confianca ?? 0.99,
+      };
+    }
+  }
+  return null;
+}
+
+src/classifier.ts
+import { RawBankRow, TxNormalized } from './types';
+import { detectTipo, extractMerchant, normalizeMerchantName, slugify, naturezaFrom } from './normalize';
+import { rulesMatch } from './rules';
+import { InMemoryCnpjResolver, cnpjToCategory } from './cnpjResolver';
+import { dictLookup } from './dict';
+
+// ML leve (fallback): pesos por palavra-chave
+const KEYWORD_WEIGHTS: Array<{ re: RegExp; categoria: string; w: number }> = [
+  { re: /(POSTO|IPIRANGA|SHELL|RAIZEN|ALE\b)/i, categoria: 'Transporte > Combustível', w: 1.0 },
+  { re: /(MERCADO|SUPERMERC|ATACAD|ASSAI|TONIN)/i, categoria: 'Alimentação > Supermercado', w: 0.9 },
+  { re: /(UBER|99APP|99POP)/i, categoria: 'Transporte > Apps', w: 0.8 },
+  { re: /(VIVO|CLARO|TIM|OI)/i, categoria: 'Telefonia/Internet', w: 0.85 },
+  { re: /(DROGARIA|FARMACIA|LABORATORIO|CLINICA)/i, categoria: 'Saúde', w: 0.85 },
+  { re: /(PAY|PAYPAL|MERCADO\s*PAGO|GATEWAY|CIELO|STONE|BLUE\s*PAY)/i, categoria: 'Serviços Financeiros', w: 0.8 },
+];
+
+function mlPredict(merchantNorm: string): { categoria: string; score: number } | null {
+  const scores = new Map<string, number>();
+  for (const k of KEYWORD_WEIGHTS) {
+    if (k.re.test(merchantNorm)) {
+      scores.set(k.categoria, (scores.get(k.categoria) ?? 0) + k.w);
+    }
+  }
+  if (!scores.size) return null;
+  const best = [...scores.entries()].sort((a, b) => b[1] - a[1])[0];
+  const max = [...scores.values()].reduce((a, b) => Math.max(a, b), 0);
+  return { categoria: best[0], score: Math.min(0.89, best[1] / (max || 1)) };
+}
+
+const cnpjResolver = new InMemoryCnpjResolver();
+
+export async function classifyRow(row: RawBankRow): Promise<TxNormalized> {
+  const tipo = detectTipo(row.descricao, row.valor);
+  const merchantRaw = extractMerchant(row.descricao, tipo);
+  const merchantNorm = normalizeMerchantName(merchantRaw);
+  const slug = slugify(merchantNorm);
+  const natureza = naturezaFrom(tipo, row.valor);
+
+  const fontes: string[] = [];
+  let nome_canonico = merchantNorm;
+  let categoria: string | null = null;
+  let cnpj: string | null = null;
+  let confidence = 0;
+
+  // 1) dicionário
+  const dict = dictLookup(merchantNorm);
+  if (dict) {
+    categoria = dict.categoria ?? categoria;
+    cnpj = dict.cnpj ?? cnpj;
+    nome_canonico = dict.nome ?? nome_canonico;
+    confidence = Math.max(confidence, dict.score);
+    fontes.push('dict');
+  }
+
+  // 2) CNPJ/CNAE
+  if (!categoria || confidence < 0.95) {
+    const hit = await cnpjResolver.resolveByName(merchantNorm);
+    if (hit) {
+      cnpj = hit.cnpj;
+      nome_canonico = hit.nome_fantasia || nome_canonico;
+      const byCnae = await cnpjToCategory(hit.cnae_principal);
+      if (byCnae) categoria = byCnae;
+      confidence = Math.max(confidence, hit.score);
+      fontes.push('cnpj');
+    }
+  }
+
+  // 3) regras fortes
+  if (!categoria) {
+    const r = rulesMatch(merchantNorm, tipo);
+    if (r) {
+      categoria = r.categoria;
+      nome_canonico = r.nome ?? nome_canonico;
+      confidence = Math.max(confidence, r.score ?? 0.9);
+      fontes.push('rule');
+    }
+  }
+
+  // 4) ML leve
+  if (!categoria) {
+    const m = mlPredict(merchantNorm);
+    if (m) {
+      categoria = m.categoria;
+      confidence = Math.max(confidence, m.score);
+      fontes.push('ml');
+    }
+  }
+
+  // 5) fallback
+  if (!categoria) {
+    categoria = 'Sem categoria';
+    confidence = Math.max(confidence, 0.4);
+    fontes.push('fallback');
+  }
+
+  // Transferência interna: se quiser, cheque CPF/CNPJ do recebedor e zere natureza.
+  // (deixe como TODO pois depende da sua base)
+
+  return {
+    data: row.data,
+    descricao_raw: row.descricao,
+    merchant_raw: merchantRaw,
+    merchant_norm: merchantNorm,
+    merchant_slug: slug,
+    tipo,
+    natureza,
+    valor: row.valor,
+    categoria,
+    cnpj,
+    nome_canonico,
+    confidence,
+    fontes,
+  };
+}
+
+export async function classifyBatch(rows: RawBankRow[]): Promise<TxNormalized[]> {
+  const out: TxNormalized[] = [];
+  for (const r of rows) out.push(await classifyRow(r));
+  return out;
+}
+
+src/demo.ts (exemplo rápido)
+import { classifyBatch } from './classifier';
+import { RawBankRow } from './types';
+
+(async () => {
+  const amostra: RawBankRow[] = [
+    { data: '2025-08-27', descricao: 'PAGAMENTO PIX 37823330806 Maickon Douglas dos An PIX DEB -', valor: -200.00 },
+    { data: '2025-08-26', descricao: 'COMPRAS NACIONAIS LUIZ TONIN SAO JOAQUIM DBR VEO0259759',  valor: -35.48 },
+    { data: '2025-08-26', descricao: 'TOSCANA TELEMARKETING E SERVICOS S.A.',                     valor: -70.12 },
+    { data: '2025-08-26', descricao: 'COMPRAS NACIONAIS AUTO POSTO INNOVARE SAO JOAQUIM VEO0090246', valor: -60.00 },
+    { data: '2025-08-26', descricao: 'BLUE PAY SOLUTIONS LTDA',                                      valor: +445.61 },
+    { data: '2025-08-26', descricao: 'PAGAMENTO PIX 50421 169826 Kauane Vieira de Souza PIX DEB',    valor: -80.38 },
+  ];
+
+  const r = await classifyBatch(amostra);
+  console.table(r.map(x => ({
+    data: x.data,
+    nome: x.nome_canonico,
+    categoria: x.categoria,
+    natureza: x.natureza,
+    valor: x.valor,
+    conf: x.confidence.toFixed(2),
+    fontes: x.fontes.join('>')
+  })));
+})();
+
+db/schema.sql
+-- Merchants canônicos
+CREATE TABLE IF NOT EXISTS merchants (
+  id SERIAL PRIMARY KEY,
+  slug TEXT UNIQUE NOT NULL,
+  nome TEXT NOT NULL,
+  cnpj TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Dicionário de reconciliação (aprende com correções do usuário)
+CREATE TABLE IF NOT EXISTS merchant_map (
+  id SERIAL PRIMARY KEY,
+  pattern_substring TEXT NOT NULL,
+  merchant_id INT REFERENCES merchants(id),
+  cnpj TEXT,
+  categoria TEXT,
+  confianca REAL DEFAULT 0.99,
+  criado_por TEXT,
+  atualizado_em TIMESTAMPTZ DEFAULT now()
+);
+
+-- Cache de CNPJ (evita bater API toda hora)
+CREATE TABLE IF NOT EXISTS cnpj_cache (
+  cnpj TEXT PRIMARY KEY,
+  nome_fantasia TEXT,
+  razao_social TEXT,
+  cnae_principal TEXT,
+  atualizado_em TIMESTAMPTZ DEFAULT now()
+);
+
+-- Lançamentos normalizados
+CREATE TABLE IF NOT EXISTS transactions (
+  id BIGSERIAL PRIMARY KEY,
+  conta_id TEXT,
+  data DATE NOT NULL,
+  descricao_raw TEXT NOT NULL,
+  merchant_raw TEXT,
+  merchant_norm TEXT,
+  merchant_slug TEXT,
+  merchant_id INT REFERENCES merchants(id),
+  tipo TEXT,
+  natureza TEXT,
+  valor NUMERIC(14,2) NOT NULL,
+  categoria TEXT,
+  cnpj TEXT,
+  confidence REAL,
+  fontes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_merchant_slug ON transactions(merchant_slug);
+CREATE INDEX IF NOT EXISTS idx_transactions_data ON transactions(data);
+
+db/subscriptions.sql
+-- Assinaturas detectadas por recorrência 25–35 dias e >=3 ocorrências
+WITH series AS (
+  SELECT
+    merchant_slug,
+    valor,
+    data,
+    lead(data) OVER (PARTITION BY merchant_slug ORDER BY data) AS prox_data
+  FROM transactions
+  WHERE natureza = 'Saída'
+),
+intervalos AS (
+  SELECT
+    merchant_slug,
+    ABS(EXTRACT(DAY FROM (prox_data - data))) AS delta,
+    valor
+  FROM series
+  WHERE prox_data IS NOT NULL
+),
+stats AS (
+  SELECT
+    merchant_slug,
+    COUNT(*) AS ciclos,
+    AVG(delta) AS ciclo_medio,
+    STDDEV_SAMP(valor) AS desv_valor,
+    AVG(valor) AS media_valor
+  FROM intervalos
+  GROUP BY merchant_slug
+)
+SELECT
+  s.merchant_slug,
+  s.ciclos,
+  s.ciclo_medio,
+  s.media_valor,
+  s.desv_valor
+FROM stats s
+WHERE s.ciclos >= 2
+  AND s.ciclo_medio BETWEEN 25 AND 35
+ORDER BY s.ciclos DESC, s.ciclo_medio;
+
+Como usar no fluxo de importação
+
+Parseie o extrato (PDF → estrutura tabular).
+
+Para cada linha, chame classifyRow.
+
+Mostre na UI nome_canonico, categoria, natureza, confidence e fontes.
+
+Quando o usuário corrigir, grave no merchant_map e crie/atualize o merchant (isso alimenta o passo 1 nas próximas importações).
+
+Rode o SQL de assinaturas periodicamente para marcar assinatura=true na sua tabela (ou numa tabela auxiliar).
+
+Observações finais
+
+Precisão vem da ordem: dicionário > CNPJ/CNAE > regras > ML leve.
+
+Transferência interna: compare contra seus próprios CPFs/CNPJs e marque como Neutra (não entra no DRE).
+
+OCR: sempre que possível, prefira OFX/CSV/PDF nativo; OCR só como fallback.
