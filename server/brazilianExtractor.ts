@@ -123,7 +123,7 @@ export function extractTransactionsBrazilian(text: string, availableCategories: 
       continue;
     }
     
-    if (line.length < 20) continue; // REDUZIDO: aceitar linhas menores
+    if (line.length < 15) continue; // MAIS REDUZIDO: aceitar linhas ainda menores
     
     const transaction = parseTransactionLineStrict(line, availableCategories);
     if (transaction && isValidTransactionStrict(transaction)) {
@@ -175,7 +175,7 @@ function isObviousNoise(line: string): boolean {
       upper.includes('OUVIDORIA') ||
       upper.includes('TAXA DE JUROS') ||
       upper.includes('LIMITE ') ||
-      line.length < 20) {
+      line.length < 15) { // REDUZIDO ainda mais
     return true;
   }
   
@@ -189,7 +189,7 @@ function looksLikeCompleteTransaction(line: string): boolean {
   const hasDate = /^\d{2}\/\d{2}\/\d{4}/.test(line);
   const hasBankContext = /PIX|TED|COMPRA|PAGAMENTO|RECEBIMENTO|LIQUID|DEB|CRED|NACIONAIS|POSTO|MERCADO|SUPER/i.test(line);
   
-  return hasValue && (hasDate || hasBankContext) && line.length >= 18; // REDUZIDO
+  return hasValue && (hasDate || hasBankContext) && line.length >= 15; // MAIS REDUZIDO
 }
 
 // FUNÇÃO NOVA: Parser ultra-rigoroso com HOTFIX aplicado
