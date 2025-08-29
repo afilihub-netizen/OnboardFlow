@@ -154,8 +154,16 @@ RESPONDA APENAS com JSON válido:
   }
 }
 
-// Function to split text into chunks
-function splitTextIntoChunks(text: string, maxChunkSize: number = 6000): string[] {
+// Function to split text into chunks - TAMANHO AUMENTADO PARA PEGAR MAIS TRANSAÇÕES
+function splitTextIntoChunks(text: string, maxChunkSize: number = 15000): string[] {
+  console.log(`📝 SPLITTING TEXT: ${text.length} chars into chunks of max ${maxChunkSize}`);
+  
+  // Para extratos pequenos, não dividir
+  if (text.length <= maxChunkSize) {
+    console.log(`📝 Text is small enough (${text.length} <= ${maxChunkSize}), keeping as 1 chunk`);
+    return [text];
+  }
+  
   const chunks: string[] = [];
   const lines = text.split('\n');
   let currentChunk = '';
@@ -164,6 +172,7 @@ function splitTextIntoChunks(text: string, maxChunkSize: number = 6000): string[
     // If adding this line would exceed the limit, save current chunk and start new one
     if (currentChunk.length + line.length + 1 > maxChunkSize && currentChunk.length > 0) {
       chunks.push(currentChunk.trim());
+      console.log(`📝 Created chunk ${chunks.length}: ${currentChunk.trim().length} chars`);
       currentChunk = line;
     } else {
       currentChunk += (currentChunk ? '\n' : '') + line;
@@ -173,8 +182,10 @@ function splitTextIntoChunks(text: string, maxChunkSize: number = 6000): string[
   // Add the last chunk if it has content
   if (currentChunk.trim()) {
     chunks.push(currentChunk.trim());
+    console.log(`📝 Created final chunk ${chunks.length}: ${currentChunk.trim().length} chars`);
   }
   
+  console.log(`📝 FINAL SPLIT: ${chunks.length} chunks total`);
   return chunks;
 }
 
@@ -471,8 +482,8 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     
     // Progress tracking available via global sessions
     
-    // Split large texts into chunks (chunks maiores para pegar mais transações)
-    const chunks = splitTextIntoChunks(extractText, 5000);
+    // Split large texts into chunks (chunks MUITO maiores para pegar TODAS as transações)
+    const chunks = splitTextIntoChunks(extractText, 15000);
     console.log("Split into", chunks.length, "chunks");
     console.log("Total text length:", extractText.length, "characters");
     console.log("Average chunk size:", Math.round(extractText.length / chunks.length), "characters");

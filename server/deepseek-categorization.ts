@@ -207,7 +207,7 @@ RESPONDA APENAS COM JSON:
    */
   private async callDeepSeekAPI(prompt: string): Promise<any> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout para extração
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout para não travar
 
     try {
       const response = await fetch(this.baseUrl, {

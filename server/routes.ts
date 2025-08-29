@@ -1536,11 +1536,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         transactionCount: result?.transactions?.length || 0
       });
       
-      // 🚀 DEEPSEEK EXTRACTION + CATEGORIZATION: Substituindo Gemini completamente
+      // 🚀 DEEPSEEK EXTRACTION + CATEGORIZATION: Com timeout de 30s para evitar travamento
       console.log(`🧠 [DeepSeek] Iniciando extração e categorização completa...`);
       
       try {
-        const deepSeekResult = await deepSeekCategorization.extractAndCategorizeTransactions(extractText);
+        const deepSeekPromise = deepSeekCategorization.extractAndCategorizeTransactions(extractText);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('DeepSeek timeout após 30s')), 30000)
+        );
+        
+        const deepSeekResult = await Promise.race([deepSeekPromise, timeoutPromise]);
         
         if (deepSeekResult && deepSeekResult.length > 0) {
           console.log(`✅ [DeepSeek] Processamento concluído: ${deepSeekResult.length} transações encontradas`);
@@ -1550,8 +1555,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Mantém resultado do Gemini como fallback
         }
       } catch (error) {
-        console.error(`❌ [DeepSeek] Erro no processamento:`, error);
-        console.log(`🔄 [DeepSeek] Continuando com resultado do Gemini`);
+        console.error(`❌ [DeepSeek] Erro no processamento:`, error.message);
+        console.log(`🔄 [DeepSeek] Continuando com resultado do Gemini (${result.transactions?.length || 0} transações)`);
       }
       
       console.log(`[analyze-extract] Result from AI:`, {
