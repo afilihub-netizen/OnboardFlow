@@ -10,7 +10,11 @@ interface Transaction {
   date: string;
 }
 
-interface CategorizedTransaction extends Transaction {
+interface CategorizedTransaction {
+  date: string;
+  description: string;
+  amount: number;
+  type: 'income' | 'expense';
   category: string;
   confidence: number;
   reasoning?: string;
@@ -24,6 +28,32 @@ export class DeepSeekCategorizationService {
     this.apiKey = process.env.DEEPSEEK_API_KEY || '';
     if (!this.apiKey) {
       console.warn('DEEPSEEK_API_KEY não configurada - categorização DeepSeek desabilitada');
+    }
+  }
+
+  /**
+   * NOVA FUNÇÃO: Extrai e categoriza transações diretamente do texto do extrato
+   */
+  async extractAndCategorizeTransactions(extractText: string): Promise<CategorizedTransaction[]> {
+    if (!this.apiKey) {
+      console.log('[DeepSeek] API key não disponível');
+      return [];
+    }
+
+    try {
+      console.log(`[DeepSeek] Iniciando extração de ${extractText.length} caracteres`);
+      
+      const prompt = this.buildExtractionPrompt(extractText);
+      const response = await this.callDeepSeekAPI(prompt);
+      
+      const transactions = this.parseExtractionResponse(response);
+      
+      console.log(`[DeepSeek] Extração concluída: ${transactions.length} transações`);
+      return transactions;
+      
+    } catch (error) {
+      console.error('[DeepSeek] Erro na extração:', error);
+      return [];
     }
   }
 
@@ -50,6 +80,80 @@ export class DeepSeekCategorizationService {
     } catch (error) {
       console.error('[DeepSeek] Erro na categorização:', error);
       return this.fallbackCategorization(transactions);
+    }
+  }
+
+  /**
+   * Constrói o prompt para extração completa do extrato bancário
+   */
+  private buildExtractionPrompt(extractText: string): string {
+    return `Você é um especialista em análise de extratos bancários brasileiros.
+
+TAREFA: Extraia TODAS as transações do extrato e categorize-as automaticamente.
+
+REGRAS DE EXTRAÇÃO:
+- Procure por padrões como: PIX, TED, DOC, débito, crédito, transferência, pagamento, compra, saque
+- Identifique datas (DD/MM/AAAA, DD-MM-AAAA, AAAA-MM-DD)
+- Extraia valores (positivos para receitas, negativos para despesas)
+- Capture descrições completas das transações
+
+CATEGORIAS DISPONÍVEIS:
+- Alimentação: supermercados, restaurantes, delivery, padarias
+- Transporte: combustível, Uber, 99, pedágios, estacionamento
+- Casa: aluguel, condomínio, energia, água, internet, móveis
+- Saúde: farmácias, hospitais, consultas, planos de saúde
+- Educação: escolas, cursos, livros, material escolar
+- Entretenimento: cinema, streaming, jogos, viagens
+- Vestuário: roupas, calçados, acessórios
+- Serviços: salão, barbeiro, consertos, limpeza
+- Assinaturas: Netflix, Spotify, software, academias
+- Investimentos: aplicações, ações, fundos
+- Outros: transações que não se encaixam nas categorias acima
+
+EXTRATO BANCÁRIO:
+${extractText}
+
+RESPONDA APENAS COM JSON VÁLIDO:
+{
+  "transactions": [
+    {
+      "date": "2025-01-15",
+      "description": "PAGAMENTO PIX SUPERMERCADO XYZ",
+      "amount": -150.00,
+      "type": "expense",
+      "category": "Alimentação",
+      "confidence": 0.95
+    }
+  ]
+}`;
+  }
+
+  /**
+   * Processa a resposta da extração e retorna transações
+   */
+  private parseExtractionResponse(response: string): CategorizedTransaction[] {
+    try {
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('Resposta não contém JSON válido');
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      const transactions = parsed.transactions || [];
+
+      return transactions.map((t: any) => ({
+        date: t.date || new Date().toISOString().split('T')[0],
+        description: t.description || 'Transação sem descrição',
+        amount: parseFloat(t.amount) || 0,
+        type: (t.type || 'expense').toLowerCase(),
+        category: t.category || 'Outros',
+        confidence: t.confidence || 0.8,
+        reasoning: t.reasoning || 'Categorização automática'
+      }));
+
+    } catch (error) {
+      console.error('[DeepSeek] Erro ao processar resposta de extração:', error);
+      return [];
     }
   }
 
@@ -103,7 +207,7 @@ RESPONDA APENAS COM JSON:
    */
   private async callDeepSeekAPI(prompt: string): Promise<any> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout para extração
 
     try {
       const response = await fetch(this.baseUrl, {

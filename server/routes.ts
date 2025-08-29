@@ -1536,8 +1536,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         transactionCount: result?.transactions?.length || 0
       });
       
-      // 🚀 DEEPSEEK CATEGORIZATION: TEMPORARIAMENTE DESABILITADO PARA DEBUG
-      console.log(`🧠 [DeepSeek] DESABILITADO - usando categorização padrão para ${result.transactions?.length || 0} transações`);
+      // 🚀 DEEPSEEK EXTRACTION + CATEGORIZATION: Substituindo Gemini completamente
+      console.log(`🧠 [DeepSeek] Iniciando extração e categorização completa...`);
+      
+      try {
+        const deepSeekResult = await deepSeekCategorization.extractAndCategorizeTransactions(extractText);
+        
+        if (deepSeekResult && deepSeekResult.length > 0) {
+          console.log(`✅ [DeepSeek] Processamento concluído: ${deepSeekResult.length} transações encontradas`);
+          result = { transactions: deepSeekResult };
+        } else {
+          console.log(`⚠️ [DeepSeek] Nenhuma transação encontrada, usando fallback Gemini`);
+          // Mantém resultado do Gemini como fallback
+        }
+      } catch (error) {
+        console.error(`❌ [DeepSeek] Erro no processamento:`, error);
+        console.log(`🔄 [DeepSeek] Continuando com resultado do Gemini`);
+      }
       
       console.log(`[analyze-extract] Result from AI:`, {
         transactionsCount: result.transactions?.length || 0,
