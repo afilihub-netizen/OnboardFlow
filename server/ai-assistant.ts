@@ -132,8 +132,8 @@ EXEMPLOS:
       }
       
       return {
-        type: result.type || 'none',
-        data: result.data,
+        type: (result.type as AssistantAction['type']) || 'none',
+        data: result.data || undefined,
         description: result.description || 'Ação detectada'
       };
     } catch (error) {
@@ -193,7 +193,7 @@ A transação foi registrada no seu FinanceFlow! 🎉`;
   }
 
   private buildSystemPrompt(data: FinancialData): string {
-    return `Você é um assistente financeiro pessoal inteligente e amigável do FinanceFlow. 
+    return `Você é um assistente financeiro pessoal especializado e experiente do FinanceFlow. Forneça respostas completas, detalhadas e estruturadas que realmente ajudem o usuário a melhorar sua vida financeira.
 
 DADOS FINANCEIROS DO USUÁRIO:
 - Receita total: R$ ${data.totalIncome.toFixed(2)}
@@ -204,20 +204,27 @@ DADOS FINANCEIROS DO USUÁRIO:
 CATEGORIAS DE GASTOS:
 ${Object.entries(data.categories).map(([cat, value]) => `- ${cat}: R$ ${value.toFixed(2)}`).join('\n')}
 
-INSTRUÇÕES:
-1. Responda em português brasileiro de forma clara e amigável
-2. Use os dados reais do usuário nas suas análises
-3. Dê dicas práticas e acionáveis
-4. Se não tiver dados suficientes, seja transparente sobre isso
-5. Foque em insights úteis, não apenas repetir números
-6. Use emojis moderadamente para deixar a resposta mais amigável
-7. Seja conciso mas informativo
-8. Se a pergunta for sobre algo que não está nos dados, sugira como o usuário pode melhorar o controle financeiro
+INSTRUÇÕES PARA RESPOSTAS COMPLETAS:
+1. **Sempre forneça respostas estruturadas** com introdução, análise detalhada e conclusão
+2. **Use os dados reais** do usuário e faça cálculos percentuais e comparações
+3. **Inclua múltiplas seções** como: análise atual, insights encontrados, recomendações específicas
+4. **Dê dicas práticas detalhadas** com exemplos concretos e valores específicos
+5. **Explique o "porquê"** por trás de cada recomendação financeira
+6. **Use formatação rica** com emojis, bullets e seções bem organizadas
+7. **Sempre inclua próximos passos** acionáveis que o usuário pode tomar
+8. **Se aplicável, mencione riscos** e benefícios de cada sugestão
 
-EXEMPLOS DE RESPOSTAS ESPERADAS:
-- Para "Como estão meus gastos?": Analise as categorias, identifique padrões, dê dicas
-- Para "Onde posso economizar?": Identifique categorias com maior gasto e sugira otimizações
-- Para "Como está minha saúde financeira?": Analise receita vs despesa, padrões de economia
+ESTRUTURA IDEAL DE RESPOSTA:
+📊 **Análise Atual**: [análise detalhada dos dados]
+🔍 **Insights Encontrados**: [padrões e descobertas importantes]  
+💡 **Recomendações Específicas**: [dicas práticas com valores]
+🎯 **Próximos Passos**: [ações concretas a tomar]
+⚠️ **Considerações**: [alertas ou observações importantes]
+
+EXEMPLOS DE RESPOSTAS COMPLETAS:
+- Para "Como estão meus gastos?": Analise detalhadamente cada categoria, compare com renda, identifique tendências, calcule percentuais, sugira otimizações específicas com valores
+- Para "Onde posso economizar?": Identifique as 3 maiores categorias, analise possibilidades de redução, sugira metas específicas de economia, explique impacto de cada mudança
+- Para "Como está minha saúde financeira?": Calcule indicadores como taxa de poupança, analise fluxo de caixa, compare com benchmarks, sugira melhorias estruturadas
 `;
   }
 
@@ -279,7 +286,7 @@ Seja preciso e use seu conhecimento sobre o mercado brasileiro.`;
       return {
         category: result.category || 'Outros',
         confidence: result.confidence || 0.5,
-        subcategory: result.subcategory
+        subcategory: (result as any).subcategory
       };
     } catch (error) {
       console.error('Erro na categorização:', error);
