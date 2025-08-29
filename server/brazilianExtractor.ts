@@ -94,36 +94,139 @@ const SMART_CATEGORIZATION = {
 };
 
 export function extractTransactionsBrazilian(text: string, availableCategories: any[] = []): Transaction[] {
-  console.log(`[BR-EXTRACTOR] Iniciando extração determinística...`);
+  console.log(`[BR-EXTRACTOR] 🎯 Iniciando extração ULTRA-INTELIGENTE...`);
   
   const transactions: Transaction[] = [];
   const lines = text.split(/\n|\r\n/).filter(line => line.trim().length > 0);
+  let processedCount = 0;
+  let validCount = 0;
+  
+  console.log(`[BR-EXTRACTOR] Analisando ${lines.length} linhas do extrato...`);
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
+    processedCount++;
     
-    // FILTRAR RUÍDOS ANTES DE PROCESSAR
-    if (isNoiseLine(line)) {
-      console.log(`[BR-FILTER] Ignorando ruído: "${line.substring(0, 50)}..."`);
+    // FILTRO 1: Ruído óbvio (super rápido)
+    if (isObviousNoise(line)) {
       continue;
     }
     
-    if (line.length < 10) continue; // Muito curto para ser transação
+    // FILTRO 2: Linha deve parecer uma transação completa
+    if (!looksLikeCompleteTransaction(line)) {
+      continue;
+    }
     
-    const transaction = parseTransactionLine(line, availableCategories);
-    if (transaction && isValidTransaction(transaction)) {
+    // FILTRO 3: Ruído específico
+    if (isNoiseLine(line)) {
+      console.log(`[BR-FILTER] Ignorando ruído específico: "${line.substring(0, 40)}..."`);
+      continue;
+    }
+    
+    if (line.length < 25) continue; // Transações reais são mais longas
+    
+    const transaction = parseTransactionLineStrict(line, availableCategories);
+    if (transaction && isValidTransactionStrict(transaction)) {
       transactions.push(transaction);
-    } else if (transaction) {
-      console.log(`[BR-FILTER] Transação inválida rejeitada: ${transaction.description} - R$ ${transaction.amount}`);
+      validCount++;
+      console.log(`[BR-EXTRACTOR] ✅ [${validCount}] ${transaction.description} - R$ ${transaction.amount}`);
+      
+      // LIMITE DE SEGURANÇA: parar se extrair muitas (indica ruído)
+      if (validCount >= 80) {
+        console.log(`[BR-EXTRACTOR] ⚠️ LIMITE DE SEGURANÇA: Parando em 80 transações`);
+        break;
+      }
     }
   }
   
-  console.log(`[BR-EXTRACTOR] Extraiu ${transactions.length} transações`);
+  console.log(`[BR-EXTRACTOR] 📊 Resultado: ${validCount}/${processedCount} transações válidas`);
+  
+  // VALIDAÇÃO FINAL DE QUALIDADE
+  if (transactions.length > 60) {
+    console.log(`[BR-EXTRACTOR] ⚠️ MUITAS TRANSAÇÕES (${transactions.length}) - possível ruído`);
+    // Filtrar apenas as mais confiáveis
+    const highConfidence = transactions.filter(t => t.confidence >= 0.9);
+    console.log(`[BR-EXTRACTOR] 🔄 Filtrando para ${highConfidence.length} transações de alta confiança`);
+    return highConfidence.slice(0, 40); // Máximo 40
+  }
+  
   return transactions;
 }
 
+// FUNÇÃO NOVA: Detectar ruído óbvio ultra-rápido
+function isObviousNoise(line: string): boolean {
+  const upper = line.toUpperCase();
+  
+  // Padrões que claramente NÃO são transações
+  if (upper.includes('COOPERATIVA:') || 
+      upper.includes('ASSOCIADO:') ||
+      upper.includes('CONTA:') ||
+      upper.includes('EXTRATO') ||
+      upper.includes('DATA DESCRIÇÃO') ||
+      upper.includes('VALOR (R$)') ||
+      upper.includes('SAC ') ||
+      upper.includes('OUVIDORIA') ||
+      upper.includes('TAXA DE JUROS') ||
+      upper.includes('LIMITE ') ||
+      line.length < 20) {
+    return true;
+  }
+  
+  return false;
+}
+
+// FUNÇÃO NOVA: Verificar se linha parece transação completa  
+function looksLikeCompleteTransaction(line: string): boolean {
+  // Deve ter valor monetário E contexto bancário OU data
+  const hasValue = /[-+]?\s*R?\$?\s*[\d.,]+/.test(line);
+  const hasDate = /^\d{2}\/\d{2}\/\d{4}/.test(line);
+  const hasBankContext = /PIX|TED|COMPRA|PAGAMENTO|RECEBIMENTO|LIQUID|DEB|CRED/i.test(line);
+  
+  return hasValue && (hasDate || hasBankContext) && line.length >= 25;
+}
+
+// FUNÇÃO NOVA: Parser ultra-rigoroso
+function parseTransactionLineStrict(line: string, availableCategories: any[]): Transaction | null {
+  // 1. EXTRAIR VALOR MONETÁRIO COM VALIDAÇÃO RIGOROSA
+  const amountInfo = extractAmount(line);
+  if (!amountInfo || Math.abs(amountInfo.amount) < 2) return null;
+  
+  // 2. EXTRAIR E VALIDAR DESCRIÇÃO
+  const description = cleanDescription(line);
+  if (!description || description.length < 8) return null;
+  
+  // 3. VALIDAR CONTEXTO BANCÁRIO
+  if (!hasValidFinancialContext(line)) return null;
+  
+  // 4. CATEGORIZAR INTELIGENTEMENTE  
+  const category = categorizeTransaction(description, availableCategories);
+  
+  // 5. DETERMINAR MÉTODO DE PAGAMENTO
+  const paymentMethod = determinePaymentMethod(line);
+  
+  // 6. DETECTAR ASSINATURAS
+  const isSubscription = detectSubscription(description);
+  
+  // 7. EXTRAIR DATA (usar hoje se não encontrar)
+  const date = extractDate(line) || new Date().toISOString().split('T')[0];
+  
+  // 8. DETERMINAR TIPO DE TRANSAÇÃO
+  const type = determineTransactionType(line, amountInfo.amount);
+  
+  return {
+    date,
+    description,
+    amount: Math.abs(amountInfo.amount),
+    type,
+    category,
+    paymentMethod,
+    confidence: amountInfo.confidence,
+    isSubscription
+  };
+}
+
 function parseTransactionLine(line: string, availableCategories: any[]): Transaction | null {
-  // 1. EXTRAIR VALOR MONETÁRIO
+  // 1. EXTRAIR VALOR MONETÁRIO (função original)
   const amountInfo = extractAmount(line);
   if (!amountInfo) return null;
   
@@ -461,6 +564,26 @@ function isNoiseLine(line: string): boolean {
 }
 
 // FUNÇÃO PARA VALIDAR SE A TRANSAÇÃO É REALMENTE VÁLIDA
+// FUNÇÃO MELHORADA: Validação ultra-rigorosa
+function isValidTransactionStrict(transaction: Transaction): boolean {
+  // VALOR: deve ser realista
+  if (transaction.amount < 2 || transaction.amount > 50000) {
+    return false;
+  }
+  
+  // DESCRIÇÃO: deve ser substancial e limpa
+  if (!transaction.description || 
+      transaction.description.length < 8 ||
+      transaction.description.toLowerCase().includes('saldo') ||
+      transaction.description.toLowerCase().includes('taxa') ||
+      /^[\s\d\-\.]+$/.test(transaction.description)) {
+    return false;
+  }
+  
+  return true;
+}
+
+// FUNÇÃO ORIGINAL (mantida para compatibilidade)
 function isValidTransaction(transaction: Transaction): boolean {
   // Valor mínimo para ser considerado transação real (R$ 2,00 - mais rigoroso)
   const MIN_AMOUNT = 2.00;
