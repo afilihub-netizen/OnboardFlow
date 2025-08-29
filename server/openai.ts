@@ -154,6 +154,54 @@ RESPONDA APENAS com JSON válido:
   }
 }
 
+// FUNÇÃO FALLBACK: Extração básica com regex para quando AI falha
+function extractTransactionsWithRegex(extractText: string, availableCategories: string[] = []): any[] {
+  console.log(`[REGEX] Iniciando extração fallback com regex...`);
+  
+  const transactions: any[] = [];
+  const lines = extractText.split('\n');
+  
+  for (const line of lines) {
+    // Buscar padrões monetários brasileiros
+    const amountMatch = line.match(/[+-]?\s*R?\$?\s*([\d.,]+)/i);
+    if (!amountMatch) continue;
+    
+    const amountStr = amountMatch[1].replace(/\./g, '').replace(',', '.');
+    const amount = parseFloat(amountStr);
+    if (isNaN(amount) || amount === 0) continue;
+    
+    // Determinar sinal do valor
+    let finalAmount = amount;
+    if (line.includes('-') || line.toLowerCase().includes('debito') || 
+        line.toLowerCase().includes('pagamento') || line.toLowerCase().includes('compra')) {
+      finalAmount = -Math.abs(amount);
+    } else if (line.includes('+') || line.toLowerCase().includes('credito') || 
+               line.toLowerCase().includes('recebimento')) {
+      finalAmount = Math.abs(amount);
+    }
+    
+    // Determinar tipo
+    const type = finalAmount >= 0 ? 'income' : 'expense';
+    
+    // Extrair descrição (limpar valores monetários)
+    let description = line.replace(/[+-]?\s*R?\$?\s*[\d.,]+/gi, '').trim();
+    if (description.length < 3) description = `Transação ${finalAmount}`;
+    
+    transactions.push({
+      date: new Date().toISOString().split('T')[0],
+      description: description,
+      amount: finalAmount,
+      type: type,
+      category: availableCategories[0] || 'Outros',
+      isSubscription: false,
+      confidence: 0.6
+    });
+  }
+  
+  console.log(`[REGEX] Extraiu ${transactions.length} transações com regex`);
+  return transactions;
+}
+
 // Function to split text into chunks - TAMANHO AUMENTADO PARA PEGAR MAIS TRANSAÇÕES
 function splitTextIntoChunks(text: string, maxChunkSize: number = 20000): string[] {
   console.log(`📝 SPLITTING TEXT: ${text.length} chars into chunks of max ${maxChunkSize}`);
@@ -248,26 +296,53 @@ RULES CRÍTICAS:
 EXEMPLO OBRIGATÓRIO:
 "PAGAMENTO PIX João -R$ 50,00" → {"amount": -50.00, "type": "expense"}`;
 
-    // Add timeout to prevent hanging - TIMEOUT AUMENTADO PARA 60s
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('AI request timeout')), 60000); // 60 second timeout
-    });
+    // SISTEMA DE RETRY ROBUSTO para falhas do AI
+    let aiResponse: any = null;
+    let lastError: any = null;
+    
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`[AI] Tentativa ${attempt}/3...`);
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('AI request timeout')), 45000); // 45s timeout
+        });
 
-    const aiResponse: any = await Promise.race([
-      aiServiceManager.generateAIResponse(
-        `Analise este extrato bancário e extraia as transações:\n\n${extractText}`,
-        'extract_analysis',
-        {
-          systemInstruction: systemPrompt,
-          responseMimeType: "application/json", 
-          temperature: 0.0,
-          fallbackResponse: '{"transactions": []}'
+        aiResponse = await Promise.race([
+          aiServiceManager.generateAIResponse(
+            `Analise este extrato bancário e extraia as transações:\n\n${extractText}`,
+            'extract_analysis',
+            {
+              systemInstruction: systemPrompt,
+              responseMimeType: "application/json", 
+              temperature: 0.0,
+              fallbackResponse: '{"transactions": []}'
+            }
+          ),
+          timeoutPromise
+        ]);
+        
+        if (aiResponse && aiResponse.success) {
+          console.log(`[AI] Sucesso na tentativa ${attempt}`);
+          break;
+        } else {
+          lastError = new Error('AI response failed');
+          console.log(`[AI] Falha na tentativa ${attempt}, tentando novamente...`);
         }
-      ),
-      timeoutPromise
-    ]);
+        
+      } catch (error: any) {
+        lastError = error;
+        console.error(`[AI] Erro na tentativa ${attempt}:`, error.message);
+        
+        if (error.message.includes('overloaded') || error.message.includes('503')) {
+          const waitTime = attempt * 2000; // 2s, 4s, 6s
+          console.log(`[AI] Modelo sobrecarregado, aguardando ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+    }
 
-    if (aiResponse.success) {
+    if (aiResponse && aiResponse.success) {
       if (typeof aiResponse.data === 'string') {
         content = aiResponse.data;
       } else if (typeof aiResponse.data === 'object') {
@@ -276,24 +351,31 @@ EXEMPLO OBRIGATÓRIO:
       console.log("AI Response length:", content.length);
       console.log("AI Response preview:", content.substring(0, 500));
     } else {
-      content = '{"transactions": []}';
-      console.log("Using fallback empty transactions due to AI error");
-    }
-    
-  } catch (error) {
-    console.error("Error calling AI service:", error);
-    console.log("Using fallback empty transactions due to AI error");
-    content = '{"transactions": []}';
-    
-    // Log specific error type
-    if (error instanceof Error) {
-      console.error("Error details:", error.message);
-      if (error.message.includes('timeout') || error.message.includes('fetch failed')) {
-        console.log("AI request failed (timeout/network), this chunk will be skipped");
+      console.log(`[AI] Todas as tentativas falharam. Usando fallback regex...`);
+      
+      // FALLBACK: Extração regex básica quando AI falha
+      const regexTransactions = extractTransactionsWithRegex(extractText, availableCategories);
+      if (regexTransactions.length > 0) {
+        console.log(`[REGEX-FALLBACK] Extraiu ${regexTransactions.length} transações`);
+        content = JSON.stringify({ transactions: regexTransactions });
+      } else {
+        content = '{"transactions": []}';
+        console.log("Using empty transactions - no fallback worked");
       }
     }
     
-    // Don't throw here, continue with empty transactions to provide feedback
+  } catch (error) {
+    console.error("Error in AI processing:", error);
+    
+    // FALLBACK FINAL: Tentar extração regex se tudo mais falhar
+    const regexTransactions = extractTransactionsWithRegex(extractText, availableCategories);
+    if (regexTransactions.length > 0) {
+      console.log(`[FINAL-FALLBACK] Extraiu ${regexTransactions.length} transações com regex`);
+      content = JSON.stringify({ transactions: regexTransactions });
+    } else {
+      content = '{"transactions": []}';
+      console.log("All extraction methods failed");
+    }
   }
   
   // Clean up the response
