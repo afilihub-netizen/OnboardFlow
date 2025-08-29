@@ -126,9 +126,11 @@ export interface IStorage {
     startDate?: Date;
     endDate?: Date;
     type?: 'income' | 'expense';
+    paymentMethod?: string;
+    search?: string;
     limit?: number;
     offset?: number;
-  }): Promise<Transaction[]>;
+  }): Promise<{ transactions: Transaction[]; totalCount: number }>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: string, transaction: Partial<Transaction>): Promise<Transaction | undefined>;
   deleteTransaction(id: string): Promise<boolean>;
@@ -543,14 +545,18 @@ export class DatabaseStorage implements IStorage {
     startDate?: Date;
     endDate?: Date;
     type?: 'income' | 'expense';
+    paymentMethod?: string;
+    search?: string;
     limit?: number;
     offset?: number;
-  } = {}): Promise<Transaction[]> {
+  } = {}): Promise<{ transactions: Transaction[]; totalCount: number }> {
     const {
       categoryId,
       startDate,
       endDate,
       type,
+      paymentMethod,
+      search,
       limit = 50,
       offset = 0
     } = filters;
@@ -592,14 +598,42 @@ export class DatabaseStorage implements IStorage {
     if (type) {
       conditions.push(eq(transactions.type, type));
     }
+    
+    if (paymentMethod && paymentMethod !== 'all') {
+      conditions.push(eq(transactions.paymentMethod, paymentMethod));
+    }
+    
+    if (search && search.trim()) {
+      const searchTerm = `%${search.toLowerCase()}%`;
+      conditions.push(
+        or(
+          sql`LOWER(${transactions.description}) LIKE ${searchTerm}`,
+          sql`LOWER(${transactions.paymentMethod}) LIKE ${searchTerm}`
+        )
+      );
+    }
 
-    return await db
+    // Get total count with the same conditions
+    const [countResult] = await db
+      .select({ count: count() })
+      .from(transactions)
+      .where(and(...conditions));
+    
+    const totalCount = countResult?.count ?? 0;
+
+    // Get paginated transactions
+    const transactionsList = await db
       .select()
       .from(transactions)
       .where(and(...conditions))
       .orderBy(desc(transactions.date))
       .limit(limit)
       .offset(offset);
+
+    return {
+      transactions: transactionsList,
+      totalCount
+    };
   }
 
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {

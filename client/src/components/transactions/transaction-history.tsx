@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +65,14 @@ export function TransactionHistory() {
       params.append("type", typeFilter);
     }
 
+    if (paymentMethodFilter !== "all") {
+      params.append("paymentMethod", paymentMethodFilter);
+    }
+
+    if (searchFilter.trim()) {
+      params.append("search", searchFilter.trim());
+    }
+
     // Add date filters based on period
     const now = new Date();
     let startDate, endDate;
@@ -102,7 +110,7 @@ export function TransactionHistory() {
   };
 
   const { data: transactionData, isLoading } = useQuery({
-    queryKey: ['/api/transactions', categoryFilter, periodFilter, typeFilter, currentPage, itemsPerPage],
+    queryKey: ['/api/transactions', categoryFilter, periodFilter, typeFilter, paymentMethodFilter, searchFilter, currentPage, itemsPerPage],
     queryFn: async () => {
       const filterParams = getFilterParams();
       const url = filterParams ? `/api/transactions?${filterParams}` : '/api/transactions';
@@ -110,77 +118,13 @@ export function TransactionHistory() {
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to fetch transactions');
-      const transactions = await response.json();
-      
-      // Get total count for pagination by removing limit/offset
-      const countParams = new URLSearchParams();
-      if (categoryFilter !== "all") countParams.append("categoryId", categoryFilter);
-      if (typeFilter !== "all") countParams.append("type", typeFilter);
-      
-      const now = new Date();
-      let startDate, endDate;
-      switch (periodFilter) {
-        case "current-month":
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-          break;
-        case "last-3-months":
-          startDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-          break;
-        case "current-year":
-          startDate = new Date(now.getFullYear(), 0, 1);
-          endDate = new Date(now.getFullYear(), 11, 31);
-          break;
-      }
-      
-      if (startDate && endDate) {
-        countParams.append("startDate", startDate.toISOString());
-        countParams.append("endDate", endDate.toISOString());
-      }
-      
-      countParams.append("limit", "99999");
-      const countResponse = await fetch(`/api/transactions?${countParams.toString()}`, {
-        credentials: 'include',
-      });
-      const allTransactions = countResponse.ok ? await countResponse.json() : [];
-      
-      return {
-        transactions,
-        totalCount: allTransactions.length
-      };
+      return response.json();
     },
   });
 
-  const allTransactions = transactionData?.transactions || [];
+  const transactions = transactionData?.transactions || [];
   const totalCount = transactionData?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
-
-  // Filtros locais para busca e método de pagamento (mais responsivo)
-  const transactions = useMemo(() => {
-    if (!allTransactions) return [];
-    
-    let filtered = [...allTransactions];
-    
-    // Filtro por texto/descrição
-    if (searchFilter.trim()) {
-      const searchTerm = searchFilter.toLowerCase().trim();
-      filtered = filtered.filter(transaction => 
-        transaction.description.toLowerCase().includes(searchTerm) ||
-        getCategoryName(transaction.categoryId).toLowerCase().includes(searchTerm) ||
-        getPaymentMethodLabel(transaction.paymentMethod).toLowerCase().includes(searchTerm)
-      );
-    }
-    
-    // Filtro por método de pagamento
-    if (paymentMethodFilter !== "all") {
-      filtered = filtered.filter(transaction => 
-        transaction.paymentMethod === paymentMethodFilter
-      );
-    }
-    
-    return filtered;
-  }, [allTransactions, searchFilter, paymentMethodFilter, categories]);
 
   // Reset page when filters change
   const resetPage = () => {
@@ -188,6 +132,11 @@ export function TransactionHistory() {
       setCurrentPage(1);
     }
   };
+
+  // Reset page whenever filter values change
+  React.useEffect(() => {
+    resetPage();
+  }, [categoryFilter, typeFilter, periodFilter, paymentMethodFilter, searchFilter]);
 
   // Functions for pagination control
   const handleItemsPerPageChange = (value: string) => {

@@ -525,6 +525,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startDate,
         endDate,
         type,
+        paymentMethod,
+        search,
         limit = 50,
         offset = 0
       } = req.query;
@@ -534,12 +536,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startDate: startDate ? new Date(startDate as string) : undefined,
         endDate: endDate ? new Date(endDate as string) : undefined,
         type: type as 'income' | 'expense',
+        paymentMethod: paymentMethod as string,
+        search: search as string,
         limit: parseInt(limit as string),
         offset: parseInt(offset as string),
       };
 
-      const transactions = await storage.getTransactions(userId, filters);
-      res.json(transactions);
+      const result = await storage.getTransactions(userId, filters);
+      res.json(result);
     } catch (error) {
       console.error("Error fetching transactions:", error);
       res.status(500).json({ message: "Failed to fetch transactions" });
@@ -615,7 +619,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Obter dados financeiros do usuário para contexto
-      const transactions = await storage.getTransactions(userId, {});
+      const transactionData = await storage.getTransactions(userId, {});
+      const transactions = transactionData.transactions;
       const categories = await storage.getCategories(userId);
       const investments = await storage.getInvestments(userId);
       const goals = await storage.getBudgetGoals(userId);
@@ -718,7 +723,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Buscar dados para o relatório
       const [transactions, summary] = await Promise.all([
         storage.getTransactions(userId, {}),
-        storage.getFinancialSummary(userId, {})
+        storage.getFinancialSummary(userId, startDate, endDate)
       ]);
 
       const report = {
@@ -769,7 +774,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = getUserId(req);
       
       // Obter dados financeiros
-      const transactions = await storage.getTransactions(userId, {});
+      const transactionData = await storage.getTransactions(userId, {});
+      const transactions = transactionData.transactions;
       const categories = await storage.getCategories(userId);
       
       const totalIncome = transactions
@@ -807,7 +813,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/ai/spending-patterns", isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
-      const transactions = await storage.getTransactions(userId, {});
+      const transactionData = await storage.getTransactions(userId, {});
+      const transactions = transactionData.transactions;
       
       const patterns = await financialAssistant.analyzeSpendingPatterns(transactions);
       res.json(patterns);
