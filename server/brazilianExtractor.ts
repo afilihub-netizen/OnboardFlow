@@ -317,18 +317,46 @@ function isNoiseLine(line: string): boolean {
   }
   
   // Linha muito curta
-  if (line.length < 8) return true;
+  if (line.length < 15) return true;
   
   // Linha que não tem valor monetário
   if (!BRAZILIAN_PATTERNS.AMOUNT.test(line)) return true;
+  
+  // FILTROS MAIS RIGOROSOS PARA EVITAR FRAGMENTOS
+  
+  // Linha que termina com ":" (fragmento de cabeçalho)
+  if (line.trim().endsWith(':')) return true;
+  
+  // Linha que começa com "//" ou símbolos estranhos
+  if (/^[\s\*\/\-\=\#\@\%\$]{2,}/.test(line)) return true;
+  
+  // Linha que é apenas um nome/palavra seguida de ":"
+  if (/^[A-Z][a-zA-Z\s]+:\s*$/.test(line)) return true;
+  
+  // Linha sem contexto bancário claro
+  const bankPatterns = [
+    /PIX|TED|DOC|COMPRA|PAGAMENTO|RECEBIMENTO|TRANSFERENCIA|DEBITO|CREDITO/i,
+    /CARTAO|SAQUE|DEPOSITO|TARIFA|IOF/i
+  ];
+  
+  let hasBankPattern = false;
+  for (const pattern of bankPatterns) {
+    if (pattern.test(line)) {
+      hasBankPattern = true;
+      break;
+    }
+  }
+  
+  // Se não tem padrão bancário E é muito curta, provavelmente é ruído
+  if (!hasBankPattern && line.length < 25) return true;
   
   return false;
 }
 
 // FUNÇÃO PARA VALIDAR SE A TRANSAÇÃO É REALMENTE VÁLIDA
 function isValidTransaction(transaction: Transaction): boolean {
-  // Valor mínimo para ser considerado transação real (R$ 0,50)
-  const MIN_AMOUNT = 0.50;
+  // Valor mínimo para ser considerado transação real (R$ 2,00 - mais rigoroso)
+  const MIN_AMOUNT = 2.00;
   if (Math.abs(transaction.amount) < MIN_AMOUNT) {
     return false;
   }
@@ -339,13 +367,44 @@ function isValidTransaction(transaction: Transaction): boolean {
     return false;
   }
   
-  // Descrição deve ter conteúdo significativo
-  if (transaction.description.length < 5) {
+  // Descrição deve ter conteúdo significativo e não ser fragmento
+  if (transaction.description.length < 10) {
     return false;
   }
   
   // Não pode ser apenas números
   if (/^\d+$/.test(transaction.description.trim())) {
+    return false;
+  }
+  
+  // VALIDAÇÕES MAIS RIGOROSAS PARA EVITAR FRAGMENTOS
+  
+  // Não pode terminar com ":" (fragmento)
+  if (transaction.description.trim().endsWith(':')) {
+    return false;
+  }
+  
+  // Não pode começar com símbolos estranhos
+  if (/^[\*\/\-\=\#\@\%\$\/]{2,}/.test(transaction.description)) {
+    return false;
+  }
+  
+  // Deve ter pelo menos uma palavra completa de contexto bancário
+  const bankContextWords = [
+    'PIX', 'TED', 'DOC', 'COMPRA', 'PAGAMENTO', 'RECEBIMENTO',
+    'TRANSFERENCIA', 'DEBITO', 'CREDITO', 'CARTAO', 'SAQUE',
+    'DEPOSITO', 'NACIONAIS', 'INTERNACIONAL'
+  ];
+  
+  let hasBankContext = false;
+  for (const word of bankContextWords) {
+    if (transaction.description.toUpperCase().includes(word)) {
+      hasBankContext = true;
+      break;
+    }
+  }
+  
+  if (!hasBankContext) {
     return false;
   }
   
@@ -356,7 +415,11 @@ function isValidTransaction(transaction: Transaction): boolean {
     /^extrato/i,
     /^período/i,
     /^agência/i,
-    /^conta/i
+    /^conta/i,
+    /^cooperativa:\s*$/i,
+    /^\/\/["\s]*$/,
+    /^data\s+descrição/i,
+    /^valor\s+saldo/i
   ];
   
   for (const pattern of noiseDescriptions) {
