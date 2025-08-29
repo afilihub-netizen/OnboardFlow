@@ -185,37 +185,51 @@ function looksLikeCompleteTransaction(line: string): boolean {
   return hasValue && (hasDate || hasBankContext) && line.length >= 25;
 }
 
-// FUNÇÃO NOVA: Parser ultra-rigoroso
+// FUNÇÃO NOVA: Parser ultra-rigoroso com HOTFIX aplicado
 function parseTransactionLineStrict(line: string, availableCategories: any[]): Transaction | null {
-  // 1. EXTRAIR VALOR MONETÁRIO COM VALIDAÇÃO RIGOROSA
+  // 1. EXTRAIR VALOR COM PARSER BR CORRETO
   const amountInfo = extractAmount(line);
   if (!amountInfo || Math.abs(amountInfo.amount) < 2) return null;
   
-  // 2. EXTRAIR E VALIDAR DESCRIÇÃO
-  const description = cleanDescription(line);
-  if (!description || description.length < 8) return null;
+  // 2. EXTRAIR E LIMPAR DESCRIÇÃO com cleanMerchant
+  const rawDescription = cleanDescription(line);
+  if (!rawDescription || rawDescription.length < 8) return null;
   
-  // 3. VALIDAR CONTEXTO BANCÁRIO
-  if (!hasValidFinancialContext(line)) return null;
+  const cleanedDescription = cleanMerchant(rawDescription);
   
-  // 4. CATEGORIZAR INTELIGENTEMENTE  
-  const category = categorizeTransaction(description, availableCategories);
+  // 3. DETERMINAR NATUREZA POR REGRAS (PIX CRED/DEB)
+  const type = resolveNatureza(line, amountInfo.amount);
   
-  // 5. DETERMINAR MÉTODO DE PAGAMENTO
+  // 4. DETECTAR TRANSFERÊNCIA INTERNA (marcar como neutra)
+  const isTransferenciaInterna = detectTransferenciaInterna(line);
+  if (isTransferenciaInterna) {
+    return {
+      date: extractDate(line) || new Date().toISOString().split('T')[0],
+      description: cleanedDescription,
+      amount: Math.abs(amountInfo.amount),
+      type: 'expense', // Manter como expense mas pode ser marcado diferente
+      category: 'Transferência Interna',
+      paymentMethod: determinePaymentMethod(line),
+      confidence: amountInfo.confidence,
+      isSubscription: false
+    };
+  }
+  
+  // 5. CATEGORIZAR COM REGRAS DETERMINÍSTICAS
+  const category = categorizeBR(cleanedDescription);
+  
+  // 6. DETERMINAR MÉTODO DE PAGAMENTO
   const paymentMethod = determinePaymentMethod(line);
   
-  // 6. DETECTAR ASSINATURAS
-  const isSubscription = detectSubscription(description);
+  // 7. DETECTAR ASSINATURAS
+  const isSubscription = detectSubscription(cleanedDescription);
   
-  // 7. EXTRAIR DATA (usar hoje se não encontrar)
+  // 8. EXTRAIR DATA (usar hoje se não encontrar)
   const date = extractDate(line) || new Date().toISOString().split('T')[0];
-  
-  // 8. DETERMINAR TIPO DE TRANSAÇÃO
-  const type = determineTransactionType(line, amountInfo.amount);
   
   return {
     date,
-    description,
+    description: cleanedDescription,
     amount: Math.abs(amountInfo.amount),
     type,
     category,
@@ -260,7 +274,96 @@ function parseTransactionLine(line: string, availableCategories: any[]): Transac
   };
 }
 
+// 1️⃣ PARSER BR PARA VALORES (HOTFIX)
+export function parseAmountBR(raw: string | number): number {
+  if (typeof raw === 'number') return raw;
+  const s = raw.replace(/\s/g, '').replace(/R\$/i, '');
+  const neg = /^-/.test(s) || /^\(.*\)$/.test(s);
+  const num = s.replace(/[()+-]/g, '').replace(/\./g, '').replace(',', '.');
+  return (neg ? -1 : 1) * (parseFloat(num || '0'));
+}
+
+// 2️⃣ NATUREZA COM PRECEDÊNCIA DE PALAVRAS-CHAVE (HOTFIX)
+export function resolveNatureza(desc: string, amount: number): 'income' | 'expense' {
+  const u = desc.toUpperCase();
+  if (/(RECEBIMENTO\s+PIX|PIX\s+CRED|CR[ÉE]D(ITO)?\b)/.test(u)) return 'income';
+  if (/(PAGAMENTO\s+PIX|PIX\s+DEB|DEB(ITO)?\b|COMPRA|BOLETO|TARIFA)/.test(u)) return 'expense';
+  return amount >= 0 ? 'income' : 'expense';
+}
+
+// 3️⃣ LIMPEZA DE MERCHANT (REMOVE CÓDIGOS DO BANCO) (HOTFIX)
+export function cleanMerchant(desc: string): string {
+  return desc
+    .replace(/\b(PAGAMENTO|RECEBIMENTO)\s+PIX\s+\d+/gi,' ')
+    .replace(/\bPIX\s+(DEB|CRED)\b/gi,' ')
+    .replace(/\bCOMPRAS?\s+NACIONAIS?\b/gi,' ')
+    .replace(/\b(DBR|VEO\w*|AUT\s*\d+|CX\d+)\b/gi,' ')
+    .replace(/\bSAO\s+JOAQUIM\b/gi,' ')
+    .replace(/\b(DEB(ITO)?|CRED(ITO)?)\b/gi,' ')
+    .replace(/[—–-]/g,' ')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+}
+
+// 4️⃣ CATEGORIZAÇÃO DETERMINÍSTICA (HOTFIX)
+const BRAZILIAN_RULES: Array<{re:RegExp; cat:string}> = [
+  { re: /(POSTO|IPIRANGA|SHELL|RAIZEN|ALE\b|COMBUSTIVEL|GAS)/i, cat: 'Transporte' },
+  { re: /(MERCADO|SUPERMERC|ATACAD|ASSAI|TONIN|COMPER|BIG|WALMART)/i, cat: 'Alimentação' },
+  { re: /(VIVO|CLARO|TIM|OI|ALGAR|TELEFONE|CELULAR)/i, cat: 'Comunicação' },
+  { re: /(UBER|99APP|99POP|TAXI|TRANSPORTE)/i, cat: 'Transporte' },
+  { re: /(PAGAR\.ME|CIELO|STONE|PAYPAL|MERCADO\s*PAGO|BLUE\s*PAY)/i, cat: 'Serviços Financeiros' },
+  { re: /(LANCH|RESTAUR|PIZZA|BURGER|SUBWAY|MC ?DONALD|BK\b|IFOOD|UBER\s*EATS)/i, cat: 'Alimentação' },
+  { re: /(DROGARIA|FARMACIA|LABORATORIO|CLINICA|HOSPITAL)/i, cat: 'Saúde' },
+  { re: /(NETFLIX|SPOTIFY|AMAZON|MICROSOFT|GOOGLE|APPLE|GLOBO)/i, cat: 'Entretenimento' }
+];
+
+export function categorizeBR(merchantNorm: string, dictHit?: {categoria?:string}): string {
+  if (dictHit?.categoria) return dictHit.categoria;
+  for (const r of BRAZILIAN_RULES) if (r.re.test(merchantNorm)) return r.cat;
+  return 'Outros';
+}
+
+// 5️⃣ DETECTAR TRANSFERÊNCIAS INTERNAS (HOTFIX)
+export function detectTransferenciaInterna(desc: string, nomeTitular: string = 'Maickon Douglas'): boolean {
+  const u = desc.toUpperCase();
+  return /\bPIX\b/.test(u) && new RegExp(nomeTitular.replace(/\s+/g,'\\s+'), 'i').test(desc);
+}
+
 function extractAmount(line: string): { amount: number; confidence: number } | null {
+  // USAR NOVO PARSER BR - Buscar valores mais precisamente
+  // Padrões para capturar valores monetários brasileiros
+  const patterns = [
+    /[-+]?\s*R?\$?\s*([\d]{1,3}(?:\.\d{3})*,\d{2})/g, // 1.234,56
+    /[-+]?\s*R?\$?\s*(\d{1,6},\d{2})/g, // 123,45
+    /[-+]?\s*R?\$?\s*(\d+\.\d{2})/g, // 123.45 (formato US convertido)
+    /[-+]?\s*R?\$?\s*(\d+)/g // 123 (inteiros)
+  ];
+  
+  let bestMatch = null;
+  let bestValue = 0;
+  
+  for (const pattern of patterns) {
+    const matches = [...line.matchAll(pattern)];
+    for (const match of matches) {
+      try {
+        const amount = parseAmountBR(match[0]);
+        if (!isNaN(amount) && Math.abs(amount) >= 2 && Math.abs(amount) <= 50000) {
+          // Priorizar valores maiores (mais prováveis de serem o valor principal)
+          if (Math.abs(amount) > bestValue) {
+            bestValue = Math.abs(amount);
+            bestMatch = { amount, confidence: 0.95 };
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+  
+  return bestMatch;
+}
+
+function extractAmountOld(line: string): { amount: number; confidence: number } | null {
   // VALIDAÇÃO PRÉVIA: linha deve ter contexto financeiro válido
   if (!hasValidFinancialContext(line)) {
     return null;

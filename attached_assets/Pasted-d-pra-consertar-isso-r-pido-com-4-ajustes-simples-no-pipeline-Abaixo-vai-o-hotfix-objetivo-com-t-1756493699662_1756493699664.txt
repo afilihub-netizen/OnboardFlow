@@ -1,0 +1,117 @@
+dá pra consertar isso rápido com 4 ajustes simples no pipeline. Abaixo vai o “hotfix” objetivo com trechos prontos (TypeScript + SQL Supabase).
+
+1) Valor e sinal (onde costuma quebrar)
+
+Use um parser BR e derive a natureza por regra, não só pelo sinal.
+
+// 1) parse de valores pt-BR
+export function parseAmountBR(raw: string | number): number {
+  if (typeof raw === 'number') return raw;
+  const s = raw.replace(/\s/g, '').replace(/R\$/i, '');
+  const neg = /^-/.test(s) || /^\(.*\)$/.test(s);
+  const num = s.replace(/[()+-]/g, '').replace(/\./g, '').replace(',', '.');
+  return (neg ? -1 : 1) * (parseFloat(num || '0'));
+}
+
+// 2) natureza com precedência de palavras-chave
+export function resolveNatureza(desc: string, amount: number): 'Entrada'|'Saída' {
+  const u = desc.toUpperCase();
+  if (/(RECEBIMENTO\s+PIX|PIX\s+CRED|CR[ÉE]D(ITO)?\b)/.test(u)) return 'Entrada';
+  if (/(PAGAMENTO\s+PIX|PIX\s+DEB|DEB(ITO)?\b|COMPRA|BOLETO|TARIFA)/.test(u)) return 'Saída';
+  return amount >= 0 ? 'Entrada' : 'Saída';
+}
+
+
+Patch no seu importador: aplique parseAmountBR e depois resolveNatureza(descricao, amount).
+
+2) Nome do local (merchant) está “sujo”
+
+Limpe códigos do banco antes de classificar (isso corrige “compras nacionais … veos63899” etc.).
+
+export function cleanMerchant(desc: string): string {
+  return desc
+    .replace(/\b(PAGAMENTO|RECEBIMENTO)\s+PIX\s+\d+/gi,' ')
+    .replace(/\bPIX\s+(DEB|CRED)\b/gi,' ')
+    .replace(/\bCOMPRAS?\s+NACIONAIS?\b/gi,' ')
+    .replace(/\b(DBR|VEO\w*|AUT\s*\d+)\b/gi,' ')
+    .replace(/\bSAO\s+JOAQUIM\b/gi,' ')
+    .replace(/\b(DEB(ITO)?|CRED(ITO)?)\b/gi,' ')
+    .replace(/[—–-]/g,' ')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+}
+
+
+Use o cleanMerchant antes de bater regra/dicionário.
+
+3) Categorização: comece determinístico (e fácil de ajustar)
+
+Desligue IA/ML por enquanto. Use regras + dicionário (e você alimenta o dicionário pela UI quando corrige).
+
+const RULES: Array<{re:RegExp; cat:string}> = [
+  { re: /(POSTO|IPIRANGA|SHELL|RAIZEN|ALE\b)/i, cat: 'Transporte > Combustível' },
+  { re: /(MERCADO|SUPERMERC|ATACAD|ASSAI|TONIN)/i, cat: 'Alimentação > Supermercado' },
+  { re: /(VIVO|CLARO|TIM|OI|ALGAR)/i, cat: 'Telefonia/Internet' },
+  { re: /(UBER|99APP|99POP)/i, cat: 'Transporte > Apps' },
+  { re: /(PAY|PAGAR\.ME|CIELO|STONE|PAYPAL|MERCADO\s*PAGO|BLUE\s*PAY)/i, cat: 'Serviços Financeiros' },
+  { re: /(LANCH|RESTAUR|PIZZA|BURGER|SUBWAY|MC ?DONALD|BK\b)/i, cat: 'Alimentação > Restaurantes' },
+  { re: /(DROGARIA|FARMACIA|LABORATORIO|CLINICA)/i, cat: 'Saúde' },
+];
+
+export function categorize(merchantNorm: string, dictHit?: {categoria?:string}): string {
+  if (dictHit?.categoria) return dictHit.categoria;
+  for (const r of RULES) if (r.re.test(merchantNorm)) return r.cat;
+  return 'Sem categoria';
+}
+
+
+No Supabase, qualquer correção de nome/categoria alimenta merchant_map. Na próxima importação, o dicionário vence as regras.
+
+4) Evite “distorcer” o fluxo com transferências internas
+
+PIX entre você mesmo não é entrada/saída de DRE → marque Neutra.
+
+export function detectTransferenciaInterna(desc: string, nomeTitular: string): boolean {
+  const u = desc.toUpperCase();
+  return /\bPIX\b/.test(u) && new RegExp(nomeTitular.replace(/\s+/g,'\\s+'), 'i').test(desc);
+}
+
+// no pipeline:
+if (detectTransferenciaInterna(row.descricao, 'Maickon Douglas')) {
+  natureza = 'Neutra'; categoria = 'Transferência interna';
+}
+
+Onde aplicar (no que você já tem do Supabase)
+
+No arquivo da Edge Function classify-import que te passei antes:
+
+Troque o cálculo do amount (se vier string) por parseAmountBR.
+
+Substitua a natureza por resolveNatureza.
+
+Aplique cleanMerchant antes de normalizar/categorizar.
+
+Use categorize() e mantenha o dicionário (merchant_map) como primeira prioridade.
+
+Consulta rápida para achar erros que já importou
+-- valores com natureza invertida
+select id, data, descricao_raw, valor, natureza, tipo
+from public.transactions
+where (valor > 0 and natureza = 'Saída')
+   or (valor < 0 and natureza = 'Entrada')
+order by data desc
+limit 100;
+
+Resumo (checklist de 10 minutos)
+
+Parser BR para valor.
+
+Natureza por regra (PIX CRED/DEB, COMPRA, BOLETO, TARIFA) e só depois pelo sinal.
+
+Limpeza do merchant (remove VEO/DBR/etc.).
+
+Regras + dicionário para categoria (IA desligada por enquanto).
+
+Transferência interna = Neutra.
+
+Rodar a SQL acima e corrigir os casos — isso já treina o dicionário.
