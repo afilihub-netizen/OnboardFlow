@@ -1527,18 +1527,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Extract text is required" });
       }
 
-      console.log(`📤 CALLING analyzeExtractWithAI...`);
-      // Process large texts by splitting into chunks with progress tracking
-      const result = await analyzeExtractWithAI(extractText, availableCategories || [], sessionId, true);
-      console.log(`📥 RECEIVED RESULT FROM analyzeExtractWithAI:`, {
-        hasResult: !!result,
-        hasTransactions: !!result?.transactions,
-        transactionCount: result?.transactions?.length || 0
-      });
-      
-      // 🚀 DEEPSEEK EXTRACTION + CATEGORIZATION: Com timeout de 30s para evitar travamento
-      console.log(`🧠 [DeepSeek] Iniciando extração e categorização completa...`);
-      
+      // 🧠 DEEPSEEK ÚNICO: Extração e categorização completa em uma única chamada
+      console.log(`🧠 [DeepSeek] Iniciando extração e categorização de ${extractText.length} caracteres...`);
+      let result;
       try {
         const deepSeekPromise = deepSeekCategorization.extractAndCategorizeTransactions(extractText);
         const timeoutPromise = new Promise((_, reject) => 
@@ -1551,15 +1542,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`✅ [DeepSeek] Processamento concluído: ${deepSeekResult.length} transações encontradas`);
           result = { transactions: deepSeekResult };
         } else {
-          console.log(`⚠️ [DeepSeek] Nenhuma transação encontrada, usando fallback Gemini`);
-          // Mantém resultado do Gemini como fallback
+          console.log(`⚠️ [DeepSeek] Nenhuma transação encontrada no extrato`);
+          result = { transactions: [] };
         }
       } catch (error) {
         console.error(`❌ [DeepSeek] Erro no processamento:`, error.message);
-        console.log(`🔄 [DeepSeek] Continuando com resultado do Gemini (${result.transactions?.length || 0} transações)`);
+        result = { transactions: [] };
       }
       
-      console.log(`[analyze-extract] Result from AI:`, {
+      console.log(`[DeepSeek] Resultado final:`, {
         transactionsCount: result.transactions?.length || 0,
         hasTransactions: !!result.transactions,
         sampleTransaction: result.transactions?.[0]
