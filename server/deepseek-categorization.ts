@@ -69,7 +69,7 @@ export class DeepSeekCategorizationService {
    * Processa texto grande em chunks menores
    */
   private async processInChunks(extractText: string): Promise<CategorizedTransaction[]> {
-    const chunkSize = 8000; // Tamanho otimizado para DeepSeek
+    const chunkSize = 4000; // Tamanho reduzido para processamento mais rápido
     const chunks: string[] = [];
     
     // Dividir por linhas para não cortar transações
@@ -149,48 +149,18 @@ export class DeepSeekCategorizationService {
   }
 
   /**
-   * Constrói o prompt para extração completa do extrato bancário
+   * Constrói o prompt OTIMIZADO para extração rápida
    */
   private buildExtractionPrompt(extractText: string): string {
-    return `Você é um especialista em análise de extratos bancários brasileiros.
+    return `Extraia transações bancárias brasileiras do texto.
 
-TAREFA: Extraia TODAS as transações do extrato e categorize-as automaticamente.
+CATEGORIAS: Alimentação, Transporte, Casa, Saúde, Educação, Entretenimento, Vestuário, Serviços, Assinaturas, Investimentos, Outros.
 
-REGRAS DE EXTRAÇÃO:
-- Procure por padrões como: PIX, TED, DOC, débito, crédito, transferência, pagamento, compra, saque
-- Identifique datas (DD/MM/AAAA, DD-MM-AAAA, AAAA-MM-DD)
-- Extraia valores (positivos para receitas, negativos para despesas)
-- Capture descrições completas das transações
-
-CATEGORIAS DISPONÍVEIS:
-- Alimentação: supermercados, restaurantes, delivery, padarias
-- Transporte: combustível, Uber, 99, pedágios, estacionamento
-- Casa: aluguel, condomínio, energia, água, internet, móveis
-- Saúde: farmácias, hospitais, consultas, planos de saúde
-- Educação: escolas, cursos, livros, material escolar
-- Entretenimento: cinema, streaming, jogos, viagens
-- Vestuário: roupas, calçados, acessórios
-- Serviços: salão, barbeiro, consertos, limpeza
-- Assinaturas: Netflix, Spotify, software, academias
-- Investimentos: aplicações, ações, fundos
-- Outros: transações que não se encaixam nas categorias acima
-
-EXTRATO BANCÁRIO:
+TEXTO:
 ${extractText}
 
-RESPONDA APENAS COM JSON VÁLIDO:
-{
-  "transactions": [
-    {
-      "date": "2025-01-15",
-      "description": "PAGAMENTO PIX SUPERMERCADO XYZ",
-      "amount": -150.00,
-      "type": "expense",
-      "category": "Alimentação",
-      "confidence": 0.95
-    }
-  ]
-}`;
+RESPONDA APENAS JSON:
+{"transactions":[{"date":"AAAA-MM-DD","description":"DESC","amount":VALOR,"type":"income/expense","category":"CATEGORIA","confidence":0.9}]}`;
   }
 
   /**
@@ -272,7 +242,7 @@ RESPONDA APENAS COM JSON:
    */
   private async callDeepSeekAPI(prompt: string): Promise<any> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout para não travar
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout mais agressivo
 
     try {
       const response = await fetch(this.baseUrl, {
@@ -289,8 +259,8 @@ RESPONDA APENAS COM JSON:
               content: prompt
             }
           ],
-          temperature: 0.1, // Baixa temperatura para respostas consistentes
-          max_tokens: 4000,
+          temperature: 0.1,
+          max_tokens: 2000, // Reduzido para respostas mais rápidas
         }),
         signal: controller.signal,
       });
