@@ -222,7 +222,7 @@ RULES:
 
     // Add timeout to prevent hanging
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('AI request timeout')), 60000); // 60 second timeout
+      setTimeout(() => reject(new Error('AI request timeout')), 20000); // 20 second timeout
     });
 
     const aiResponse: any = await Promise.race([
@@ -449,9 +449,11 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     
     // Progress tracking available via global sessions
     
-    // Split large texts into chunks
-    const chunks = splitTextIntoChunks(extractText, 6000);
+    // Split large texts into chunks (smaller chunks for faster processing)
+    const chunks = splitTextIntoChunks(extractText, 4000);
     console.log("Split into", chunks.length, "chunks");
+    console.log("Total text length:", extractText.length, "characters");
+    console.log("Average chunk size:", Math.round(extractText.length / chunks.length), "characters");
     
     if (sessionId) {
       sendProgressUpdate(sessionId, 10, `Dividido em ${chunks.length} partes para análise`);
@@ -459,39 +461,60 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     
     const allTransactions: any[] = [];
     
-    // Process each chunk
-    for (let i = 0; i < chunks.length; i++) {
-      const progress = 10 + ((i / chunks.length) * 80);
-      
-      if (sessionId) {
-        sendProgressUpdate(sessionId, progress, `Analisando parte ${i + 1} de ${chunks.length}...`);
-      }
-      
-      console.log(`Processing chunk ${i + 1}/${chunks.length}, size: ${chunks[i].length}`);
-      
-      try {
-        console.log(`Starting chunk ${i + 1} processing...`);
-        const chunkTransactions = await processChunk(chunks[i], availableCategories);
-        allTransactions.push(...chunkTransactions);
-        console.log(`Chunk ${i + 1} processed: ${chunkTransactions.length} transactions`);
+    // Process chunks with limited parallelism for better performance
+    const CONCURRENT_CHUNKS = 2;
+    let processedChunks = 0;
+    
+    for (let i = 0; i < chunks.length; i += CONCURRENT_CHUNKS) {
+      const chunkBatch = chunks.slice(i, i + CONCURRENT_CHUNKS);
+      const batchPromises = chunkBatch.map(async (chunk, batchIndex) => {
+        const chunkIndex = i + batchIndex;
+        const progress = 10 + ((chunkIndex / chunks.length) * 80);
         
-        // Send progress update after each successful chunk
         if (sessionId) {
-          const updatedProgress = 10 + (((i + 1) / chunks.length) * 80);
-          sendProgressUpdate(sessionId, updatedProgress, `Concluído parte ${i + 1} de ${chunks.length}`);
-        }
-      } catch (chunkError) {
-        console.error(`Error processing chunk ${i + 1}:`, chunkError);
-        
-        // Send error feedback to user but continue
-        if (sessionId) {
-          const currentProgress = 10 + ((i / chunks.length) * 80);
-          sendProgressUpdate(sessionId, currentProgress, `Erro na parte ${i + 1}, continuando...`);
+          sendProgressUpdate(sessionId, progress, `Analisando parte ${chunkIndex + 1} de ${chunks.length}...`);
         }
         
-        // Continue with other chunks even if one fails
-      }
+        console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length}, size: ${chunk.length}`);
+        
+        try {
+          console.log(`Starting chunk ${chunkIndex + 1} processing...`);
+          const chunkTransactions = await processChunk(chunk, availableCategories);
+          console.log(`Chunk ${chunkIndex + 1} processed: ${chunkTransactions.length} transactions`);
+          
+          // Send progress update after each successful chunk
+          if (sessionId) {
+            const updatedProgress = 10 + (((chunkIndex + 1) / chunks.length) * 80);
+            sendProgressUpdate(sessionId, updatedProgress, `Concluído parte ${chunkIndex + 1} de ${chunks.length}`);
+          }
+          
+          return chunkTransactions;
+        } catch (chunkError) {
+          console.error(`Error processing chunk ${chunkIndex + 1}:`, chunkError);
+          
+          // Send error feedback to user but continue
+          if (sessionId) {
+            const currentProgress = 10 + ((chunkIndex / chunks.length) * 80);
+            sendProgressUpdate(sessionId, currentProgress, `Erro na parte ${chunkIndex + 1}, continuando...`);
+          }
+          
+          return [];
+        }
+      });
+      
+      // Wait for batch to complete and add results
+      const batchResults = await Promise.all(batchPromises);
+      batchResults.forEach(transactions => {
+        allTransactions.push(...transactions);
+      });
+      
+      processedChunks += chunkBatch.length;
+      console.log(`Batch completed. Processed ${processedChunks}/${chunks.length} chunks so far`);
     }
+    
+    console.log(`Total chunks processed: ${chunks.length}`);
+    console.log(`Total transactions extracted: ${allTransactions.length}`);
+    console.log(`Transactions per chunk average: ${chunks.length > 0 ? Math.round(allTransactions.length / chunks.length) : 0}`);
     
     if (sessionId) {
       sendProgressUpdate(sessionId, 95, "Finalizando análise...");
