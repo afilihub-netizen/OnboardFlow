@@ -33,6 +33,7 @@ import { DocumentProcessorServiceClient } from '@google-cloud/documentai';
 import { enriquecerTransacaoComCNPJ, extrairCNPJsDoTexto } from './cnpj-service';
 import { enhancedCategorization, processTransactionBatch } from './utils/enhanced-categorization.js';
 import { classifyBatch, convertToRawBankRow, convertFromTxNormalized } from './categorization/classifier.js';
+import { classifyBatchSupabase, convertFromTxNormalizedSupabase } from './categorization/supabaseClassifier.js';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -1753,8 +1754,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const results = [];
       
-      // Testa o novo sistema determinístico
-      const classifiedResults = await classifyBatch(testCases);
+      // Testa o novo sistema Supabase
+      const classifiedResults = await classifyBatchSupabase(testCases, 'demo-user');
       
       for (let i = 0; i < testCases.length; i++) {
         const testCase = testCases[i];
@@ -1808,21 +1809,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (geminiResult && geminiResult.length > 0) {
           console.log(`✅ [Gemini] Sucesso: ${geminiResult.length} transações encontradas`);
           
-          // 🚀 NOVO SISTEMA DETERMINÍSTICO: Pipeline híbrido robusto
-          console.log(`🎯 [DETERMINISTIC] Aplicando sistema de categorização determinístico...`);
+          // 🚀 NOVO SISTEMA SUPABASE: Arquitetura híbrida com dicionário do banco
+          console.log(`🎯 [SUPABASE] Aplicando sistema de categorização Supabase...`);
           
           try {
             // Converte transações para formato do classificador
             const rawRows = geminiResult.map(convertToRawBankRow);
             
-            // Aplica classificação em lote com pipeline híbrido
-            const classifiedRows = await classifyBatch(rawRows);
+            // Aplica classificação em lote com sistema Supabase
+            const classifiedRows = await classifyBatchSupabase(rawRows, 'demo-user');
             
             // Converte de volta para formato do sistema
-            const enhancedTransactions = classifiedRows.map(convertFromTxNormalized);
+            const enhancedTransactions = classifiedRows.map(convertFromTxNormalizedSupabase);
             
             result = { transactions: enhancedTransactions };
-            console.log(`🎯 [DETERMINISTIC] Categorização determinística concluída: ${enhancedTransactions.length} transações processadas`);
+            console.log(`🎯 [SUPABASE] Categorização Supabase concluída: ${enhancedTransactions.length} transações processadas`);
             
             // Log de estatísticas de confiança
             const highConfidence = enhancedTransactions.filter(t => t.confidence >= 0.9).length;
@@ -1832,7 +1833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`📊 [STATS] Alta confiança (≥90%): ${highConfidence} | Média (70-89%): ${mediumConfidence} | Baixa (<70%): ${lowConfidence}`);
             
           } catch (error) {
-            console.error(`❌ [DETERMINISTIC] Erro no sistema determinístico:`, error);
+            console.error(`❌ [SUPABASE] Erro no sistema Supabase:`, error);
             // Fallback para o sistema antigo em caso de erro
             result = { transactions: geminiResult };
           }
