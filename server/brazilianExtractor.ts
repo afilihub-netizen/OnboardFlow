@@ -123,7 +123,7 @@ export function extractTransactionsBrazilian(text: string, availableCategories: 
       continue;
     }
     
-    if (line.length < 25) continue; // Transações reais são mais longas
+    if (line.length < 20) continue; // REDUZIDO: aceitar linhas menores
     
     const transaction = parseTransactionLineStrict(line, availableCategories);
     if (transaction && isValidTransactionStrict(transaction)) {
@@ -177,12 +177,12 @@ function isObviousNoise(line: string): boolean {
 
 // FUNÇÃO NOVA: Verificar se linha parece transação completa  
 function looksLikeCompleteTransaction(line: string): boolean {
-  // Deve ter valor monetário E contexto bancário OU data
+  // FILTRO MAIS FLEXÍVEL: Deve ter valor monetário E algum contexto
   const hasValue = /[-+]?\s*R?\$?\s*[\d.,]+/.test(line);
   const hasDate = /^\d{2}\/\d{2}\/\d{4}/.test(line);
-  const hasBankContext = /PIX|TED|COMPRA|PAGAMENTO|RECEBIMENTO|LIQUID|DEB|CRED/i.test(line);
+  const hasBankContext = /PIX|TED|COMPRA|PAGAMENTO|RECEBIMENTO|LIQUID|DEB|CRED|NACIONAIS|POSTO|MERCADO|SUPER/i.test(line);
   
-  return hasValue && (hasDate || hasBankContext) && line.length >= 25;
+  return hasValue && (hasDate || hasBankContext) && line.length >= 18; // REDUZIDO
 }
 
 // FUNÇÃO NOVA: Parser ultra-rigoroso com HOTFIX aplicado
@@ -765,16 +765,16 @@ function isNoiseLine(line: string): boolean {
 // FUNÇÃO PARA VALIDAR SE A TRANSAÇÃO É REALMENTE VÁLIDA
 // FUNÇÃO MELHORADA: Validação ultra-rigorosa
 function isValidTransactionStrict(transaction: Transaction): boolean {
-  // VALOR: deve ser realista
-  if (transaction.amount < 2 || transaction.amount > 50000) {
+  // VALOR: mais flexível
+  if (Math.abs(transaction.amount) < 1 || Math.abs(transaction.amount) > 100000) {
     return false;
   }
   
-  // DESCRIÇÃO: deve ser substancial e limpa
+  // DESCRIÇÃO: mais flexível
   if (!transaction.description || 
-      transaction.description.length < 8 ||
+      transaction.description.length < 5 || // REDUZIDO
       transaction.description.toLowerCase().includes('saldo') ||
-      transaction.description.toLowerCase().includes('taxa') ||
+      transaction.description.toLowerCase().includes('taxa de juros') ||
       /^[\s\d\-\.]+$/.test(transaction.description)) {
     return false;
   }
