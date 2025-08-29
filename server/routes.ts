@@ -1302,17 +1302,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Starting PDF text extraction via OCR...');
       const base64Data = buffer.toString('base64');
-      console.log('[OCR] NOVO - processando PDF completo sem limite!');
-      const newResult = await processAllPDFPages(base64Data, 30);
-      const ocrResult = {
-        ParsedResults: newResult.text ? [{ ParsedText: newResult.text }] : [],
-        IsErroredOnProcessing: false,
-        ErrorMessage: []
-      };
+      // Voltar ao sistema original que funcionava
+      console.log('[OCR] Processando PDF com sistema original...');
+      const ocrResult = await processPDFChunk(base64Data, 1, 3);
       
+      // Extrair texto dos resultados
+      let extractedText = '';
+      if (ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0) {
+        extractedText = ocrResult.ParsedResults
+          .map((result: any) => result.ParsedText)
+          .join('\n\n');
+      }
+
       return {
-        text: newResult.text,
-        pages: newResult.pages,
+        text: extractedText,
+        pages: ocrResult.ParsedResults?.length || 0,
         method: 'ocr'
       };
       
@@ -1398,31 +1402,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { text: allText, pages: successfulPages };
   }
 
-  // FUNÇÃO ANTIGA SUBSTITUÍDA
-  async function processPDFChunk(base64Data: string, startPage: number = 1, endPage: number = 10) {
-    console.log('[OCR] Usando novo sistema sem limite de páginas...');
-    const result = await processAllPDFPages(base64Data, 30);
+  // Sistema OCR original (SEM parâmetro 'pages' inválido)
+  async function processPDFChunk(base64Data: string, startPage: number = 1, endPage: number = 3) {
+    const formData = new FormData();
+    formData.append('base64Image', `data:application/pdf;base64,${base64Data}`);
+    formData.append('language', 'por');
+    formData.append('apikey', process.env.OCR_SPACE_API_KEY || 'helloworld');
+    formData.append('detectOrientation', 'true');
+    formData.append('scale', 'true');
+    formData.append('OCREngine', '2');
+    formData.append('filetype', 'PDF');
+    // REMOVIDO: parâmetro 'pages' - OCR.Space não aceita!
+
+    const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!ocrResponse.ok) {
+      throw new Error(`OCR API error: ${ocrResponse.status}`);
+    }
+
+    const ocrResult = await ocrResponse.json();
     
-    const ocrResult = {
-      ParsedResults: result.text ? [{ ParsedText: result.text }] : [],
-      IsErroredOnProcessing: false,
-      ErrorMessage: []
-    };
-    
-    const extractedText = result.text || '';
-    
-    // Debug log to see the actual error structure
+    // Debug log
     console.log('OCR Result debug:', {
       IsErroredOnProcessing: ocrResult.IsErroredOnProcessing,
       ErrorMessage: ocrResult.ErrorMessage,
       hasResults: ocrResult.ParsedResults?.length > 0
     });
     
-    // Always check for results first
+    // Check for results
     const hasValidResults = ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0;
     console.log(`OCR Results: ${hasValidResults ? ocrResult.ParsedResults.length : 0} page(s) extracted`);
     
-    // Never throw error if we have any valid results
+    // Don't throw error if we have results
     if (!hasValidResults) {
       const errorMessage = Array.isArray(ocrResult.ErrorMessage) 
         ? ocrResult.ErrorMessage.join(' ') 
@@ -1434,14 +1448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     
-    // Texto já extraído pelo novo sistema acima
-
-    return {
-      text: extractedText,
-      pages: result.pages || 0,
-      hasMore: false,
-      isFirstChunk: startPage === 1
-    };
+    return ocrResult;
   }
 
   // PDF text extraction route with progressive processing
