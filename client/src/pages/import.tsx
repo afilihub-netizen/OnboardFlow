@@ -322,7 +322,7 @@ export default function Import() {
   const analyzeExtractWithAI = async (textToAnalyze?: string) => {
     const textToUse = textToAnalyze || extractText;
     
-    if (!textToUse.trim()) {
+    if (!textToUse || typeof textToUse !== 'string' || !textToUse.trim()) {
       toast({
         title: "Texto vazio",
         description: "Por favor, adicione o texto do extrato bancário.",

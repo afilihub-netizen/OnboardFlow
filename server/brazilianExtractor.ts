@@ -136,6 +136,13 @@ export function extractTransactionsBrazilian(text: string, availableCategories: 
         console.log(`[BR-EXTRACTOR] ⚠️ LIMITE DE SEGURANÇA: Parando em 200 transações`);
         break;
       }
+    } else {
+      // DEBUG: Por que transações são rejeitadas
+      if (transaction) {
+        console.log(`[BR-FILTER] ❌ Transação rejeitada na validação: "${transaction.description}" - R$ ${transaction.amount}`);
+      } else {
+        console.log(`[BR-FILTER] ❌ Parser falhou para linha: "${line.substring(0, 50)}..."`);
+      }
     }
   }
   
@@ -189,11 +196,11 @@ function looksLikeCompleteTransaction(line: string): boolean {
 function parseTransactionLineStrict(line: string, availableCategories: any[]): Transaction | null {
   // 1. EXTRAIR VALOR COM PARSER BR CORRETO
   const amountInfo = extractAmount(line);
-  if (!amountInfo || Math.abs(amountInfo.amount) < 2) return null;
+  if (!amountInfo || Math.abs(amountInfo.amount) < 1) return null; // REDUZIDO para aceitar mais transações
   
   // 2. EXTRAIR E LIMPAR DESCRIÇÃO com cleanMerchant
   const rawDescription = cleanDescription(line);
-  if (!rawDescription || rawDescription.length < 8) return null;
+  if (!rawDescription || rawDescription.length < 5) return null; // REDUZIDO: aceitar descrições menores
   
   const cleanedDescription = cleanMerchant(rawDescription);
   
