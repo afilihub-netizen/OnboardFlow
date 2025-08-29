@@ -1,12 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Brain, TrendingUp, AlertCircle, Target, Sparkles, BarChart3 } from "lucide-react";
+import { Brain, TrendingUp, AlertCircle, Target, BarChart3, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface AISuggestion {
@@ -35,33 +33,32 @@ interface SuggestionsResponse {
 
 export function AISuggestions() {
   const { toast } = useToast();
-  const [riskProfile, setRiskProfile] = useState("moderado");
   const [suggestions, setSuggestions] = useState<SuggestionsResponse | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const generateSuggestionsMutation = useMutation({
-    mutationFn: async (profile: string) => {
+    mutationFn: async (): Promise<SuggestionsResponse> => {
       return await apiRequest('POST', '/api/investments/suggestions', {
-        riskProfile: profile
+        riskProfile: 'moderado' // Perfil padrão para análise automática
       });
     },
     onSuccess: (data) => {
       setSuggestions(data);
-      toast({
-        title: "✨ Sugestões Geradas!",
-        description: "A IA analisou seu portfólio e trouxe recomendações personalizadas.",
-      });
+      setIsInitialLoad(false);
     },
     onError: () => {
-      toast({
-        title: "Erro",
-        description: "Não foi possível gerar sugestões. Tente novamente.",
-        variant: "destructive",
-      });
+      setIsInitialLoad(false);
+      // Silenciar erros da API para não mostrar toast em carregamento automático
     },
   });
 
-  const handleGenerateSuggestions = () => {
-    generateSuggestionsMutation.mutate(riskProfile);
+  // Gerar sugestões automaticamente quando o componente carrega
+  useEffect(() => {
+    generateSuggestionsMutation.mutate();
+  }, []);
+
+  const handleRefreshSuggestions = () => {
+    generateSuggestionsMutation.mutate();
   };
 
   const getRiskLevelColor = (level: string) => {
@@ -100,47 +97,18 @@ export function AISuggestions() {
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* Controles */}
-        <div className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg border">
-          <div className="flex-1">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-              Perfil de Risco
-            </label>
-            <Select value={riskProfile} onValueChange={setRiskProfile}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="conservador">🛡️ Conservador</SelectItem>
-                <SelectItem value="moderado">⚖️ Moderado</SelectItem>
-                <SelectItem value="agressivo">🚀 Agressivo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <Button 
-            onClick={handleGenerateSuggestions}
-            disabled={generateSuggestionsMutation.isPending}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-6"
-            data-testid="button-generate-suggestions"
-          >
-            {generateSuggestionsMutation.isPending ? (
-              <>
-                <Sparkles className="w-4 h-4 mr-2 animate-spin" />
-                Analisando...
-              </>
-            ) : (
-              <>
-                <Brain className="w-4 h-4 mr-2" />
-                Gerar Sugestões
-              </>
-            )}
-          </Button>
-        </div>
 
         {/* Loading State */}
-        {generateSuggestionsMutation.isPending && (
+        {(generateSuggestionsMutation.isPending || isInitialLoad) && (
           <div className="space-y-4">
+            <div className="flex items-center justify-center py-8">
+              <div className="flex items-center gap-3">
+                <Brain className="w-6 h-6 text-purple-600 animate-pulse" />
+                <span className="text-gray-600 dark:text-gray-400">
+                  Analisando oportunidades de investimento...
+                </span>
+              </div>
+            </div>
             <Skeleton className="h-20 w-full" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Skeleton className="h-32 w-full" />
@@ -150,8 +118,23 @@ export function AISuggestions() {
         )}
 
         {/* Resultados */}
-        {suggestions && (
+        {suggestions && !generateSuggestionsMutation.isPending && (
           <div className="space-y-6">
+            {/* Header com botão de atualizar */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                🤖 Análise Automática do Mercado
+              </h3>
+              <button
+                onClick={handleRefreshSuggestions}
+                disabled={generateSuggestionsMutation.isPending}
+                className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 disabled:opacity-50"
+                data-testid="button-refresh-suggestions"
+              >
+                <RefreshCw className={`w-4 h-4 ${generateSuggestionsMutation.isPending ? 'animate-spin' : ''}`} />
+                Atualizar
+              </button>
+            </div>
             {/* Resumo e Score */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
@@ -263,18 +246,24 @@ export function AISuggestions() {
           </div>
         )}
 
-        {/* Estado Inicial */}
-        {!suggestions && !generateSuggestionsMutation.isPending && (
+        {/* Estado de Erro */}
+        {!suggestions && !generateSuggestionsMutation.isPending && !isInitialLoad && (
           <div className="text-center py-8">
-            <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Brain className="w-8 h-8 text-purple-600" />
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              Consulte nossa IA
+              Análise Temporariamente Indisponível
             </h3>
             <p className="text-gray-500 dark:text-gray-400 mb-4">
-              Receba sugestões personalizadas baseadas no seu portfólio atual e perfil de risco
+              Não foi possível gerar a análise automática do mercado no momento
             </p>
+            <button
+              onClick={handleRefreshSuggestions}
+              className="text-purple-600 hover:text-purple-700 text-sm font-medium"
+            >
+              Tentar novamente
+            </button>
           </div>
         )}
       </CardContent>
