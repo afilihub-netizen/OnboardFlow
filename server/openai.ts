@@ -220,16 +220,24 @@ RULES:
 - category: Alimentação, Transporte, Casa, Saúde, Entretenimento, Assinaturas, Outros
 - isSubscription: true se for serviço de assinatura conhecida, false caso contrário`;
 
-    const aiResponse = await aiServiceManager.generateAIResponse(
-      `Analise este extrato bancário e extraia as transações:\n\n${extractText}`,
-      'extract_analysis',
-      {
-        systemInstruction: systemPrompt,
-        responseMimeType: "application/json", 
-        temperature: 0.1,
-        fallbackResponse: '{"transactions": []}'
-      }
-    );
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('AI request timeout')), 60000); // 60 second timeout
+    });
+
+    const aiResponse: any = await Promise.race([
+      aiServiceManager.generateAIResponse(
+        `Analise este extrato bancário e extraia as transações:\n\n${extractText}`,
+        'extract_analysis',
+        {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json", 
+          temperature: 0.1,
+          fallbackResponse: '{"transactions": []}'
+        }
+      ),
+      timeoutPromise
+    ]);
 
     if (aiResponse.success) {
       if (typeof aiResponse.data === 'string') {
@@ -248,6 +256,15 @@ RULES:
     console.error("Error calling AI service:", error);
     console.log("Using fallback empty transactions due to AI error");
     content = '{"transactions": []}';
+    
+    // Log specific error type
+    if (error instanceof Error) {
+      console.error("Error details:", error.message);
+      if (error.message.includes('timeout')) {
+        console.log("AI request timed out, this chunk will be skipped");
+      }
+    }
+    
     // Don't throw here, continue with empty transactions to provide feedback
   }
   
@@ -453,11 +470,25 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
       console.log(`Processing chunk ${i + 1}/${chunks.length}, size: ${chunks[i].length}`);
       
       try {
+        console.log(`Starting chunk ${i + 1} processing...`);
         const chunkTransactions = await processChunk(chunks[i], availableCategories);
         allTransactions.push(...chunkTransactions);
         console.log(`Chunk ${i + 1} processed: ${chunkTransactions.length} transactions`);
+        
+        // Send progress update after each successful chunk
+        if (sessionId) {
+          const updatedProgress = 10 + (((i + 1) / chunks.length) * 80);
+          sendProgressUpdate(sessionId, updatedProgress, `Concluído parte ${i + 1} de ${chunks.length}`);
+        }
       } catch (chunkError) {
         console.error(`Error processing chunk ${i + 1}:`, chunkError);
+        
+        // Send error feedback to user but continue
+        if (sessionId) {
+          const currentProgress = 10 + ((i / chunks.length) * 80);
+          sendProgressUpdate(sessionId, currentProgress, `Erro na parte ${i + 1}, continuando...`);
+        }
+        
         // Continue with other chunks even if one fails
       }
     }
