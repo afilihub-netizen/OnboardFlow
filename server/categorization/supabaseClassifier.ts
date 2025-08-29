@@ -121,6 +121,8 @@ export async function classifyRowSupabase(row: RawBankRow, userId: string = 'dem
   const merchantNorm = normalizeMerchantName(merchantRaw);
   const slug = slugify(merchantNorm);
   const natureza = naturezaFrom(tipo, row.valor);
+  
+  console.log(`🔍 [DEBUG-CLASSIFICAÇÃO] "${row.descricao}" → tipo="${tipo}" natureza="${natureza}" amount=${row.valor}`);
 
   const fontes: string[] = [];
   let nome = merchantNorm, categoria: string | null = null, cnpj: string | null = null, confidence = 0;

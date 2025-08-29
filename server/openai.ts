@@ -231,13 +231,21 @@ CRITICAL: Use EXACTLY these field names: date, description, amount, type, catego
 JSON OBRIGATÓRIO:
 {"transactions":[{"date":"2024-12-10","description":"texto completo","amount":-100.50,"type":"expense","category":"Outros","isSubscription":false}]}
 
-RULES:
+RULES CRÍTICAS:
 - date: YYYY-MM-DD (use 2025-01-01 se não encontrar)
 - description: texto completo da transação  
-- amount: PRESERVAR SINAIS! (negativo para gastos, positivo para receitas)
-- type: OBRIGATÓRIO "expense" para PAGAMENTO PIX, "income" para RECEBIMENTO PIX
+- amount: CRITICAL! PRESERVE EXACT SIGNS FROM ORIGINAL TEXT:
+  * "-R$ 100,00" or "- 100,00" → amount: -100.00
+  * "+R$ 100,00" or "100,00" → amount: 100.00
+- type: OBRIGATÓRIO baseado em KEYWORDS:
+  * "PAGAMENTO PIX" ou "PIX DEB" → SEMPRE "expense"
+  * "RECEBIMENTO PIX" ou "PIX CRED" → SEMPRE "income"
+  * "COMPRAS" → SEMPRE "expense"
 - category: Alimentação, Transporte, Casa, Saúde, Entretenimento, Assinaturas, Outros
-- isSubscription: true se for serviço de assinatura conhecida, false caso contrário`;
+- isSubscription: true se for serviço de assinatura conhecida, false caso contrário
+
+EXEMPLO OBRIGATÓRIO:
+"PAGAMENTO PIX João -R$ 50,00" → {"amount": -50.00, "type": "expense"}`;
 
     // Add timeout to prevent hanging - TIMEOUT AUMENTADO PARA 60s
     const timeoutPromise = new Promise((_, reject) => {
@@ -332,6 +340,17 @@ RULES:
         const cleanAmount = rawAmount.replace(/[R$\s]/g, '').replace(/,/g, '.').replace(/^\+/, '');
         parsedAmount = parseFloat(cleanAmount) || 0;
         console.log(`💰 [AMOUNT-PARSE] "${rawAmount}" → "${cleanAmount}" → ${parsedAmount}`);
+        
+        // VALIDAÇÃO CRÍTICA: Força correção se tipo e sinal não batem
+        const description = rawDescription.toString().toLowerCase();
+        if ((description.includes('pagamento pix') || description.includes('pix deb')) && parsedAmount > 0) {
+          parsedAmount = -Math.abs(parsedAmount);
+          console.log(`🔴 [FORCE-NEGATIVE] PIX pagamento detectado, forçando valor negativo: ${parsedAmount}`);
+        }
+        if ((description.includes('recebimento pix') || description.includes('pix cred')) && parsedAmount < 0) {
+          parsedAmount = Math.abs(parsedAmount);
+          console.log(`🟢 [FORCE-POSITIVE] PIX recebimento detectado, forçando valor positivo: ${parsedAmount}`);
+        }
       } else {
         parsedAmount = parseFloat(rawAmount) || 0;
         console.log(`💰 [AMOUNT-PARSE] (number) ${rawAmount} → ${parsedAmount}`);
