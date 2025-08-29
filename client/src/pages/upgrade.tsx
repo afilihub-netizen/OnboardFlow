@@ -8,6 +8,7 @@ import { Check, Crown, Star } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { BackButton } from "@/components/ui/back-button";
 
 if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
   throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
@@ -228,6 +229,7 @@ export default function UpgradePage() {
   if (selectedPlan && clientSecret) {
     return (
       <div className="container mx-auto px-4 py-8">
+        <BackButton to="/upgrade" label="Voltar para Planos" />
         <Elements stripe={stripePromise} options={{ clientSecret }}>
           <PaymentForm planId={selectedPlan} clientSecret={clientSecret} />
         </Elements>
@@ -237,6 +239,7 @@ export default function UpgradePage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <BackButton to="/" label="Voltar para Dashboard" />
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">Escolha seu Plano</h1>
         <p className="text-muted-foreground">

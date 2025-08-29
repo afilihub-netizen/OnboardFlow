@@ -161,21 +161,21 @@ export default function Profile() {
           subtitle="Gerencie suas informações pessoais" 
         />
         
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-8">
           {/* Profile Overview */}
-          <Card className="financial-card">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <User className="w-5 h-5 mr-2" />
+          <Card className="financial-card shadow-sm border-0">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center text-lg font-semibold">
+                <User className="w-5 h-5 mr-3" />
                 Informações Pessoais
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6">
-                <div className="flex flex-col items-center space-y-4">
-                  <Avatar className="w-24 h-24">
+            <CardContent className="pt-2">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-6 lg:space-y-0 lg:space-x-8">
+                <div className="flex flex-col items-center space-y-4 flex-shrink-0">
+                  <Avatar className="w-28 h-28 ring-4 ring-slate-100">
                     <AvatarImage src={profileImageUrl || user?.profileImageUrl} alt="Profile" />
-                    <AvatarFallback className="bg-blue-100 text-blue-600 text-2xl">
+                    <AvatarFallback className="bg-blue-100 text-blue-600 text-2xl font-semibold">
                       {getUserInitials()}
                     </AvatarFallback>
                   </Avatar>
@@ -187,48 +187,50 @@ export default function Profile() {
                       className="absolute inset-0 opacity-0 cursor-pointer"
                       data-testid="input-photo-upload"
                     />
-                    <Button variant="outline" size="sm" data-testid="button-change-avatar">
+                    <Button variant="outline" size="sm" className="hover:bg-slate-50" data-testid="button-change-avatar">
                       <Camera className="w-4 h-4 mr-2" />
                       Alterar Foto
                     </Button>
                   </div>
                 </div>
                 
-                <div className="flex-1 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">Nome</Label>
+                <div className="flex-1 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName" className="text-sm font-medium">Nome</Label>
                       <Input 
                         id="firstName"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         placeholder="Digite seu nome"
+                        className="h-11"
                         data-testid="input-first-name"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="lastName">Sobrenome</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName" className="text-sm font-medium">Sobrenome</Label>
                       <Input 
                         id="lastName"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         placeholder="Digite seu sobrenome"
+                        className="h-11"
                         data-testid="input-last-name"
                       />
                     </div>
                   </div>
                   
-                  <div>
-                    <Label htmlFor="email">Email</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                     <Input 
                       id="email"
                       type="email"
                       defaultValue={user?.email || ''}
                       disabled
-                      className="bg-gray-100 dark:bg-gray-700"
+                      className="bg-gray-100 dark:bg-gray-700 h-11"
                       data-testid="input-email"
                     />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       O email não pode ser alterado
                     </p>
                   </div>
@@ -237,11 +239,11 @@ export default function Profile() {
                 </div>
               </div>
               
-              <div className="flex justify-end mt-6">
+              <div className="flex justify-end mt-8">
                 <Button 
                   onClick={handleSaveProfile}
                   disabled={updateProfileMutation.isPending}
-                  className="bg-blue-500 hover:bg-blue-600 text-white"
+                  className="bg-blue-500 hover:bg-blue-600 text-white h-11 px-6"
                   data-testid="button-save-profile"
                 >
                   <Settings className="w-4 h-4 mr-2" />
@@ -252,12 +254,12 @@ export default function Profile() {
           </Card>
 
           {/* Account Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="financial-card">
-              <CardHeader>
-                <CardTitle>Status da Conta</CardTitle>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card className="financial-card shadow-sm border-0">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-semibold">Status da Conta</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5 pt-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Status</span>
                   <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
@@ -282,14 +284,14 @@ export default function Profile() {
               </CardContent>
             </Card>
 
-            <Card className="financial-card">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Shield className="w-5 h-5 mr-2" />
+            <Card className="financial-card shadow-sm border-0">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center text-lg font-semibold">
+                  <Shield className="w-5 h-5 mr-3" />
                   Segurança
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5 pt-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Autenticação</span>
                   <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
