@@ -65,8 +65,8 @@ export async function setupAuth(app: Express) {
           return done(null, false, { message: 'Por favor, verifique seu email antes de fazer login' });
         }
 
-        // Update last login
-        await storage.updateUserLastLogin(user.id);
+        // Update last login (non-blocking)
+        storage.updateUserLastLogin(user.id).catch(console.error);
         
         return done(null, user);
       } catch (error) {
@@ -89,8 +89,8 @@ export async function setupAuth(app: Express) {
           let user = await storage.getUserByGoogleId(profile.id);
           
           if (user) {
-            // Update last login
-            await storage.updateUserLastLogin(user.id);
+            // Update last login (non-blocking)
+            storage.updateUserLastLogin(user.id).catch(console.error);
             return done(null, user);
           }
 
@@ -102,7 +102,7 @@ export async function setupAuth(app: Express) {
             if (user) {
               // Link Google account to existing user
               await storage.linkGoogleAccount(user.id, profile.id);
-              await storage.updateUserLastLogin(user.id);
+              storage.updateUserLastLogin(user.id).catch(console.error);
               return done(null, user);
             }
           }
@@ -170,7 +170,7 @@ export async function setupAuth(app: Express) {
       }
 
       // Hash password
-      const passwordHash = await bcrypt.hash(password, 12);
+      const passwordHash = await bcrypt.hash(password, 10);
 
       // Create user
       const user = await storage.createUser({
