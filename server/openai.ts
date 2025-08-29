@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { processarLoteTransacoes, extrairCNPJsDoTexto } from "./cnpj-service";
 import { aiServiceManager } from "./services/aiServiceManager";
 import { extractTransactionsBrazilian } from "./brazilianExtractor.js";
+import { extractSimpleBrazilianTransactions } from "./simpleBrazilianExtractor.js";
 
 if (!process.env.GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is required");
@@ -572,6 +573,34 @@ function sendProgressUpdate(sessionId: string, progress: number, message: string
   }
 }
 
+// NOVA FUNÇÃO: EXTRAÇÃO ULTRA-SIMPLES COMO ALTERNATIVA
+export async function analyzeExtractSimple(extractText: string, availableCategories: string[] = []): Promise<any> {
+  console.log("=== SIMPLE EXTRACTOR CALLED ===");
+  console.log("Extract text length:", extractText.length);
+  console.log("Available categories:", availableCategories.length);
+  
+  try {
+    const transactions = extractSimpleBrazilianTransactions(extractText, availableCategories);
+    
+    return {
+      transactions,
+      hasTransactions: transactions.length > 0,
+      transactionsCount: transactions.length,
+      extractionMethod: 'simple_brazilian',
+      reliability: 'high'
+    };
+  } catch (error) {
+    console.error("❌ [SIMPLE] Erro:", error);
+    return {
+      transactions: [],
+      hasTransactions: false,
+      transactionsCount: 0,
+      extractionMethod: 'simple_brazilian_failed',
+      reliability: 'low'
+    };
+  }
+}
+
 export async function analyzeExtractWithAI(extractText: string, availableCategories: string[] = [], sessionId?: string, enableCNPJCategorization: boolean = true) {
   console.log("=== analyzeExtractWithAI FUNCTION CALLED ===");
   console.log("Extract text length:", extractText.length);
@@ -580,7 +609,17 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
   console.log("CNPJ categorization:", enableCNPJCategorization);
   
   try {
-    // 🚀 NOVO: EXTRAÇÃO DETERMINÍSTICA BRASILEIRA COMO MÉTODO PRINCIPAL
+    // 🚀 NOVA OPÇÃO: TENTAR PRIMEIRO O EXTRACTOR ULTRA-SIMPLES
+    if (extractText.length > 1000) {
+      console.log("🎯 [SIMPLE-FIRST] Texto grande detectado, tentando extrator simples primeiro...");
+      const simpleResult = await analyzeExtractSimple(extractText, availableCategories);
+      if (simpleResult.hasTransactions && simpleResult.transactionsCount < 50) {
+        console.log("✅ [SIMPLE-SUCCESS] Extrator simples funcionou bem!");
+        return simpleResult;
+      }
+    }
+    
+    // 🚀 FALLBACK: EXTRAÇÃO DETERMINÍSTICA BRASILEIRA COMO MÉTODO PRINCIPAL
     console.log("🇧🇷 [BR-DETERMINISTIC] Usando extração determinística brasileira...");
     const deterministicTransactions = extractTransactionsBrazilian(extractText, availableCategories);
     
