@@ -464,58 +464,39 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     
     const allTransactions: any[] = [];
     
-    // Process chunks with limited parallelism for better performance
-    const CONCURRENT_CHUNKS = 2;
-    let processedChunks = 0;
-    
-    for (let i = 0; i < chunks.length; i += CONCURRENT_CHUNKS) {
-      const chunkBatch = chunks.slice(i, i + CONCURRENT_CHUNKS);
-      const batchPromises = chunkBatch.map(async (chunk, batchIndex) => {
-        const chunkIndex = i + batchIndex;
-        const progress = 10 + ((chunkIndex / chunks.length) * 80);
+    // Process chunks sequentially to avoid aggregation issues
+    for (let i = 0; i < chunks.length; i++) {
+      const progress = 10 + ((i / chunks.length) * 80);
+      
+      if (sessionId) {
+        sendProgressUpdate(sessionId, progress, `Analisando parte ${i + 1} de ${chunks.length}...`);
+      }
+      
+      console.log(`Processing chunk ${i + 1}/${chunks.length}, size: ${chunks[i].length}`);
+      
+      try {
+        console.log(`Starting chunk ${i + 1} processing...`);
+        const chunkTransactions = await processChunk(chunks[i], availableCategories);
+        console.log(`Chunk ${i + 1} processed: ${chunkTransactions.length} transactions`);
+        console.log(`Sample from chunk ${i + 1}:`, chunkTransactions.slice(0, 2));
         
+        allTransactions.push(...chunkTransactions);
+        console.log(`Total accumulated transactions after chunk ${i + 1}: ${allTransactions.length}`);
+        
+        // Send progress update after each successful chunk
         if (sessionId) {
-          sendProgressUpdate(sessionId, progress, `Analisando parte ${chunkIndex + 1} de ${chunks.length}...`);
+          const updatedProgress = 10 + (((i + 1) / chunks.length) * 80);
+          sendProgressUpdate(sessionId, updatedProgress, `Concluído parte ${i + 1} de ${chunks.length}`);
         }
+      } catch (chunkError) {
+        console.error(`Error processing chunk ${i + 1}:`, chunkError);
         
-        console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length}, size: ${chunk.length}`);
-        
-        try {
-          console.log(`Starting chunk ${chunkIndex + 1} processing...`);
-          const chunkTransactions = await processChunk(chunk, availableCategories);
-          console.log(`Chunk ${chunkIndex + 1} processed: ${chunkTransactions.length} transactions`);
-          
-          // Send progress update after each successful chunk
-          if (sessionId) {
-            const updatedProgress = 10 + (((chunkIndex + 1) / chunks.length) * 80);
-            sendProgressUpdate(sessionId, updatedProgress, `Concluído parte ${chunkIndex + 1} de ${chunks.length}`);
-          }
-          
-          return chunkTransactions;
-        } catch (chunkError) {
-          console.error(`Error processing chunk ${chunkIndex + 1}:`, chunkError);
-          
-          // Send error feedback to user but continue
-          if (sessionId) {
-            const currentProgress = 10 + ((chunkIndex / chunks.length) * 80);
-            sendProgressUpdate(sessionId, currentProgress, `Erro na parte ${chunkIndex + 1}, continuando...`);
-          }
-          
-          return [];
+        // Send error feedback to user but continue
+        if (sessionId) {
+          const currentProgress = 10 + ((i / chunks.length) * 80);
+          sendProgressUpdate(sessionId, currentProgress, `Erro na parte ${i + 1}, continuando...`);
         }
-      });
-      
-      // Wait for batch to complete and add results
-      const batchResults = await Promise.all(batchPromises);
-      console.log(`Batch results: ${batchResults.length} batches with [${batchResults.map(b => b.length).join(', ')}] transactions each`);
-      batchResults.forEach((transactions, batchIdx) => {
-        console.log(`Adding ${transactions.length} transactions from batch ${batchIdx + 1}`);
-        allTransactions.push(...transactions);
-      });
-      console.log(`Total accumulated transactions so far: ${allTransactions.length}`);
-      
-      processedChunks += chunkBatch.length;
-      console.log(`Batch completed. Processed ${processedChunks}/${chunks.length} chunks so far`);
+      }
     }
     
     console.log(`Total chunks processed: ${chunks.length}`);
@@ -527,6 +508,7 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     }
     
     // Apply CNPJ categorization if enabled
+    console.log(`[NORMALIZATION DEBUG] Starting normalization of ${allTransactions.length} transactions`);
     let finalTransactions = allTransactions.map((t: any, index: number) => {      
       const normalized = {
         date: t.date || t.Date || t.DATA || "2024-12-10",
@@ -537,8 +519,17 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
         confidence: t.confidence || 0.9
       };
       
+      if (index < 3) {
+        console.log(`[NORMALIZATION DEBUG] Transaction ${index}:`, {
+          original: t,
+          normalized: normalized
+        });
+      }
+      
       return normalized;
     });
+    
+    console.log(`[NORMALIZATION DEBUG] After initial normalization: ${finalTransactions.length} transactions`);
 
     // Apply CNPJ categorization if enabled
     if (enableCNPJCategorization) {
@@ -548,7 +539,8 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
       
       const { extractCNPJ, queryCNPJ, categorizeByCNPJ, extractCompanyName, detectPaymentMethod } = await import("./utils/cnpj");
       
-      finalTransactions = await Promise.all(finalTransactions.map(async (transaction: any) => {
+      console.log(`[CNPJ DEBUG] Starting CNPJ processing for ${finalTransactions.length} transactions`);
+      const cnpjProcessedTransactions = await Promise.all(finalTransactions.map(async (transaction: any) => {
         try {
           // Extract CNPJ from transaction description
           const cnpj = extractCNPJ(transaction.description);
@@ -592,14 +584,18 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
         
         return transaction;
       }));
+      
+      console.log(`[CNPJ DEBUG] After CNPJ processing: ${cnpjProcessedTransactions.length} transactions`);
+      finalTransactions = cnpjProcessedTransactions;
     }
     
     if (sessionId) {
       sendProgressUpdate(sessionId, 100, `Análise concluída! ${finalTransactions.length} transações encontradas`);
     }
     
-    console.log(`Final result: ${finalTransactions.length} transactions found`);
-    console.log("Sample transactions:", finalTransactions.slice(0, 3));
+    console.log(`[FINAL DEBUG] Before CNPJ: allTransactions.length = ${allTransactions.length}`);
+    console.log(`[FINAL DEBUG] After normalization: finalTransactions.length = ${finalTransactions.length}`);
+    console.log(`[FINAL DEBUG] Sample final transactions:`, finalTransactions.slice(0, 3));
     
     // If no transactions found, try a simpler fallback analysis
     if (finalTransactions.length === 0 && extractText.length > 100) {
