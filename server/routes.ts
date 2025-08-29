@@ -8,6 +8,7 @@ import { insertNotificationSchema, insertWorkflowTriggerSchema, insertEmailPrefe
 import { analyzeExtractWithAI, generateFinancialInsights, setProgressSessions } from "./openai";
 import { financialDataService } from "./services/financialDataService.js";
 import { aiServiceManager } from "./services/aiServiceManager.js";
+import { deepSeekCategorization } from "./deepseek-categorization";
 import {
   insertCategorySchema,
   insertTransactionSchema,
@@ -1534,6 +1535,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasTransactions: !!result?.transactions,
         transactionCount: result?.transactions?.length || 0
       });
+      
+      // 🚀 DEEPSEEK CATEGORIZATION: Aplicar categorização inteligente
+      if (result.transactions && result.transactions.length > 0) {
+        console.log(`🧠 [DeepSeek] Iniciando categorização inteligente de ${result.transactions.length} transações`);
+        
+        try {
+          const categorizedTransactions = await deepSeekCategorization.categorizeTransactions(
+            result.transactions.map(t => ({
+              description: t.description,
+              amount: t.amount,
+              type: t.type,
+              date: t.date
+            }))
+          );
+          
+          // Aplicar as categorias melhoradas
+          result.transactions = result.transactions.map((transaction, index) => ({
+            ...transaction,
+            category: categorizedTransactions[index]?.category || transaction.category,
+            confidence: categorizedTransactions[index]?.confidence || 0.8,
+            reasoning: categorizedTransactions[index]?.reasoning
+          }));
+          
+          console.log(`✅ [DeepSeek] Categorização concluída! Exemplo: "${result.transactions[0]?.description}" → ${result.transactions[0]?.category}`);
+        } catch (error) {
+          console.error(`❌ [DeepSeek] Erro na categorização:`, error);
+          console.log(`🔄 [DeepSeek] Continuando com categorização padrão`);
+        }
+      }
       
       console.log(`[analyze-extract] Result from AI:`, {
         transactionsCount: result.transactions?.length || 0,
