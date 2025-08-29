@@ -6,6 +6,8 @@ import { notificationService } from "./notificationService";
 import { financialAssistant, type FinancialData, type ChatMessage } from "./ai-assistant";
 import { insertNotificationSchema, insertWorkflowTriggerSchema, insertEmailPreferencesSchema } from "@shared/schema";
 import { analyzeExtractWithAI, generateFinancialInsights, setProgressSessions } from "./openai";
+import { configService } from './services/configService.js';
+import { systemConfigs } from '../shared/schema.js';
 import { financialDataService } from "./services/financialDataService.js";
 import { aiServiceManager } from "./services/aiServiceManager.js";
 import { GoogleGenAI } from '@google/genai';
@@ -3335,6 +3337,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   }
+
+  // 🔧 CONFIGURAÇÕES DO SISTEMA
+  // Inicializar configurações padrão na primeira execução (assíncrono)
+  configService.initializeDefaultConfigs().catch(error => {
+    console.log('⚠️  Aviso: Tabela de configurações ainda não existe. Execute `npm run db:push` para criar.');
+  });
+
+  // Listar todas as configurações (apenas admin)
+  app.get("/api/system/configs", isAuthenticated, async (req: any, res) => {
+    try {
+      const configs = await configService.getAllConfigs();
+      
+      // Remover valores sensíveis para o frontend
+      const safeConfigs = configs.map(config => ({
+        ...config,
+        value: config.isEncrypted ? '***ENCRYPTED***' : config.value
+      }));
+      
+      res.json(safeConfigs);
+    } catch (error) {
+      console.error('Erro ao listar configurações:', error);
+      res.status(500).json({ message: 'Erro interno do servidor' });
+    }
+  });
+
+  // Salvar/atualizar configuração
+  app.post("/api/system/configs", isAuthenticated, async (req: any, res) => {
+    try {
+      const { key, value, description, category, isEncrypted, isRequired } = req.body;
+      
+      if (!key || value === undefined) {
+        return res.status(400).json({ message: 'Key e value são obrigatórios' });
+      }
+      
+      const config = await configService.setConfig(key, value, {
+        description,
+        category,
+        isEncrypted: Boolean(isEncrypted),
+        isRequired: Boolean(isRequired),
+        userId: getUserId(req)
+      });
+      
+      res.json({
+        message: 'Configuração salva com sucesso',
+        config: {
+          ...config,
+          value: config.isEncrypted ? '***ENCRYPTED***' : config.value
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao salvar configuração:', error);
+      res.status(500).json({ message: 'Erro interno do servidor' });
+    }
+  });
+
+  // Testar configuração de API
+  app.post("/api/system/configs/:key/test", isAuthenticated, async (req: any, res) => {
+    try {
+      const { key } = req.params;
+      const result = await configService.testApiConfig(key);
+      res.json(result);
+    } catch (error) {
+      console.error('Erro ao testar configuração:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro ao testar configuração' 
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

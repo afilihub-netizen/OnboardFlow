@@ -475,6 +475,36 @@ export const emailPreferencesRelations = relations(emailPreferences, ({ one }) =
   user: one(users, { fields: [emailPreferences.userId], references: [users.id] }),
 }));
 
+// System configurations table for API keys and settings
+export const systemConfigs = pgTable("system_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  value: text("value").notNull(), // Encrypted for sensitive data
+  description: text("description"),
+  category: varchar("category", { length: 50 }).default("general"), // api, email, ai, payment, etc
+  isEncrypted: boolean("is_encrypted").default(false),
+  isRequired: boolean("is_required").default(false),
+  isActive: boolean("is_active").default(true),
+  lastUpdatedBy: varchar("last_updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// System config relations
+export const systemConfigsRelations = relations(systemConfigs, ({ one }) => ({
+  updatedBy: one(users, { fields: [systemConfigs.lastUpdatedBy], references: [users.id] }),
+}));
+
+// System config types
+export type InsertSystemConfig = typeof systemConfigs.$inferInsert;
+export type SystemConfig = typeof systemConfigs.$inferSelect;
+
+export const insertSystemConfigSchema = createInsertSchema(systemConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Add to users relations
 export const usersRelationsUpdated = relations(users, ({ many }) => ({
   categories: many(categories),
@@ -490,6 +520,7 @@ export const usersRelationsUpdated = relations(users, ({ many }) => ({
   goals: many(goals),
   approvals: many(approvals),
   auditLogs: many(auditLogs),
+  systemConfigsUpdated: many(systemConfigs),
 }));
 
 // Notification types

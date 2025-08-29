@@ -25,6 +25,7 @@ import SimpleAssets from "@/pages/SimpleAssets";
 import SimpleSubscriptions from "@/pages/SimpleSubscriptions";
 import SimpleGoals from "@/pages/SimpleGoals";
 import PredictiveAnalytics from "@/pages/PredictiveAnalytics";
+import Settings from "@/pages/settings";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -57,6 +58,7 @@ function Router() {
             <Route path="/subscriptions" component={SimpleSubscriptions} />
             <Route path="/nexo-goals" component={SimpleGoals} />
             <Route path="/analytics" component={PredictiveAnalytics} />
+            <Route path="/settings" component={Settings} />
           </>
         )}
         <Route component={NotFound} />
