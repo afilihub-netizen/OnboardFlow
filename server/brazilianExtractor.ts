@@ -218,20 +218,49 @@ function extractAmount(line: string): { amount: number; confidence: number } | n
 
 // FUNÇÃO PARA VALIDAR SE A LINHA TEM CONTEXTO FINANCEIRO VÁLIDO
 function hasValidFinancialContext(line: string): boolean {
-  // Deve ter pelo menos uma palavra de contexto bancário
+  // DEVE ter pelo menos uma palavra de contexto bancário VÁLIDO
   const bankKeywords = [
     'PIX', 'TED', 'DOC', 'COMPRA', 'PAGAMENTO', 'RECEBIMENTO',
     'TRANSFERENCIA', 'DEBITO', 'CREDITO', 'CARTAO', 'SAQUE', 
-    'DEPOSITO', 'NACIONAIS', 'INTERNACIONAL', 'TARIFA'
+    'DEPOSITO', 'NACIONAIS', 'INTERNACIONAL', 'TARIFA', 'LIQUIDACAO'
   ];
   
+  const lineUpper = line.toUpperCase();
+  
+  // PRIMEIRO: deve ter uma palavra-chave bancária
+  let hasKeyword = false;
   for (const keyword of bankKeywords) {
-    if (line.toUpperCase().includes(keyword)) {
-      return true;
+    if (lineUpper.includes(keyword)) {
+      hasKeyword = true;
+      break;
     }
   }
   
-  return false;
+  if (!hasKeyword) {
+    return false;
+  }
+  
+  // SEGUNDO: não deve ser apenas informativo/cabeçalho
+  const invalidContext = [
+    'DATA DESCRIÇÃO DOCUMENTO VALOR',
+    'SALDO ANTERIOR',
+    'SALDO ATUAL',
+    'COOPERATIVA:',
+    'CONTA:',
+    'EXTRATO',
+    'PERÍODO',
+    'OUVIDORIA',
+    'SAC ',
+    'TAXA DE'
+  ];
+  
+  for (const invalid of invalidContext) {
+    if (lineUpper.includes(invalid)) {
+      return false;
+    }
+  }
+  
+  return true;
 }
 
 function determineTransactionType(line: string, amount: number): 'income' | 'expense' {
@@ -273,19 +302,22 @@ function cleanDescription(line: string): string {
   // Remover datas do início (formato DD/MM/YYYY)
   clean = clean.replace(/^\d{1,2}\/\d{1,2}\/\d{2,4}\s*/, '');
   
-  // Remover símbolos estranhos
-  clean = clean.replace(/^[\s\-\—\*\/\#\@\%\$]+/, '');
-  clean = clean.replace(/[\s\-\—\*\/\#\@\%\$]+$/, '');
+  // Remover símbolos estranhos e caracteres problemáticos
+  clean = clean.replace(/^[\s\-\—\*\/\#\@\%\$\"\'\`]+/, '');
+  clean = clean.replace(/[\s\-\—\*\/\#\@\%\$\"\'\`]+$/, '');
   
   // Remover ":" isolados no final
   clean = clean.replace(/:\s*$/, '');
   
-  // REJEITAR descrições muito curtas ou inválidas
-  if (clean.length < 8) {
+  // Remover caracteres unicode problemáticos
+  clean = clean.replace(/[\u201C\u201D\u2018\u2019\u2013\u2014]/g, '');
+  
+  // REJEITAR descrições muito curtas ou inválidas (MAIS RIGOROSO)
+  if (clean.length < 10) {
     return '';
   }
   
-  // REJEITAR padrões claramente inválidos
+  // REJEITAR padrões claramente inválidos (EXPANDIDO)
   const invalidPatterns = [
     /^cooperativa:?\s*$/i,
     /^conta:?\s*$/i,
@@ -294,14 +326,25 @@ function cleanDescription(line: string): string {
     /^saldo:?\s*$/i,
     /^total:?\s*$/i,
     /^data\s+descrição/i,
+    /^valor\s*\(r\$\)/i,
+    /^documento/i,
+    /^associado/i,
     /^\/\/\s*$/,
-    /^\s*[\-\=\*]{2,}\s*$/
+    /^\s*[\-\=\*]{2,}\s*$/,
+    /^[\s\*\-]+$/,
+    /^\d+\s*$/,
+    /^[a-z]{1,2}\s*$/i
   ];
   
   for (const pattern of invalidPatterns) {
     if (pattern.test(clean)) {
       return '';
     }
+  }
+  
+  // REJEITAR linhas que são apenas códigos ou números
+  if (/^[A-Z0-9\s\-\.]{1,15}$/i.test(clean)) {
+    return '';
   }
   
   // Capitalizar primeira letra
