@@ -8,7 +8,7 @@ import { insertNotificationSchema, insertWorkflowTriggerSchema, insertEmailPrefe
 import { analyzeExtractWithAI, generateFinancialInsights, setProgressSessions } from "./openai";
 import { financialDataService } from "./services/financialDataService.js";
 import { aiServiceManager } from "./services/aiServiceManager.js";
-import { deepSeekCategorization } from "./deepseek-categorization";
+import { GoogleGenAI } from '@google/genai';
 import {
   insertCategorySchema,
   insertTransactionSchema,
@@ -1527,25 +1527,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Extract text is required" });
       }
 
-      // 🧠 DEEPSEEK COM FALLBACK ROBUSTO: Sem timeout global interferindo
-      console.log(`🧠 [DeepSeek] Iniciando extração de ${extractText.length} caracteres...`);
+      // 🤖 GEMINI GRATUITO: Extração confiável e rápida
+      console.log(`🤖 [Gemini] Iniciando extração de ${extractText.length} caracteres...`);
       let result;
       try {
-        const deepSeekResult = await deepSeekCategorization.extractAndCategorizeTransactions(extractText);
+        const geminiResult = await extractWithGemini(extractText, availableCategories);
         
-        if (deepSeekResult && deepSeekResult.length > 0) {
-          console.log(`✅ [DeepSeek] Sucesso: ${deepSeekResult.length} transações encontradas`);
-          result = { transactions: deepSeekResult };
+        if (geminiResult && geminiResult.length > 0) {
+          console.log(`✅ [Gemini] Sucesso: ${geminiResult.length} transações encontradas`);
+          result = { transactions: geminiResult };
         } else {
-          console.log(`⚠️ [DeepSeek] Nenhuma transação encontrada`);
+          console.log(`⚠️ [Gemini] Nenhuma transação encontrada`);
           result = { transactions: [] };
         }
       } catch (error) {
-        console.error(`❌ [DeepSeek] Erro:`, error.message);
+        console.error(`❌ [Gemini] Erro:`, error.message);
         result = { transactions: [] };
       }
       
-      console.log(`[DeepSeek] Resultado final:`, {
+      console.log(`[Gemini] Resultado final:`, {
         transactionsCount: result.transactions?.length || 0,
         hasTransactions: !!result.transactions,
         sampleTransaction: result.transactions?.[0]
@@ -2588,6 +2588,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Failed to fetch educational content' });
     }
   });
+
+  // 🤖 FUNÇÃO GEMINI PARA EXTRAÇÃO DE TRANSAÇÕES
+  const geminiAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+
+  async function extractWithGemini(extractText: string, availableCategories: any[]): Promise<any[]> {
+    try {
+      const categories = availableCategories.map(c => c.name).join(', ');
+      
+      const prompt = `Extraia TODAS as transações bancárias do extrato brasileiro.
+
+CATEGORIAS: ${categories}
+
+REGRAS:
+- Encontre padrões: PIX, TED, DOC, débito, crédito, pagamento, compra
+- Identifique datas (DD/MM/AAAA)
+- Extraia valores (+ receitas, - despesas)
+- Categorize automaticamente
+
+EXTRATO:
+${extractText}
+
+RESPONDA APENAS JSON:
+{"transactions":[{"date":"AAAA-MM-DD","description":"DESC","amount":VALOR,"type":"income/expense","category":"CATEGORIA","confidence":0.9}]}`;
+
+      const response = await geminiAI.models.generateContent({
+        model: "gemini-2.5-flash", // Versão gratuita
+        contents: prompt,
+        config: {
+          temperature: 0.1,
+          maxOutputTokens: 4000,
+        }
+      });
+
+      const text = response.text || '';
+      console.log(`[Gemini] Resposta recebida: ${text.length} caracteres`);
+      
+      // Parse JSON
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.log(`[Gemini] Nenhum JSON encontrado na resposta`);
+        return [];
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      const transactions = parsed.transactions || [];
+      
+      console.log(`[Gemini] ${transactions.length} transações extraídas`);
+      return transactions.map((t: any) => ({
+        date: t.date || new Date().toISOString().split('T')[0],
+        description: t.description || 'Transação',
+        amount: parseFloat(t.amount) || 0,
+        type: (t.type || 'expense').toLowerCase(),
+        category: t.category || 'Outros',
+        confidence: t.confidence || 0.8,
+        reasoning: 'Categorização por Gemini'
+      }));
+
+    } catch (error) {
+      console.error(`[Gemini] Erro na extração:`, error);
+      return [];
+    }
+  }
 
   const httpServer = createServer(app);
   return httpServer;
