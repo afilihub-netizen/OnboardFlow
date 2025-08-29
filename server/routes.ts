@@ -1302,11 +1302,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Starting PDF text extraction via OCR...');
       const base64Data = buffer.toString('base64');
-      const ocrResult = await processPDFChunk(base64Data, 1, 3);
+      console.log('[OCR] NOVO - processando PDF completo sem limite!');
+      const newResult = await processAllPDFPages(base64Data, 30);
+      const ocrResult = {
+        ParsedResults: newResult.text ? [{ ParsedText: newResult.text }] : [],
+        IsErroredOnProcessing: false,
+        ErrorMessage: []
+      };
       
       return {
-        text: ocrResult.text,
-        pages: ocrResult.pages,
+        text: newResult.text,
+        pages: newResult.pages,
         method: 'ocr'
       };
       
@@ -1317,7 +1323,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Helper function to process single PDF chunk via OCR
-  async function processPDFChunk(base64Data: string, startPage: number = 1, endPage: number = 10) {
+  // 🚀 NOVO: Processa 1 página por vez para eliminar limite de 3 páginas
+  async function processSinglePDFPage(base64Data: string, pageNumber: number = 1) {
     const formData = new FormData();
     formData.append('base64Image', `data:application/pdf;base64,${base64Data}`);
     formData.append('language', 'por');
@@ -1326,20 +1333,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     formData.append('scale', 'true');
     formData.append('OCREngine', '2');
     formData.append('filetype', 'PDF');
-    if (startPage > 1) {
-      formData.append('pages', `${startPage}-${endPage}`);
+    // CRÍTICO: Processa apenas 1 página por vez para evitar limite
+    formData.append('pages', `${pageNumber}`);
+    
+    console.log(`[OCR] Processando página ${pageNumber} individualmente...`);
+
+    try {
+      const response = await fetch('https://api.ocr.space/parse/image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`OCR API error: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (result.OCRExitCode !== 1) {
+        console.log(`[OCR] Erro na página ${pageNumber}: ${result.ErrorMessage?.[0] || 'Unknown error'}`);
+        return null;
+      }
+
+      console.log(`[OCR] Página ${pageNumber} processada com sucesso!`);
+      return result;
+    } catch (error: any) {
+      console.error(`[OCR] Erro na página ${pageNumber}:`, error);
+      return null;
     }
+  }
 
-    const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!ocrResponse.ok) {
-      throw new Error(`OCR API error: ${ocrResponse.status}`);
+  // 🚀 PROCESSA TODAS AS PÁGINAS SEM LIMITE
+  async function processAllPDFPages(base64Data: string, maxPages: number = 30): Promise<{ text: string, pages: number }> {
+    let allText = '';
+    let successfulPages = 0;
+    
+    console.log(`[OCR] NOVO SISTEMA - processando até ${maxPages} páginas individualmente`);
+    
+    for (let page = 1; page <= maxPages; page++) {
+      console.log(`[OCR] Processando página ${page}/${maxPages}...`);
+      
+      const result = await processSinglePDFPage(base64Data, page);
+      
+      if (result && result.ParsedResults && result.ParsedResults.length > 0) {
+        const pageText = result.ParsedResults[0].ParsedText || '';
+        if (pageText.trim().length > 10) {
+          allText += pageText + '\n\n';
+          successfulPages++;
+          console.log(`[OCR] Página ${page}: ${pageText.length} caracteres extraídos`);
+        } else {
+          console.log(`[OCR] Página ${page}: vazia, verificando se PDF acabou...`);
+          if (page > 6) break; // Se chegou na página 6 e está vazia, provavelmente acabou
+        }
+      } else {
+        console.log(`[OCR] Página ${page}: erro ou final do PDF`);
+        if (page > 6) break; // Provavelmente acabaram as páginas
+      }
+      
+      // Pausa entre páginas
+      await new Promise(resolve => setTimeout(resolve, 800));
     }
+    
+    console.log(`[OCR] CONCLUÍDO - ${successfulPages} páginas processadas, ${allText.length} caracteres totais`);
+    return { text: allText, pages: successfulPages };
+  }
 
-    const ocrResult = await ocrResponse.json();
+  // FUNÇÃO ANTIGA SUBSTITUÍDA
+  async function processPDFChunk(base64Data: string, startPage: number = 1, endPage: number = 10) {
+    console.log('[OCR] Usando novo sistema sem limite de páginas...');
+    const result = await processAllPDFPages(base64Data, 30);
+    
+    const ocrResult = {
+      ParsedResults: result.text ? [{ ParsedText: result.text }] : [],
+      IsErroredOnProcessing: false,
+      ErrorMessage: []
+    };
+    
+    const extractedText = result.text || '';
     
     // Debug log to see the actual error structure
     console.log('OCR Result debug:', {
@@ -1364,16 +1434,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     
-    let extractedText = '';
-    if (ocrResult.ParsedResults && ocrResult.ParsedResults.length > 0) {
-      extractedText = ocrResult.ParsedResults
-        .map((result: any) => result.ParsedText)
-        .join('\n\n');
-    }
+    // Texto já extraído pelo novo sistema acima
 
     return {
       text: extractedText,
-      pages: ocrResult.ParsedResults?.length || 0,
+      pages: result.pages || 0,
       hasMore: false,
       isFirstChunk: startPage === 1
     };
@@ -2789,21 +2854,24 @@ RESPONDA APENAS JSON:
     
     console.log(`[Extrator] Processadas ${processedLines} linhas, encontradas ${foundTransactions} transações`);
     
-    // Remover duplicatas mais rigorosamente 
+    // Remover duplicatas de forma mais flexível
     const uniqueTransactions = transactions.filter((transaction, index, self) => {
-      // Filtrar transações com valores muito baixos ou muito altos (provavelmente erros)
-      if (Math.abs(transaction.amount) < 5 || Math.abs(transaction.amount) > 50000) return false;
+      // Apenas filtrar valores extremamente baixos (< R$ 1) ou muito altos (> R$ 100.000)
+      if (Math.abs(transaction.amount) < 1 || Math.abs(transaction.amount) > 100000) return false;
       
-      // Filtrar descrições que são claramente dados ou metadados
-      const desc = transaction.description.toLowerCase();
-      if (desc.includes('sicredi') || desc.includes('associado') || 
-          desc.includes('cooperativa') || desc.includes('conta') ||
-          desc.includes('extrato') || desc.includes('período') ||
-          desc.length < 5) return false;
+      // Filtrar apenas descrições CLARAMENTE inválidas
+      const desc = transaction.description.toLowerCase().trim();
+      if (desc.length < 3 || 
+          (desc.includes('sicredi') && desc.length < 20) ||
+          (desc.includes('associado') && desc.length < 20) ||
+          desc === 'cooperativa:' || desc === 'conta:' ||
+          desc === 'extrato' || desc === 'período') return false;
       
+      // Remover duplicatas apenas se forem EXATAMENTE iguais
       return index === self.findIndex(t => 
         Math.abs(t.amount - transaction.amount) < 0.01 &&
-        t.description.substring(0, 15) === transaction.description.substring(0, 15)
+        t.description.trim() === transaction.description.trim() &&
+        t.date === transaction.date
       );
     });
     
