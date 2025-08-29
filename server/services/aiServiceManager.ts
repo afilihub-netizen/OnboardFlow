@@ -50,10 +50,10 @@ export class AIServiceManager {
       priority: 2
     });
 
-    // Hugging Face - terceira prioridade
+    // Hugging Face - terceira prioridade (temporariamente desabilitado)
     this.providers.set('huggingface', {
       name: 'Hugging Face',
-      enabled: !!process.env.HUGGINGFACE_API_KEY,
+      enabled: false, // Temporariamente desabilitado devido a problemas de conectividade
       quotaLimit: 1000,
       quotaUsed: 0,
       resetDate: this.getNextMonthReset(),
@@ -171,7 +171,15 @@ export class AIServiceManager {
         } else {
           console.log(`[${providerName}] Resultado vazio ou inválido:`, result);
         }
-      } catch (error) {
+      } catch (error: any) {
+        console.log(`[${providerName}] Erro:`, error.message || error);
+        // Se for erro de quota, marca provedor como indisponível temporariamente
+        if (error.message?.includes('quota') || error.message?.includes('429')) {
+          const provider = this.providers.get(providerName);
+          if (provider) {
+            provider.quotaUsed = provider.quotaLimit; // Força indisponibilidade
+          }
+        }
         // Falha silenciosa - tenta próximo provedor
         continue;
       }
@@ -235,7 +243,15 @@ export class AIServiceManager {
         } else {
           console.log(`[${providerName}] Resultado vazio ou inválido:`, result);
         }
-      } catch (error) {
+      } catch (error: any) {
+        console.log(`[${providerName}] Erro:`, error.message || error);
+        // Se for erro de quota, marca provedor como indisponível temporariamente
+        if (error.message?.includes('quota') || error.message?.includes('429')) {
+          const provider = this.providers.get(providerName);
+          if (provider) {
+            provider.quotaUsed = provider.quotaLimit; // Força indisponibilidade
+          }
+        }
         // Falha silenciosa - tenta próximo provedor
         continue;
       }
@@ -257,7 +273,7 @@ export class AIServiceManager {
     console.log('[Gemini] Chamando com config:', { responseMimeType: config.responseMimeType });
 
     const modelConfig = {
-      model: config.model || "gemini-2.0-flash-exp",
+      model: config.model || "gemini-2.5-flash",
       config: {
         responseMimeType: config.responseMimeType || "text/plain",
         temperature: config.temperature || 0.3,
@@ -276,7 +292,7 @@ export class AIServiceManager {
     const response = await this.geminiAI.models.generateContent(modelConfig);
     const content = response.text || '';
     
-    console.log('[Gemini] Resposta recebida:', content.substring(0, 100) + '...');
+    console.log('[Gemini] Resposta completa:', { response, content, candidates: response.candidates });
     
     // Se esperamos JSON, parse it
     if (config.responseMimeType === "application/json") {
@@ -292,7 +308,7 @@ export class AIServiceManager {
     if (!process.env.HUGGINGFACE_API_KEY) throw new Error('Hugging Face não configurado');
 
     // Usar modelo mais adequado baseado no tipo de tarefa
-    const model = config.model || "microsoft/DialoGPT-medium";
+    const model = config.model || "gpt2";
     
     const response = await fetch(
       `https://api-inference.huggingface.co/models/${model}`,
