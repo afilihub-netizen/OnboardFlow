@@ -75,7 +75,13 @@ export function slugify(s: string): string {
 }
 
 export function naturezaFrom(tipo: Tipo, amount: number): 'Entrada' | 'Saída' | 'Neutra' {
-  if (tipo === 'TRANSFER_IN' || tipo === 'PIX_CRED' || amount > 0) return 'Entrada';
-  if (tipo === 'TRANSFER_OUT' || tipo === 'PIX_DEB' || tipo === 'COMPRA' || amount < 0) return 'Saída';
+  // Prioridade: TIPO primeiro, depois valor
+  if (tipo === 'TRANSFER_IN' || tipo === 'PIX_CRED') return 'Entrada';
+  if (tipo === 'TRANSFER_OUT' || tipo === 'PIX_DEB' || tipo === 'COMPRA' || tipo === 'BOLETO' || tipo === 'TARIFA') return 'Saída';
+  
+  // Para 'OUTRO': baseado no valor
+  if (amount > 0) return 'Entrada';
+  if (amount < 0) return 'Saída';
+  
   return 'Neutra';
 }

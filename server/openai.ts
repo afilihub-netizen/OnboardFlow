@@ -325,14 +325,16 @@ RULES:
       const rawType = t.type || t.Type || t.TYPE || t.t || "expense";
       const rawCategory = t.category || t.Category || t.CATEGORY || t.cat || "Outros";
       
-      // Parse amount properly
+      // Parse amount properly - PRESERVANDO SINAIS +/-
       let parsedAmount = 0;
       if (typeof rawAmount === 'string') {
-        // Remove currency symbols and spaces
-        const cleanAmount = rawAmount.replace(/[R$\s,]/g, '').replace(',', '.');
+        // Remove currency symbols and spaces, MAS PRESERVA sinais +/-
+        const cleanAmount = rawAmount.replace(/[R$\s]/g, '').replace(/,/g, '.').replace(/^\+/, '');
         parsedAmount = parseFloat(cleanAmount) || 0;
+        console.log(`💰 [AMOUNT-PARSE] "${rawAmount}" → "${cleanAmount}" → ${parsedAmount}`);
       } else {
         parsedAmount = parseFloat(rawAmount) || 0;
+        console.log(`💰 [AMOUNT-PARSE] (number) ${rawAmount} → ${parsedAmount}`);
       }
       
       // Parse date properly
@@ -405,6 +407,7 @@ RULES:
         // Fallback to amount-based logic only if no keywords found
         else {
           normalizedType = parsedAmount >= 0 ? 'income' : 'expense';
+          console.log(`🤖 [TYPE-FALLBACK] Amount ${parsedAmount} → type "${normalizedType}"`);
         }
       }
       
