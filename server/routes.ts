@@ -2605,7 +2605,7 @@ REGRAS:
 - Categorize automaticamente
 
 EXTRATO:
-${extractText.substring(0, 12000)} 
+${extractText.substring(0, 8000)}
 
 RESPONDA APENAS JSON:
 {"transactions":[{"date":"AAAA-MM-DD","description":"DESC","amount":VALOR,"type":"income/expense","category":"CATEGORIA","confidence":0.9}]}`;
@@ -2675,43 +2675,128 @@ RESPONDA APENAS JSON:
     }
   }
 
-  // 🔄 FALLBACK REGEX PARA GARANTIR EXTRAÇÃO
+  // 🔄 FALLBACK REGEX SUPER ROBUSTO - CAPTURA TODAS AS TRANSAÇÕES
   async function extractWithRegexFallback(extractText: string): Promise<any[]> {
-    console.log(`[Fallback] Usando extração regex em ${extractText.length} caracteres`);
+    console.log(`[Fallback] Extraindo de ${extractText.length} caracteres - PROCESSAMENTO COMPLETO`);
     
     const transactions: any[] = [];
     const lines = extractText.split('\n');
     
-    for (const line of lines) {
-      // Padrões brasileiros de transação bancária
+    // Log das primeiras linhas para debug
+    console.log(`[Fallback] Primeiras 5 linhas para análise:`);
+    lines.slice(0, 5).forEach((line, i) => {
+      console.log(`  Linha ${i+1}: "${line.substring(0, 100)}..."`);
+    });
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line || line.length < 10) continue; // Pular linhas muito curtas
+      
+      // PADRÕES BRASILEIROS EXPANDIDOS - Muito mais abrangentes
       const patterns = [
-        /(\d{2}\/\d{2}\/\d{4}).*?(PIX|TED|DOC|PAGAMENTO|DÉBITO|CRÉDITO|COMPRA).*?([A-Z\s]+).*?R?\$?\s*([\d.,]+)/i,
-        /(\d{4}-\d{2}-\d{2}).*?(\w+).*?([\d.,]+)/i,
-        /(\d{2}\/\d{2}).*?(SICRED|BANCO|PIX).*?([A-Z\s]+).*?([\d.,]+)/i
+        // Padrão 1: Data DD/MM/YYYY + operação + valor
+        /(\d{1,2}\/\d{1,2}\/\d{4}).*?([\d.,]+)/,
+        
+        // Padrão 2: Operações específicas com valores
+        /(PIX|TED|DOC|DÉBITO|CRÉDITO|COMPRA|PAGAMENTO|TRANSFERÊNCIA|SAQUE).*?([\d.,]+)/i,
+        
+        // Padrão 3: Estabelecimentos + valores  
+        /([A-Z\s]{4,}).*?R?\$?\s*([\d.,]+)/,
+        
+        // Padrão 4: Valores isolados (mais de 2 dígitos)
+        /.*?([\d]{1,3}[.,][\d]{2,3}[.,][\d]{2})/,
+        
+        // Padrão 5: Data DD/MM + qualquer coisa + valor
+        /(\d{1,2}\/\d{1,2}).*?([\d.,]+)/,
+        
+        // Padrão 6: Apenas valores monetários grandes
+        /([\d]{2,}[.,][\d]{2})/
       ];
       
-      for (const pattern of patterns) {
-        const match = line.match(pattern);
+      for (let p = 0; p < patterns.length; p++) {
+        const match = line.match(patterns[p]);
         if (match) {
-          const amount = parseFloat(match[4].replace(/[^\d,-]/g, '').replace(',', '.'));
-          if (!isNaN(amount) && amount > 0) {
-            transactions.push({
-              date: normalizeDate(match[1]),
-              description: (match[3] || match[2] || 'Transação').trim(),
-              amount: amount,
-              type: amount > 0 ? 'expense' : 'income',
-              category: 'Outros',
-              confidence: 0.7,
-              reasoning: 'Extração regex fallback'
-            });
+          
+          // Extrair valor da transação
+          let valueStr = '';
+          let dateStr = '';
+          let description = '';
+          
+          if (p === 0) { // Padrão com data
+            dateStr = match[1];
+            valueStr = match[2];
+            description = line.replace(match[0], '').trim() || 'Transação bancária';
+          } else if (p === 1) { // Padrão com operação
+            description = match[1];
+            valueStr = match[2];
+          } else if (p === 2) { // Padrão com estabelecimento
+            description = match[1].trim();
+            valueStr = match[2];
+          } else { // Outros padrões
+            valueStr = match[1];
+            description = line.substring(0, 50).trim() || 'Transação';
           }
-          break;
+          
+          // Limpar e converter valor
+          const cleanValue = valueStr.replace(/[^\d,.-]/g, '');
+          let amount = 0;
+          
+          // Tentar diferentes formatos brasileiros
+          if (cleanValue.includes(',')) {
+            if (cleanValue.split(',').length === 2 && cleanValue.split(',')[1].length <= 2) {
+              // Formato: 1.234,56
+              amount = parseFloat(cleanValue.replace(/\./g, '').replace(',', '.'));
+            } else {
+              // Formato: 1,234.56 ou outros
+              amount = parseFloat(cleanValue.replace(',', ''));
+            }
+          } else {
+            amount = parseFloat(cleanValue);
+          }
+          
+          // Validar se é um valor monetário válido
+          if (!isNaN(amount) && amount > 1 && amount < 1000000) {
+            
+            // Determinar se é receita ou despesa (heurística simples)
+            const isExpense = line.toLowerCase().includes('débito') || 
+                             line.toLowerCase().includes('compra') || 
+                             line.toLowerCase().includes('pagamento') ||
+                             line.toLowerCase().includes('pix') ||
+                             !line.toLowerCase().includes('crédito');
+            
+            transactions.push({
+              date: normalizeDate(dateStr) || new Date().toISOString().split('T')[0],
+              description: description.substring(0, 100).trim() || 'Transação',
+              amount: isExpense ? -Math.abs(amount) : Math.abs(amount),
+              type: isExpense ? 'expense' : 'income',
+              category: 'Outros',
+              confidence: 0.6 + (p * 0.1), // Mais confiança para padrões mais específicos
+              reasoning: `Regex padrão ${p+1}`
+            });
+            
+            break; // Sair do loop de padrões para esta linha
+          }
         }
       }
     }
     
-    console.log(`[Fallback] ${transactions.length} transações extraídas por regex`);
-    return transactions;
+    // Remover duplicatas baseadas na descrição e valor
+    const uniqueTransactions = transactions.filter((transaction, index, self) => 
+      index === self.findIndex(t => 
+        Math.abs(t.amount - transaction.amount) < 0.01 && 
+        t.description.substring(0, 20) === transaction.description.substring(0, 20)
+      )
+    );
+    
+    console.log(`[Fallback] ${transactions.length} transações brutas → ${uniqueTransactions.length} únicas`);
+    
+    // Log das primeiras transações encontradas para debug
+    console.log(`[Fallback] Primeiras 3 transações encontradas:`);
+    uniqueTransactions.slice(0, 3).forEach((t, i) => {
+      console.log(`  ${i+1}. ${t.date} | ${t.description.substring(0, 30)} | R$ ${t.amount}`);
+    });
+    
+    return uniqueTransactions;
   }
 
   function normalizeDate(dateStr: string): string {
