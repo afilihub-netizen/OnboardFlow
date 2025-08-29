@@ -1,14 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, Target } from "lucide-react";
+import { TrendingUp, Target, Trophy, Star, Zap, Crown, Medal, Award, Flame, Gift } from "lucide-react";
 import { InvestmentGoals } from "./investment-goals";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 
 export function InvestmentOverview() {
-  const [period, setPeriod] = useState("12months");
 
   const { data: investments, isLoading } = useQuery({
     queryKey: ['/api/investments'],
@@ -21,62 +19,76 @@ export function InvestmentOverview() {
     },
   });
 
-  // Generate chart data based on actual investments and period
-  const generateChartData = () => {
-    const now = new Date();
-    let months = 12;
-    if (period === '2years') months = 24;
-    if (period === 'year') months = 12;
-
-    const chartData = [];
-
-    // If no investments, create a baseline chart with zeros
-    if (!investments || investments.length === 0) {
-      for (let i = months - 1; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthName = date.toLocaleDateString('pt-BR', { month: 'short' });
-        chartData.push({
-          month: monthName,
-          value: 0
-        });
-      }
-      return chartData;
+  // Sistema de gamificação
+  const getInvestorLevel = (totalValue: number, investmentCount: number) => {
+    if (totalValue === 0) {
+      return { name: 'Iniciante', icon: Star, color: 'gray', progress: 0, nextLevel: 'Novato', requirement: 'Faça seu primeiro investimento' };
     }
-
-    for (let i = months - 1; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthName = date.toLocaleDateString('pt-BR', { month: 'short' });
-
-      // Calculate investments up to this month
-      const investmentsUpToDate = investments.filter((investment: any) => {
-        const purchaseDate = new Date(investment.purchaseDate);
-        return purchaseDate <= date;
-      });
-
-      // Calculate total value for this month
-      const monthValue = investmentsUpToDate.reduce((total: number, investment: any) => {
-        // Use actual values from investments
-        const baseValue = parseFloat(investment.initialAmount || '0');
-        const currentValue = parseFloat(investment.currentAmount || investment.initialAmount || '0');
-        const growth = currentValue / (baseValue || 1);
-        
-        // Apply time-based growth simulation for historical data
-        const monthsFromPurchase = Math.max(1, (now.getTime() - new Date(investment.purchaseDate).getTime()) / (1000 * 60 * 60 * 24 * 30));
-        const timeGrowth = Math.pow(growth, Math.min(1, monthsFromPurchase / 12));
-        
-        return total + baseValue * timeGrowth;
-      }, 0);
-
-      chartData.push({
-        month: monthName,
-        value: Math.round(monthValue)
-      });
+    if (totalValue < 1000 || investmentCount < 3) {
+      return { name: 'Novato', icon: Zap, color: 'blue', progress: Math.min((totalValue / 1000) * 100, 100), nextLevel: 'Explorador', requirement: 'R$ 1.000 investidos + 3 ativos' };
     }
-
-    return chartData;
+    if (totalValue < 5000 || investmentCount < 5) {
+      return { name: 'Explorador', icon: Target, color: 'green', progress: Math.min(((totalValue - 1000) / 4000) * 100, 100), nextLevel: 'Estrategista', requirement: 'R$ 5.000 investidos + 5 ativos' };
+    }
+    if (totalValue < 15000 || investmentCount < 8) {
+      return { name: 'Estrategista', icon: Trophy, color: 'purple', progress: Math.min(((totalValue - 5000) / 10000) * 100, 100), nextLevel: 'Mestre', requirement: 'R$ 15.000 investidos + 8 ativos' };
+    }
+    return { name: 'Mestre', icon: Crown, color: 'yellow', progress: 100, nextLevel: null, requirement: 'Nível máximo atingido!' };
   };
 
-  const chartData = generateChartData();
+  const getAchievements = (totalValue: number, investmentCount: number, totalGain: number) => {
+    const achievements = [
+      {
+        id: 'first-investment',
+        title: 'Primeiro Passo',
+        description: 'Realizou o primeiro investimento',
+        icon: Medal,
+        unlocked: investmentCount > 0,
+        color: 'bg-blue-500'
+      },
+      {
+        id: 'diversified',
+        title: 'Diversificado',
+        description: 'Possui 3 ou mais investimentos',
+        icon: Award,
+        unlocked: investmentCount >= 3,
+        color: 'bg-green-500'
+      },
+      {
+        id: 'thousand-club',
+        title: 'Clube dos Mil',
+        description: 'Investiu mais de R$ 1.000',
+        icon: Star,
+        unlocked: totalValue >= 1000,
+        color: 'bg-purple-500'
+      },
+      {
+        id: 'profitable',
+        title: 'Lucrativo',
+        description: 'Teve ganhos positivos',
+        icon: TrendingUp,
+        unlocked: totalGain > 0,
+        color: 'bg-emerald-500'
+      },
+      {
+        id: 'five-thousand',
+        title: 'Investidor Sério',
+        description: 'Patrimônio de R$ 5.000+',
+        icon: Trophy,
+        unlocked: totalValue >= 5000,
+        color: 'bg-orange-500'
+      },
+      {
+        id: 'master-investor',
+        title: 'Mestre Investidor',
+        description: 'Patrimônio de R$ 15.000+',
+        icon: Crown,
+        unlocked: totalValue >= 15000,
+        color: 'bg-yellow-500'
+      }
+    ];
+    return achievements;
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -87,7 +99,7 @@ export function InvestmentOverview() {
 
   const calculateTotalValue = () => {
     if (!investments) return 0;
-    return investments.reduce((total, investment) => {
+    return investments.reduce((total: number, investment: any) => {
       return total + parseFloat(investment.currentAmount);
     }, 0);
   };
@@ -96,7 +108,7 @@ export function InvestmentOverview() {
     if (!investments) return { amount: 0, percentage: 0 };
     
     const totalCurrent = calculateTotalValue();
-    const totalInitial = investments.reduce((total, investment) => {
+    const totalInitial = investments.reduce((total: number, investment: any) => {
       return total + parseFloat(investment.initialAmount);
     }, 0);
     
@@ -107,15 +119,17 @@ export function InvestmentOverview() {
   };
 
   const totalValue = calculateTotalValue();
-  const { amount: totalGain, percentage: gainPercentage } = calculateTotalGain();
+  const gainData = calculateTotalGain();
+  const totalGain = gainData.amount;
+  const gainPercentage = gainData.percentage;
 
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <Card className="chart-container">
+          <Card>
             <CardHeader>
-              <CardTitle>Evolução dos Investimentos</CardTitle>
+              <CardTitle>🎮 Evolução Gamificada</CardTitle>
             </CardHeader>
             <CardContent>
               <Skeleton className="h-80 w-full" />
@@ -131,79 +145,118 @@ export function InvestmentOverview() {
     );
   }
 
+  const investmentCount = investments?.length || 0;
+  const level = getInvestorLevel(totalValue, investmentCount);
+  const achievements = getAchievements(totalValue, investmentCount, totalGain);
+  const unlockedAchievements = achievements.filter((a: any) => a.unlocked);
+  const nextAchievement = achievements.find((a: any) => !a.unlocked);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2">
-        <Card className="chart-container">
+        <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Evolução dos Investimentos</CardTitle>
-              <Select value={period} onValueChange={setPeriod}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="12months">Últimos 12 meses</SelectItem>
-                  <SelectItem value="year">Este ano</SelectItem>
-                  <SelectItem value="2years">Últimos 2 anos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              🎮 Evolução Gamificada
+              <Badge variant="outline" className="ml-auto">
+                {unlockedAchievements.length}/{achievements.length} conquistas
+              </Badge>
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-                    <XAxis 
-                      dataKey="month" 
-                      className="text-gray-600 dark:text-gray-300"
-                    />
-                    <YAxis 
-                      tickFormatter={(value) => value === 0 ? 'R$ 0' : `R$ ${(value / 1000).toFixed(0)}k`}
-                      className="text-gray-600 dark:text-gray-300"
-                      domain={[0, 'dataMax']}
-                    />
-                    <Tooltip 
-                      formatter={(value) => [formatCurrency(Number(value)), 'Valor Investido']}
-                      labelStyle={{ color: 'hsl(var(--foreground))' }}
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="value" 
-                      stroke="hsl(var(--chart-4))" 
-                      strokeWidth={3}
-                      dot={{ fill: 'hsl(var(--chart-4))' }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-center">
-                  <div className="space-y-4">
-                    <TrendingUp className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-500" />
-                    <div>
-                      <p className="text-lg font-medium text-gray-900 dark:text-white">
-                        Comece a investir
-                      </p>
-                      <p className="text-gray-500 dark:text-gray-400">
-                        Adicione seus primeiros investimentos para acompanhar a evolução do seu portfólio
-                      </p>
-                    </div>
+          <CardContent className="space-y-6">
+            {/* Nível do Investidor */}
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 p-6 rounded-xl border">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-12 h-12 bg-${level.color}-100 dark:bg-${level.color}-900 rounded-full flex items-center justify-center`}>
+                    <level.icon className={`w-6 h-6 text-${level.color}-600`} />
                   </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">{level.name}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {level.nextLevel ? `Próximo: ${level.nextLevel}` : 'Nível máximo!'}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {formatCurrency(totalValue)}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {investmentCount} {investmentCount === 1 ? 'ativo' : 'ativos'}
+                  </p>
+                </div>
+              </div>
+              
+              {level.nextLevel && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Progresso para {level.nextLevel}</span>
+                    <span className="font-medium">{Math.round(level.progress)}%</span>
+                  </div>
+                  <Progress value={level.progress} className="h-3" />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    📋 {level.requirement}
+                  </p>
                 </div>
               )}
             </div>
-            
+
+            {/* Conquistas */}
+            <div>
+              <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                🏆 Conquistas
+                {nextAchievement && (
+                  <Badge variant="secondary" className="text-xs">
+                    Próxima: {nextAchievement.title}
+                  </Badge>
+                )}
+              </h4>
+              
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {achievements.map((achievement) => (
+                  <div 
+                    key={achievement.id}
+                    className={`relative p-4 rounded-lg border transition-all duration-300 ${
+                      achievement.unlocked 
+                        ? 'bg-white dark:bg-gray-800 border-green-200 dark:border-green-800 shadow-lg transform scale-105' 
+                        : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 opacity-60'
+                    }`}
+                  >
+                    {achievement.unlocked && (
+                      <div className="absolute -top-2 -right-2">
+                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                          <Star className="w-3 h-3 text-white" />
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className={`w-10 h-10 ${achievement.unlocked ? achievement.color : 'bg-gray-300'} rounded-lg flex items-center justify-center mb-3`}>
+                      <achievement.icon className="w-5 h-5 text-white" />
+                    </div>
+                    
+                    <h5 className="font-medium text-sm mb-1">{achievement.title}</h5>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {achievement.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {(!investments || investments.length === 0) && (
-              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  💡 <strong>Dica:</strong> Vá para a seção "Portfólio" abaixo para adicionar seus primeiros investimentos e começar a acompanhar sua evolução patrimonial.
+              <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950 dark:to-blue-950 p-6 rounded-xl border border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                    <Gift className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-green-900 dark:text-green-100">🚀 Comece sua jornada!</h4>
+                    <p className="text-sm text-green-700 dark:text-green-300">Faça seu primeiro investimento e desbloqueie conquistas</p>
+                  </div>
+                </div>
+                <p className="text-sm text-green-600 dark:text-green-400">
+                  💡 Vá para a seção "Portfólio" abaixo e adicione seu primeiro investimento para começar a ganhar XP e medalhas!
                 </p>
               </div>
             )}
