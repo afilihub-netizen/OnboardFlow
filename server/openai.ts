@@ -39,7 +39,7 @@ Responda APENAS com JSON válido no formato:
   ]
 }`
       },
-      contents: [{ role: "user", parts: [{ text: `Analise estes dados financeiros e gere insights personalizados:\n\nResumo: ${JSON.stringify(summary)}\nTransações recentes: ${JSON.stringify(transactions?.slice(-20) || [])}\nCategorias: ${JSON.stringify(categories)}` }] }],
+      contents: [{ role: "user", parts: [{ text: `Analise estes dados financeiros e gere insights personalizados:\n\nResumo: ${JSON.stringify(summary)}\nTransações recentes: ${JSON.stringify(Array.isArray(transactions) ? transactions.slice(-20) : transactions?.transactions?.slice(-20) || [])}\nCategorias: ${JSON.stringify(categories)}` }] }],
     });
 
     const content = response.text || '{"insights": []}';

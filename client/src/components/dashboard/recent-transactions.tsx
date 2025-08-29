@@ -33,7 +33,7 @@ const getPaymentMethodLabel = (method: string) => {
 };
 
 export function RecentTransactions() {
-  const { data: transactions, isLoading } = useQuery({
+  const { data: transactionData, isLoading } = useQuery({
     queryKey: ['/api/transactions'],
     queryFn: async () => {
       const response = await fetch('/api/transactions?limit=5', {
@@ -43,6 +43,8 @@ export function RecentTransactions() {
       return response.json();
     },
   });
+
+  const transactions = transactionData?.transactions || [];
 
   if (isLoading) {
     return (

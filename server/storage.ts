@@ -672,11 +672,12 @@ export class DatabaseStorage implements IStorage {
 
     // Get financial data for the last 3 months
     const summary = await this.getFinancialSummary(userId, threeMonthsAgo, now);
-    const transactions = await this.getTransactions(userId, { 
+    const transactionData = await this.getTransactions(userId, { 
       startDate: threeMonthsAgo, 
       endDate: now, 
       limit: 1000 
     });
+    const transactions = transactionData.transactions;
     const budgetGoals = await this.getBudgetGoals(userId);
 
     const totalIncome = parseFloat(summary.totalIncome);
