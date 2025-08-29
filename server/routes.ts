@@ -2690,27 +2690,35 @@ RESPONDA APENAS JSON:
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      if (!line || line.length < 10) continue; // Pular linhas muito curtas
+      if (!line || line.length < 15) continue; // Pular linhas muito curtas
       
-      // PADRÕES BRASILEIROS EXPANDIDOS - Muito mais abrangentes
+      // Pular linhas que são claramente cabeçalhos/metadados
+      if (line.toLowerCase().includes('extrato') || 
+          line.toLowerCase().includes('período') || 
+          line.toLowerCase().includes('cooperativa') ||
+          line.toLowerCase().includes('conta:') ||
+          line.toLowerCase().includes('associado:') ||
+          line.toLowerCase().includes('saldo') ||
+          line.includes('Sicredi')) {
+        continue;
+      }
+      
+      // PADRÕES REFINADOS - Apenas transações reais
       const patterns = [
-        // Padrão 1: Data DD/MM/YYYY + operação + valor
-        /(\d{1,2}\/\d{1,2}\/\d{4}).*?([\d.,]+)/,
+        // Padrão 1: Data DD/MM/YYYY + descrição + valor no final
+        /(\d{1,2}\/\d{1,2}\/\d{4})\s+([^0-9]+)\s+([\d]{1,3}\.[\d]{3},[\d]{2}|[\d]{1,3},[\d]{2}|[\d]{4,})/,
         
-        // Padrão 2: Operações específicas com valores
-        /(PIX|TED|DOC|DÉBITO|CRÉDITO|COMPRA|PAGAMENTO|TRANSFERÊNCIA|SAQUE).*?([\d.,]+)/i,
+        // Padrão 2: Operações bancárias específicas + valor
+        /(PIX|TED|DOC|DEB\.|CRÉD\.|COMPRA|PAG\.|TRANSF|SAQUE)\s+.*?([\d]{1,3}\.[\d]{3},[\d]{2}|[\d]{1,3},[\d]{2}|[\d]{3,})/i,
         
-        // Padrão 3: Estabelecimentos + valores  
-        /([A-Z\s]{4,}).*?R?\$?\s*([\d.,]+)/,
+        // Padrão 3: Data + PIX/operação + nome/estabelecimento + valor
+        /(\d{1,2}\/\d{1,2})\s+(PIX|TED|DOC|DEB|CRÉD).*?([A-Z][^0-9]*)\s+([\d]{1,3}\.[\d]{3},[\d]{2}|[\d]{1,3},[\d]{2}|[\d]{3,})/i,
         
-        // Padrão 4: Valores isolados (mais de 2 dígitos)
-        /.*?([\d]{1,3}[.,][\d]{2,3}[.,][\d]{2})/,
+        // Padrão 4: Linha com estabelecimento + valor no formato brasileiro
+        /^([A-Z\s]{5,50})\s+([\d]{1,3}\.[\d]{3},[\d]{2}|[\d]{1,3},[\d]{2})$/,
         
-        // Padrão 5: Data DD/MM + qualquer coisa + valor
-        /(\d{1,2}\/\d{1,2}).*?([\d.,]+)/,
-        
-        // Padrão 6: Apenas valores monetários grandes
-        /([\d]{2,}[.,][\d]{2})/
+        // Padrão 5: Data + descrição longa + valor
+        /(\d{1,2}\/\d{1,2}\/\d{4})\s+(.{10,})\s+([\d]{1,3}\.[\d]{3},[\d]{2}|[\d]{1,3},[\d]{2})$/
       ];
       
       for (let p = 0; p < patterns.length; p++) {
@@ -2737,25 +2745,34 @@ RESPONDA APENAS JSON:
             description = line.substring(0, 50).trim() || 'Transação';
           }
           
-          // Limpar e converter valor
-          const cleanValue = valueStr.replace(/[^\d,.-]/g, '');
+          // Limpar e converter valor monetário brasileiro
+          let cleanValue = valueStr.replace(/[^\d,.-]/g, '');
           let amount = 0;
           
-          // Tentar diferentes formatos brasileiros
-          if (cleanValue.includes(',')) {
-            if (cleanValue.split(',').length === 2 && cleanValue.split(',')[1].length <= 2) {
-              // Formato: 1.234,56
-              amount = parseFloat(cleanValue.replace(/\./g, '').replace(',', '.'));
+          // Converter formato brasileiro para número
+          if (cleanValue.includes('.') && cleanValue.includes(',')) {
+            // Formato: 1.234,56 (brasileiro)
+            amount = parseFloat(cleanValue.replace(/\./g, '').replace(',', '.'));
+          } else if (cleanValue.includes(',') && !cleanValue.includes('.')) {
+            // Formato: 1234,56
+            amount = parseFloat(cleanValue.replace(',', '.'));
+          } else if (cleanValue.includes('.') && !cleanValue.includes(',')) {
+            // Formato: 1234.56 (americano) ou 1.234 (mil)
+            const parts = cleanValue.split('.');
+            if (parts[parts.length - 1].length === 2) {
+              // Provavelmente decimal: 1234.56
+              amount = parseFloat(cleanValue);
             } else {
-              // Formato: 1,234.56 ou outros
-              amount = parseFloat(cleanValue.replace(',', ''));
+              // Provavelmente separador de milhares: 1.234
+              amount = parseFloat(cleanValue.replace(/\./g, ''));
             }
           } else {
+            // Só números: 1234
             amount = parseFloat(cleanValue);
           }
           
-          // Validar se é um valor monetário válido
-          if (!isNaN(amount) && amount > 1 && amount < 1000000) {
+          // Validar se é um valor monetário válido (mais de R$ 0,10 e menos de R$ 500.000)
+          if (!isNaN(amount) && amount >= 0.10 && amount <= 500000) {
             
             // Determinar se é receita ou despesa (heurística simples)
             const isExpense = line.toLowerCase().includes('débito') || 
@@ -2780,11 +2797,25 @@ RESPONDA APENAS JSON:
       }
     }
     
-    // Remover duplicatas baseadas na descrição e valor
-    const uniqueTransactions = transactions.filter((transaction, index, self) => 
+    // Filtrar e remover duplicatas mais rigorosamente
+    const validTransactions = transactions.filter(t => {
+      // Filtrar valores suspeitos
+      if (Math.abs(t.amount) < 1 || Math.abs(t.amount) > 100000) return false;
+      
+      // Filtrar descrições suspeitas
+      const desc = t.description.toLowerCase();
+      if (desc.includes('extrato') || desc.includes('período') || 
+          desc.includes('saldo') || desc.includes('conta') ||
+          desc.length < 3) return false;
+      
+      return true;
+    });
+    
+    const uniqueTransactions = validTransactions.filter((transaction, index, self) => 
       index === self.findIndex(t => 
         Math.abs(t.amount - transaction.amount) < 0.01 && 
-        t.description.substring(0, 20) === transaction.description.substring(0, 20)
+        t.description.substring(0, 15) === transaction.description.substring(0, 15) &&
+        t.date === transaction.date
       )
     );
     
