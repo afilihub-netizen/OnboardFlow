@@ -298,7 +298,39 @@ RULES:
       // Normalize type
       let normalizedType = rawType.toString().toLowerCase();
       if (!['income', 'expense'].includes(normalizedType)) {
-        normalizedType = parsedAmount >= 0 ? 'income' : 'expense';
+        // Smart categorization based on description
+        const description = rawDescription.toString().toLowerCase();
+        
+        // PIX payments are always expenses (saídas)
+        if (description.includes('pagamento pix') || 
+            description.includes('pix pagamento') ||
+            (description.includes('pix') && (description.includes('pagamento') || description.includes('pagto')))) {
+          normalizedType = 'expense';
+        }
+        // PIX receipts are income (entradas)
+        else if (description.includes('recebimento pix') || 
+                 description.includes('pix recebido') ||
+                 (description.includes('pix') && (description.includes('recebimento') || description.includes('recebido')))) {
+          normalizedType = 'income';
+        }
+        // Other payment indicators
+        else if (description.includes('pagamento') || description.includes('pagto') || 
+                 description.includes('compra') || description.includes('débito') ||
+                 description.includes('saque') || description.includes('transferência enviada') ||
+                 description.includes('ted enviado') || description.includes('doc enviado')) {
+          normalizedType = 'expense';
+        }
+        // Income indicators
+        else if (description.includes('salário') || description.includes('recebimento') ||
+                 description.includes('depósito') || description.includes('crédito') ||
+                 description.includes('transferência recebida') || description.includes('ted recebido') ||
+                 description.includes('doc recebido') || description.includes('rendimento')) {
+          normalizedType = 'income';
+        }
+        // Fallback to amount-based logic only if no keywords found
+        else {
+          normalizedType = parsedAmount >= 0 ? 'income' : 'expense';
+        }
       }
       
       const normalized = {
