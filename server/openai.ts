@@ -471,8 +471,8 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     
     // Progress tracking available via global sessions
     
-    // Split large texts into chunks (chunks bem menores para evitar timeout)
-    const chunks = splitTextIntoChunks(extractText, 2500);
+    // Split large texts into chunks (chunks maiores para pegar mais transações)
+    const chunks = splitTextIntoChunks(extractText, 5000);
     console.log("Split into", chunks.length, "chunks");
     console.log("Total text length:", extractText.length, "characters");
     console.log("Average chunk size:", Math.round(extractText.length / chunks.length), "characters");
