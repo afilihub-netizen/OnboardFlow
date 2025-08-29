@@ -1512,15 +1512,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Extract analysis route with CNPJ categorization
   app.post("/api/analyze-extract", isAuthenticated, async (req: any, res) => {
+    console.log(`🎯 ROUTE /api/analyze-extract CALLED`);
+    console.log(`   - Request body keys:`, Object.keys(req.body));
+    console.log(`   - Extract text length:`, req.body.extractText?.length || 0);
+    console.log(`   - Available categories:`, req.body.availableCategories?.length || 0);
+    console.log(`   - Session ID:`, req.body.sessionId || 'none');
+    
     try {
       const { extractText, availableCategories, sessionId } = req.body;
       
       if (!extractText || typeof extractText !== 'string') {
+        console.log(`❌ INVALID REQUEST: Extract text missing or invalid`);
         return res.status(400).json({ message: "Extract text is required" });
       }
 
+      console.log(`📤 CALLING analyzeExtractWithAI...`);
       // Process large texts by splitting into chunks with progress tracking
       const result = await analyzeExtractWithAI(extractText, availableCategories || [], sessionId, true);
+      console.log(`📥 RECEIVED RESULT FROM analyzeExtractWithAI:`, {
+        hasResult: !!result,
+        hasTransactions: !!result?.transactions,
+        transactionCount: result?.transactions?.length || 0
+      });
       
       console.log(`[analyze-extract] Result from AI:`, {
         transactionsCount: result.transactions?.length || 0,

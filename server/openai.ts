@@ -452,6 +452,12 @@ function sendProgressUpdate(sessionId: string, progress: number, message: string
 }
 
 export async function analyzeExtractWithAI(extractText: string, availableCategories: string[] = [], sessionId?: string, enableCNPJCategorization: boolean = true) {
+  console.log("=== analyzeExtractWithAI FUNCTION CALLED ===");
+  console.log("Extract text length:", extractText.length);
+  console.log("Available categories:", availableCategories.length);
+  console.log("Session ID:", sessionId || 'none');
+  console.log("CNPJ categorization:", enableCNPJCategorization);
+  
   try {
     console.log(`🚀 EXTRACT ANALYSIS STARTING:`);
     console.log(`   - Extract text length: ${extractText.length}`);
