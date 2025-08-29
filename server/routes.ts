@@ -1624,7 +1624,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Auto-create categories if they don't exist - TEMPORARIAMENTE DESABILITADO PARA DEBUG
-      console.log(`[DEBUG] Skipping category creation for debug. Transactions: ${result.transactions?.length || 0}`);
+      // 🚀 NOVO: SALVAR AUTOMATICAMENTE todas as transações extraídas
+      console.log('[SALVAMENTO] Salvando automaticamente', result.transactions?.length || 0, 'transações no banco...');
+      
+      if (result.transactions && result.transactions.length > 0) {
+        try {
+          const storage = new DrizzleStorage();
+          let savedCount = 0;
+          
+          for (const transaction of result.transactions) {
+            try {
+              const savedTransaction = await storage.createTransaction({
+                description: transaction.description,
+                amount: Math.abs(transaction.amount).toString(),
+                categoryId: transaction.categoryId || 'outros',
+                type: transaction.amount < 0 ? 'expense' : 'income',
+                date: new Date(transaction.date),
+                userId: req.userId,
+                paymentMethod: transaction.paymentMethod || 'other'
+              });
+              savedCount++;
+              console.log(`[SALVAMENTO] ${savedCount}. ${transaction.description.substring(0, 40)} - R$ ${transaction.amount}`);
+            } catch (error) {
+              console.log(`[SALVAMENTO] Erro ao salvar: ${error}`);
+            }
+          }
+          
+          console.log(`[SALVAMENTO] ✅ CONCLUÍDO: ${savedCount}/${result.transactions.length} transações salvas no banco`);
+        } catch (error) {
+          console.log('[SALVAMENTO] ❌ Erro geral:', error);
+        }
+      }
       
       // Final result processed successfully
       console.log(`[analyze-extract] Final result before sending:`, {
@@ -2861,23 +2891,19 @@ RESPONDA APENAS JSON:
     
     console.log(`[Extrator] Processadas ${processedLines} linhas, encontradas ${foundTransactions} transações`);
     
-    // Remover duplicatas de forma mais flexível
+    // Filtros MUITO mais flexíveis - preservar máximo de transações
     const uniqueTransactions = transactions.filter((transaction, index, self) => {
-      // Apenas filtrar valores extremamente baixos (< R$ 1) ou muito altos (> R$ 100.000)
-      if (Math.abs(transaction.amount) < 1 || Math.abs(transaction.amount) > 100000) return false;
+      // Apenas filtrar valores EXTREMAMENTE inválidos
+      if (Math.abs(transaction.amount) < 0.50 || Math.abs(transaction.amount) > 500000) return false;
       
-      // Filtrar apenas descrições CLARAMENTE inválidas
+      // Filtrar apenas strings OBVIAMENTE inválidas
       const desc = transaction.description.toLowerCase().trim();
-      if (desc.length < 3 || 
-          (desc.includes('sicredi') && desc.length < 20) ||
-          (desc.includes('associado') && desc.length < 20) ||
-          desc === 'cooperativa:' || desc === 'conta:' ||
-          desc === 'extrato' || desc === 'período') return false;
+      if (desc.length < 2 || desc === 'data' || desc === 'descrição') return false;
       
-      // Remover duplicatas apenas se forem EXATAMENTE iguais
+      // Remover duplicatas apenas se forem TOTALMENTE idênticas
       return index === self.findIndex(t => 
         Math.abs(t.amount - transaction.amount) < 0.01 &&
-        t.description.trim() === transaction.description.trim() &&
+        t.description.substring(0, 25) === transaction.description.substring(0, 25) &&
         t.date === transaction.date
       );
     });
