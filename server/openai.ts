@@ -155,7 +155,7 @@ RESPONDA APENAS com JSON válido:
 }
 
 // Function to split text into chunks - TAMANHO AUMENTADO PARA PEGAR MAIS TRANSAÇÕES
-function splitTextIntoChunks(text: string, maxChunkSize: number = 15000): string[] {
+function splitTextIntoChunks(text: string, maxChunkSize: number = 20000): string[] {
   console.log(`📝 SPLITTING TEXT: ${text.length} chars into chunks of max ${maxChunkSize}`);
   
   // Para extratos pequenos, não dividir
