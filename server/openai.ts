@@ -180,6 +180,11 @@ function splitTextIntoChunks(text: string, maxChunkSize: number = 6000): string[
 
 // Function to process a single chunk
 async function processChunk(extractText: string, availableCategories: string[] = []) {
+  console.log(`🔍 PROCESS CHUNK STARTING:`);
+  console.log(`   - Content length: ${extractText.length}`);
+  console.log(`   - Available categories: ${availableCategories.length}`);
+  console.log(`   - Sample content: ${extractText.substring(0, 200)}...`);
+  
   console.log("Processing chunk with text length:", extractText.length);
   console.log("First 500 characters:", extractText.substring(0, 500));
   
@@ -413,11 +418,14 @@ RULES:
       t.description !== ""
     );
     
-    console.log(`Chunk parsed: ${transactions.length} valid transactions extracted and normalized`);
+    console.log(`✅ CHUNK PROCESSING COMPLETE:`);
+    console.log(`   - Returning ${transactions.length} transactions`);
+    console.log(`   - Sample result:`, transactions.slice(0, 2));
+    
     return transactions;
   } catch (parseError) {
     console.error("JSON parse failed for chunk:", parseError);
-    console.error("Content that failed:", content.substring(0, 500));
+    console.error("❌ JSON PARSE FAILED:", content.substring(0, 500));
     return [];
   }
 }
@@ -445,6 +453,11 @@ function sendProgressUpdate(sessionId: string, progress: number, message: string
 
 export async function analyzeExtractWithAI(extractText: string, availableCategories: string[] = [], sessionId?: string, enableCNPJCategorization: boolean = true) {
   try {
+    console.log(`🚀 EXTRACT ANALYSIS STARTING:`);
+    console.log(`   - Extract text length: ${extractText.length}`);
+    console.log(`   - Available categories: ${availableCategories.length}`);
+    console.log(`   - Session ID: ${sessionId || 'none'}`);
+    console.log(`   - CNPJ categorization: ${enableCNPJCategorization}`);
     console.log("Processing extract with length:", extractText.length);
     console.log("First 1000 characters of extract:", extractText.substring(0, 1000));
     console.log("Contains common transaction keywords:", 
@@ -463,6 +476,7 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
     }
     
     const allTransactions: any[] = [];
+    console.log(`💾 TRANSACTION ACCUMULATOR INITIALIZED: ${allTransactions.length} transactions`);
     
     // Process chunks sequentially to avoid aggregation issues
     for (let i = 0; i < chunks.length; i++) {
@@ -475,13 +489,17 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
       console.log(`Processing chunk ${i + 1}/${chunks.length}, size: ${chunks[i].length}`);
       
       try {
-        console.log(`Starting chunk ${i + 1} processing...`);
+        console.log(`[CHUNK ${i + 1}] Starting processing...`);
         const chunkTransactions = await processChunk(chunks[i], availableCategories);
-        console.log(`Chunk ${i + 1} processed: ${chunkTransactions.length} transactions`);
-        console.log(`Sample from chunk ${i + 1}:`, chunkTransactions.slice(0, 2));
+        console.log(`[CHUNK ${i + 1}] ✅ PROCESSED: ${chunkTransactions.length} transactions`);
+        console.log(`[CHUNK ${i + 1}] Sample:`, chunkTransactions.slice(0, 2));
         
-        allTransactions.push(...chunkTransactions);
-        console.log(`Total accumulated transactions after chunk ${i + 1}: ${allTransactions.length}`);
+        if (chunkTransactions.length > 0) {
+          allTransactions.push(...chunkTransactions);
+          console.log(`[CHUNK ${i + 1}] ✅ TOTAL ACCUMULATED: ${allTransactions.length} transactions`);
+        } else {
+          console.log(`[CHUNK ${i + 1}] ⚠️ NO TRANSACTIONS RETURNED FROM CHUNK`);
+        }
         
         // Send progress update after each successful chunk
         if (sessionId) {
@@ -499,16 +517,29 @@ export async function analyzeExtractWithAI(extractText: string, availableCategor
       }
     }
     
-    console.log(`Total chunks processed: ${chunks.length}`);
-    console.log(`Total transactions extracted: ${allTransactions.length}`);
-    console.log(`Transactions per chunk average: ${chunks.length > 0 ? Math.round(allTransactions.length / chunks.length) : 0}`);
+    console.log(`🔍 CHUNK PROCESSING SUMMARY:`);
+    console.log(`   - Total chunks processed: ${chunks.length}`);
+    console.log(`   - Total transactions extracted: ${allTransactions.length}`);
+    console.log(`   - Transactions per chunk average: ${chunks.length > 0 ? Math.round(allTransactions.length / chunks.length) : 0}`);
+    
+    if (allTransactions.length === 0) {
+      console.log(`❌ NO TRANSACTIONS FOUND AFTER CHUNK PROCESSING`);
+      console.log(`   - Text length: ${extractText.length}`);
+      console.log(`   - Chunks created: ${chunks.length}`);
+      console.log(`   - Sample chunk:`, chunks[0]?.substring(0, 200));
+    }
     
     if (sessionId) {
       sendProgressUpdate(sessionId, 95, "Finalizando análise...");
     }
     
     // Apply CNPJ categorization if enabled
-    console.log(`[NORMALIZATION DEBUG] Starting normalization of ${allTransactions.length} transactions`);
+    console.log(`🔄 NORMALIZATION STARTING: ${allTransactions.length} transactions`);
+    
+    if (allTransactions.length === 0) {
+      console.log(`❌ CRITICAL ERROR: No transactions to normalize! Stopping here.`);
+      return { transactions: [] };
+    }
     let finalTransactions = allTransactions.map((t: any, index: number) => {      
       const normalized = {
         date: t.date || t.Date || t.DATA || "2024-12-10",
