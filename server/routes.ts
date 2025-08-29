@@ -26,6 +26,8 @@ import { z } from "zod";
 import { emailService } from './email-service';
 import multer from "multer";
 import Tesseract from 'tesseract.js';
+import pdf2pic from 'pdf2pic';
+import fs from 'fs/promises';
 import Stripe from "stripe";
 
 // Initialize Stripe
@@ -41,21 +43,64 @@ async function extractWithNativeOCR(buffer: Buffer): Promise<{ text: string; pag
   console.log('[OCR NATIVO] Iniciando extração com Tesseract.js - SEM LIMITES!');
   
   try {
-    console.log('[OCR NATIVO] Configurando Tesseract para português...');
+    console.log('[OCR NATIVO] Convertendo PDF para imagens...');
     
-    const { data: { text } } = await Tesseract.recognize(buffer, 'por', {
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          console.log(`[OCR NATIVO] Progresso OCR: ${Math.round(m.progress * 100)}%`);
+    // First convert PDF to images using pdf2pic
+    const options = {
+      density: 200,
+      saveFilename: "page",
+      savePath: "/tmp",
+      format: "png",
+      width: 2000,
+      height: 2000
+    };
+    
+    const convert = pdf2pic.fromBuffer(buffer, options);
+    const images = await convert.bulk(-1); // Convert all pages
+    
+    console.log(`[OCR NATIVO] ${images.length} página(s) convertida(s) para imagem`);
+    
+    let allText = '';
+    const totalPages = images.length;
+    
+    // Process each page with Tesseract
+    for (let i = 0; i < images.length; i++) {
+      console.log(`[OCR NATIVO] Processando página ${i + 1}/${totalPages}...`);
+      
+      const imagePath = images[i].path;
+      if (!imagePath) {
+        console.log(`[OCR NATIVO] Erro: caminho da imagem indefinido para página ${i + 1}`);
+        continue;
+      }
+      
+      const { data: { text } } = await Tesseract.recognize(imagePath, 'por', {
+        logger: m => {
+          if (m.status === 'recognizing text') {
+            console.log(`[OCR NATIVO] Página ${i + 1} - Progresso: ${Math.round(m.progress * 100)}%`);
+          }
+        }
+      });
+      
+      allText += text + '\n';
+    }
+    
+    // Cleanup temporary image files
+    console.log('[OCR NATIVO] Limpando arquivos temporários...');
+    for (const image of images) {
+      if (image.path) {
+        try {
+          await fs.unlink(image.path);
+        } catch (cleanupError) {
+          console.log(`[OCR NATIVO] Aviso: não foi possível remover ${image.path}`);
         }
       }
-    });
+    }
     
-    console.log(`[OCR NATIVO] ✅ EXTRAÇÃO COMPLETA: ${text.length} caracteres`);
+    console.log(`[OCR NATIVO] ✅ EXTRAÇÃO COMPLETA: ${allText.length} caracteres de ${totalPages} páginas`);
     
     return {
-      text: text,
-      pages: 1, // Tesseract processa documento inteiro como uma unidade
+      text: allText.trim(),
+      pages: totalPages,
       method: 'tesseract-nativo'
     };
     
