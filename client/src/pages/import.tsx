@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import IntegrityChecker from "@/components/IntegrityChecker";
 
 interface ParsedTransaction {
   date: string;
@@ -52,6 +53,11 @@ export default function Import() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [autoProcessing, setAutoProcessing] = useState(false);
   const [detectedSubscriptions, setDetectedSubscriptions] = useState<DetectedSubscription[]>([]);
+  
+  // Estados para verificação de integridade
+  const [showIntegrityChecker, setShowIntegrityChecker] = useState(false);
+  const [verificationSessionId, setVerificationSessionId] = useState<string>("");
+  const [originalTextForVerification, setOriginalTextForVerification] = useState<string>("");
 
   // Fetch categories for mapping
   const { data: categories = [] } = useQuery({
@@ -386,12 +392,20 @@ export default function Import() {
       setSelectedTransactions(new Set(Array.from({ length: analyzedTransactions.length }, (_, i) => i)));
       setCurrentStep(3);
       
+      // 🔍 Iniciar verificação de integridade automaticamente
+      if (analyzedTransactions.length > 0) {
+        const verifySessionId = `verify_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        setVerificationSessionId(verifySessionId);
+        setOriginalTextForVerification(textToUse);
+        setShowIntegrityChecker(true);
+      }
+      
       const subscriptionCount = subscriptions.length;
       const variant = analyzedTransactions.length > 0 ? "success" : "warning";
       toast({
         variant,
         title: "Análise concluída",
-        description: `${analyzedTransactions.length} transações identificadas${subscriptionCount > 0 ? ` e ${subscriptionCount} possível${subscriptionCount > 1 ? 'is' : ''} assinatura${subscriptionCount > 1 ? 's' : ''} detectada${subscriptionCount > 1 ? 's' : ''}` : ''}.`,
+        description: `${analyzedTransactions.length} transações identificadas${subscriptionCount > 0 ? ` e ${subscriptionCount} possível${subscriptionCount > 1 ? 'is' : ''} assinatura${subscriptionCount > 1 ? 's' : ''} detectada${subscriptionCount > 1 ? 's' : ''}` : ''}. Verificação de integridade iniciada.`,
       });
     } catch (error) {
       toast({
@@ -892,6 +906,36 @@ export default function Import() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* 🔍 Verificador de Integridade */}
+      {showIntegrityChecker && parsedTransactions.length > 0 && (
+        <IntegrityChecker
+          sessionId={verificationSessionId}
+          originalText={originalTextForVerification}
+          extractedTransactions={parsedTransactions}
+          onClose={() => setShowIntegrityChecker(false)}
+          onComplete={(report) => {
+            console.log('Verificação completa:', report);
+            
+            let description = '';
+            if (report.status === 'excellent') {
+              description = 'Dados com excelente qualidade!';
+            } else if (report.status === 'good') {
+              description = 'Dados com boa qualidade.';
+            } else if (report.status === 'acceptable') {
+              description = 'Dados aceitáveis, mas revise algumas transações.';
+            } else {
+              description = 'Dados precisam de revisão.';
+            }
+            
+            toast({
+              title: `Integridade: ${report.integrity}%`,
+              description,
+              variant: report.status === 'needs_review' ? 'destructive' : 'default'
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

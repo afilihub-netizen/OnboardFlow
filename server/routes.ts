@@ -42,6 +42,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 // Store SSE connections for progress tracking
 export const extractProgressSessions = new Map<string, any>();
+export const verificationProgressSessions = new Map<string, any>();
 
 // 🎯 GOOGLE DOCUMENT AI - EXTRAÇÃO PROFISSIONAL
 async function extractWithGoogleDocumentAI(buffer: Buffer): Promise<{ text: string; pages: number; method: string }> {
@@ -1903,6 +1904,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // 🔍 VERIFICAÇÃO DE INTEGRIDADE EM BACKGROUND
+  app.post('/api/verify-transactions', isAuthenticated, async (req: any, res) => {
+    const { originalText, extractedTransactions, sessionId } = req.body;
+    
+    if (!originalText || !extractedTransactions || !sessionId) {
+      return res.status(400).json({ error: 'Missing required data for verification' });
+    }
+
+    // Iniciar verificação em background
+    setImmediate(async () => {
+      try {
+        await performIntegrityVerification(originalText, extractedTransactions, sessionId);
+      } catch (error) {
+        console.error('[VERIFICATION-ERROR]', error);
+        broadcastVerificationProgress(sessionId, {
+          step: 'verification_error',
+          progress: 100,
+          message: 'Erro na verificação de integridade',
+          error: error.message
+        });
+      }
+    });
+
+    res.json({ 
+      message: 'Verificação iniciada em background',
+      sessionId,
+      status: 'started'
+    });
+  });
+
+  // SSE endpoint para verificação de integridade
+  app.get("/api/verification-progress/:sessionId", isAuthenticated, (req: any, res) => {
+    const sessionId = req.params.sessionId;
+    
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+    });
+
+    // Store the response object for this session
+    verificationProgressSessions.set(sessionId, res);
+
+    // Send initial progress
+    res.write(`data: ${JSON.stringify({ progress: 0, message: "Iniciando verificação de integridade..." })}\n\n`);
+
+    // Clean up on client disconnect
+    req.on('close', () => {
+      verificationProgressSessions.delete(sessionId);
+      res.end();
+    });
+  });
+
   // Generate AI insights endpoint
   app.get("/api/ai-insights", isAuthenticated, async (req: any, res) => {
     try {
@@ -3112,6 +3167,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return dateStr;
     } catch {
       return new Date().toISOString().split('T')[0];
+    }
+  }
+
+  // 🔍 FUNÇÕES DE VERIFICAÇÃO DE INTEGRIDADE
+  async function performIntegrityVerification(originalText: string, extractedTransactions: any[], sessionId: string) {
+    console.log(`[VERIFICATION] Iniciando verificação para ${extractedTransactions.length} transações`);
+    
+    broadcastVerificationProgress(sessionId, {
+      step: 'starting',
+      progress: 10,
+      message: 'Analisando documento original...'
+    });
+
+    // Re-extrair transações do texto original para comparar
+    broadcastVerificationProgress(sessionId, {
+      step: 'reprocessing',
+      progress: 30,
+      message: 'Reprocessando documento para verificação...'
+    });
+
+    let reExtractedTransactions = [];
+    try {
+      // Usar o mesmo extrator para garantir consistência
+      const result = await analyzeExtractWithAI(originalText, ["Outros"], "none", true);
+      reExtractedTransactions = result.transactions || [];
+    } catch (error) {
+      console.error('[VERIFICATION] Erro na re-extração:', error);
+    }
+
+    broadcastVerificationProgress(sessionId, {
+      step: 'comparing',
+      progress: 60,
+      message: `Comparando ${extractedTransactions.length} vs ${reExtractedTransactions.length} transações...`
+    });
+
+    // Comparar transações
+    const comparison = compareTransactions(extractedTransactions, reExtractedTransactions);
+
+    broadcastVerificationProgress(sessionId, {
+      step: 'analyzing',
+      progress: 80,
+      message: 'Analisando diferenças encontradas...'
+    });
+
+    // Gerar relatório final
+    const report = generateIntegrityReport(comparison, extractedTransactions.length, reExtractedTransactions.length);
+
+    broadcastVerificationProgress(sessionId, {
+      step: 'completed',
+      progress: 100,
+      message: 'Verificação concluída',
+      report: report,
+      comparison: comparison
+    });
+
+    console.log(`[VERIFICATION] Concluída: ${report.integrity}% de integridade`);
+  }
+
+  function compareTransactions(original: any[], reExtracted: any[]) {
+    const matches = [];
+    const missingInReExtraction = [];
+    const extraInReExtraction = [];
+    const valueDifferences = [];
+
+    // Criar map para comparação mais eficiente
+    const reExtractedMap = new Map();
+    reExtracted.forEach((t, index) => {
+      const key = `${t.date}_${t.description?.substring(0, 30)}_${Math.abs(parseFloat(t.amount) || 0)}`;
+      reExtractedMap.set(key, { ...t, index });
+    });
+
+    // Verificar cada transação original
+    original.forEach((originalTx, index) => {
+      const key = `${originalTx.date}_${originalTx.description?.substring(0, 30)}_${Math.abs(parseFloat(originalTx.amount) || 0)}`;
+      const match = reExtractedMap.get(key);
+
+      if (match) {
+        // Verificar se valores são exatamente iguais
+        const originalAmount = parseFloat(originalTx.amount);
+        const reExtractedAmount = parseFloat(match.amount);
+        
+        if (Math.abs(originalAmount - reExtractedAmount) > 0.01) {
+          valueDifferences.push({
+            transaction: originalTx,
+            originalValue: originalAmount,
+            reExtractedValue: reExtractedAmount,
+            difference: originalAmount - reExtractedAmount
+          });
+        }
+        
+        matches.push({ original: originalTx, reExtracted: match });
+        reExtractedMap.delete(key);
+      } else {
+        missingInReExtraction.push(originalTx);
+      }
+    });
+
+    // Transações extras na re-extração
+    reExtractedMap.forEach((tx) => {
+      extraInReExtraction.push(tx);
+    });
+
+    return {
+      matches: matches.length,
+      missing: missingInReExtraction,
+      extra: extraInReExtraction,
+      valueDifferences,
+      totalOriginal: original.length,
+      totalReExtracted: reExtracted.length
+    };
+  }
+
+  function generateIntegrityReport(comparison: any, originalCount: number, reExtractedCount: number) {
+    const integrity = originalCount > 0 ? Math.round((comparison.matches / originalCount) * 100) : 0;
+    
+    return {
+      integrity,
+      summary: {
+        originalTransactions: originalCount,
+        reExtractedTransactions: reExtractedCount,
+        matchedTransactions: comparison.matches,
+        missingTransactions: comparison.missing.length,
+        extraTransactions: comparison.extra.length,
+        valueDifferences: comparison.valueDifferences.length
+      },
+      status: integrity >= 95 ? 'excellent' : integrity >= 85 ? 'good' : integrity >= 70 ? 'acceptable' : 'needs_review',
+      issues: [
+        ...(comparison.missing.length > 0 ? [`${comparison.missing.length} transações não foram re-extraídas`] : []),
+        ...(comparison.extra.length > 0 ? [`${comparison.extra.length} transações extras na re-extração`] : []),
+        ...(comparison.valueDifferences.length > 0 ? [`${comparison.valueDifferences.length} diferenças de valores`] : [])
+      ],
+      recommendations: generateRecommendations(comparison)
+    };
+  }
+
+  function generateRecommendations(comparison: any) {
+    const recommendations = [];
+    
+    if (comparison.missing.length > 5) {
+      recommendations.push("Considere reprocessar o documento - muitas transações podem ter sido perdidas");
+    }
+    
+    if (comparison.valueDifferences.length > 0) {
+      recommendations.push("Verifique transações com diferenças de valores - pode indicar erro na extração");
+    }
+    
+    if (comparison.extra.length > comparison.missing.length * 2) {
+      recommendations.push("Possível duplicação de transações - revise os dados");
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push("Extração com excelente qualidade - dados confiáveis");
+    }
+
+    return recommendations;
+  }
+
+  function broadcastVerificationProgress(sessionId: string, data: any) {
+    const res = verificationProgressSessions.get(sessionId);
+    if (res && !res.closed) {
+      try {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+      } catch (error) {
+        console.error('[VERIFICATION-BROADCAST]', error);
+        verificationProgressSessions.delete(sessionId);
+      }
     }
   }
 
