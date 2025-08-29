@@ -202,14 +202,15 @@ async function processChunk(extractText: string, availableCategories: string[] =
   let content = '{"transactions": []}';
   
   try {
-    const systemPrompt = `CRÍTICO: Extraia TODAS as transações do extrato bancário e identifique ASSINATURAS.
+    const systemPrompt = `CRÍTICO: Extraia ABSOLUTAMENTE TODAS as transações do extrato bancário - NÃO PULE NENHUMA!
 
-INSTRUÇÕES ESPECÍFICAS:
-1. Procure por padrões de transação: valores, datas, descrições de PIX, TEF, débitos, créditos
-2. Identifique transações mesmo em formatos diferentes
-3. Extraia informações de compras, transferências, pagamentos, recebimentos
-4. Use os estabelecimentos/destinatários para categorizar
-5. SEMPRE retorne pelo menos algumas transações se há valores no texto
+INSTRUÇÕES OBRIGATÓRIAS:
+1. SCAN TODO o texto linha por linha procurando valores monetários (R$, +, -, números com vírgula)
+2. TODA LINHA com valor monetário = transação potencial
+3. NUNCA limite o número de transações - extraia TUDO que encontrar
+4. Se você encontrou 8 transações no texto, retorne TODAS as 8
+5. Se há 15 valores diferentes, extraia os 15
+6. NÃO seja conservador - seja EXAUSTIVO na extração
 
 DETECÇÃO DE ASSINATURAS - MUITO IMPORTANTE:
 Identifique automaticamente serviços de assinatura conhecidos:
@@ -259,7 +260,7 @@ EXEMPLO OBRIGATÓRIO:
         {
           systemInstruction: systemPrompt,
           responseMimeType: "application/json", 
-          temperature: 0.1,
+          temperature: 0.0,
           fallbackResponse: '{"transactions": []}'
         }
       ),
