@@ -113,8 +113,11 @@ export class DeepSeekCategorizationService {
     const allChunkResults = await Promise.all(chunkPromises);
     const allTransactions = allChunkResults.flat();
     
-    console.log(`[DeepSeek] Processamento em chunks concluído: ${allTransactions.length} transações total`);
-    return allTransactions;
+    // Remover duplicatas baseado em data, descrição e valor
+    const uniqueTransactions = this.removeDuplicates(allTransactions);
+    
+    console.log(`[DeepSeek] Processamento em chunks concluído: ${uniqueTransactions.length}/${allTransactions.length} transações únicas`);
+    return uniqueTransactions;
   }
 
   /**
@@ -147,18 +150,29 @@ export class DeepSeekCategorizationService {
    * Constrói o prompt OTIMIZADO para extração rápida
    */
   private buildExtractionPrompt(extractText: string): string {
-    return `Extraia transações de extrato bancário. Ignore saldos/cabeçalhos.
+    return `EXTRATO BANCÁRIO BRASILEIRO - Extraia APENAS transações válidas:
 
-RECEITA: PIX/TED recebido, depósitos, salários
-DESPESA: PIX enviado, compras, saques, tarifas
+FORMATO VÁLIDO: Data + Operação + Valor
+Exemplo: "01/08/2025 RECEBIMENTO PIX THE ONE PRESTACAO 393,67"
 
-CATEGORIAS: Alimentação, Transporte, Casa, Saúde, Outros
+OPERAÇÕES VÁLIDAS:
+✓ RECEBIMENTO PIX → income
+✓ PAGAMENTO PIX → expense  
+✓ COMPRAS NACIONAIS → expense
+✓ TED (positivo=income, negativo=expense)
+✓ DEB.CTA.FATURA → expense
+✓ IOF/TARIFA → expense
+
+IGNORE TOTALMENTE:
+✗ Saldos, cabeçalhos, totais
+✗ "SALDO ANTERIOR", "Conta:", "Período"
+✗ Linhas sem data DD/MM/AAAA
 
 TEXTO:
 ${extractText}
 
-JSON:
-{"transactions":[{"date":"AAAA-MM-DD","description":"DESC","amount":VALOR,"type":"income/expense","category":"CATEGORIA","confidence":0.9}]}`;
+RESPONDA SOMENTE:
+{"transactions":[{"date":"AAAA-MM-DD","description":"OPERACAO","amount":VALOR,"type":"income/expense","category":"Categoria","confidence":0.9}]}`;
   }
 
   /**
@@ -222,48 +236,57 @@ JSON:
   }
 
   /**
-   * Valida se uma transação é válida e não é ruído
+   * Valida se uma transação é válida para extratos brasileiros (Sicredi, Santander, etc.)
    */
   private isValidTransaction(transaction: CategorizedTransaction): boolean {
     // Verificar se o valor é válido (maior que R$ 0,01)
-    if (!transaction.amount || transaction.amount < 0.01) {
+    if (!transaction.amount || Math.abs(transaction.amount) < 0.01) {
       return false;
     }
 
-    // Verificar se a descrição não é muito genérica ou vazia
+    // Verificar se a descrição é uma transação bancária real
     const description = transaction.description.toLowerCase().trim();
-    const invalidDescriptions = [
-      'transação sem descrição',
-      'sem descrição',
-      'desc',
-      'saldo',
-      'saldo anterior',
-      'saldo atual',
-      'extrato',
-      'conta corrente',
-      'agência',
-      'banco',
-      'cpf',
-      'cnpj',
-      'página',
-      'período',
-      'total',
-      'limite'
+    
+    // Palavras que indicam transações válidas
+    const validTransactionKeywords = [
+      'recebimento pix', 'pagamento pix', 'compras nacionais',
+      'ted', 'doc', 'débito', 'crédito', 'transferência',
+      'saque', 'depósito', 'boleto', 'tarifa', 'iof',
+      'juros', 'deb.cta', 'liquidação', 'estorno'
     ];
 
-    if (description.length < 3 || invalidDescriptions.some(inv => description.includes(inv))) {
+    // Deve conter pelo menos uma palavra-chave válida
+    const hasValidKeyword = validTransactionKeywords.some(keyword => 
+      description.includes(keyword)
+    );
+
+    if (!hasValidKeyword) {
       return false;
     }
 
-    // Verificar se a data é válida (últimos 2 anos)
+    // Filtrar ruído específico de extratos
+    const invalidDescriptions = [
+      'saldo anterior', 'saldo atual', 'saldo final',
+      'extrato período', 'conta corrente', 'agência',
+      'associado:', 'cooperativa:', 'conta:',
+      'data         descrição', 'valor (r$)', 'saldo (r$)',
+      'cpf', 'cnpj', 'página', 'total geral',
+      'limite disponível', 'limite utilizado'
+    ];
+
+    if (invalidDescriptions.some(inv => description.includes(inv))) {
+      return false;
+    }
+
+    // Verificar se a data é válida (últimos 3 anos)
     const transactionDate = new Date(transaction.date);
-    const twoYearsAgo = new Date();
-    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+    const threeYearsAgo = new Date();
+    threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     if (isNaN(transactionDate.getTime()) || 
-        transactionDate < twoYearsAgo || 
+        transactionDate < threeYearsAgo || 
         transactionDate > tomorrow) {
       return false;
     }
@@ -277,34 +300,53 @@ JSON:
   }
 
   /**
-   * Extração via regex como fallback
+   * Extração via regex ESPECÍFICA para extratos brasileiros (Sicredi, etc.)
    */
   private extractWithRegex(text: string): CategorizedTransaction[] {
-    console.log(`[DeepSeek] Usando extração regex como fallback...`);
+    console.log(`[DeepSeek] Usando extração regex específica para extrato brasileiro...`);
     
     const transactions: CategorizedTransaction[] = [];
     const lines = text.split('\n');
     
     for (const line of lines) {
-      // Padrões básicos de transação bancária
+      // Padrão ESPECÍFICO para extratos brasileiros (formato Sicredi)
+      // Exemplo: "01/08/2025   RECEBIMENTO PIX 31663906000110 THE ONE PRESTACAO   PIX_CRED        393,67       2.456,40"
       const patterns = [
-        /(\d{2}\/\d{2}\/\d{4}).*?([A-Z\s]+).*?R?\$?\s*([\d,.-]+)/i,
-        /(\d{4}-\d{2}-\d{2}).*?(PIX|TED|DOC|DÉBITO|CRÉDITO).*?([\d,.-]+)/i
+        // Formato completo Sicredi/Santander com colunas definidas
+        /(\d{2}\/\d{2}\/\d{4})\s+([A-Z\s\d\*]+?)\s+([A-Z_\d]+)\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})\s+\d/i,
+        // Formato simplificado para outros bancos
+        /(\d{2}\/\d{2}\/\d{4})\s+(RECEBIMENTO PIX|PAGAMENTO PIX|COMPRAS NACIONAIS|TED|DOC|DÉBITO|CRÉDITO).*?(-?\d{1,3}(?:\.\d{3})*,\d{2})/i
       ];
       
       for (const pattern of patterns) {
         const match = line.match(pattern);
         if (match) {
-          const amount = parseFloat(match[3].replace(/[^\d,-]/g, '').replace(',', '.'));
-          if (!isNaN(amount) && amount !== 0) {
+          const valueStr = match[match.length - 1]; // Último grupo é sempre o valor
+          const amount = this.parseDecimalValue(valueStr);
+          
+          if (!isNaN(amount) && Math.abs(amount) >= 0.01) {
+            const description = match[2].trim();
+            
+            // Determinar tipo baseado na descrição e valor
+            let type: 'income' | 'expense' = 'expense';
+            const descLower = description.toLowerCase();
+            
+            if (descLower.includes('recebimento') || 
+                descLower.includes('depósito') ||
+                descLower.includes('crédito') ||
+                descLower.includes('estorno') ||
+                (descLower.includes('ted') && amount > 0)) {
+              type = 'income';
+            }
+            
             transactions.push({
               date: this.normalizeDate(match[1]),
-              description: match[2].trim(),
-              amount: amount,
-              type: amount > 0 ? 'income' : 'expense',
-              category: 'Outros',
-              confidence: 0.6,
-              reasoning: 'Extração via regex'
+              description: description,
+              amount: Math.abs(amount), // Sempre positivo
+              type: type,
+              category: this.inferCategory(description),
+              confidence: 0.8,
+              reasoning: 'Extração regex específica'
             });
           }
           break;
@@ -312,9 +354,63 @@ JSON:
       }
     }
     
-    const validTransactions = transactions.filter(this.isValidTransaction);
+    const validTransactions = transactions.filter(this.isValidTransaction.bind(this));
     console.log(`[DeepSeek] Regex extraiu ${validTransactions.length}/${transactions.length} transações válidas`);
     return validTransactions;
+  }
+
+  /**
+   * Converte valor brasileiro (1.234,56) para float
+   */
+  private parseDecimalValue(valueStr: string): number {
+    return parseFloat(
+      valueStr
+        .replace(/\./g, '') // Remove separadores de milhares
+        .replace(',', '.') // Converte vírgula para ponto decimal
+    );
+  }
+
+  /**
+   * Infere categoria baseada na descrição
+   */
+  private inferCategory(description: string): string {
+    const desc = description.toLowerCase();
+    
+    if (desc.includes('posto') || desc.includes('combustível')) return 'Transporte';
+    if (desc.includes('superm') || desc.includes('mercado')) return 'Alimentação';
+    if (desc.includes('farmacia') || desc.includes('droga')) return 'Saúde';
+    if (desc.includes('cpfl') || desc.includes('energia')) return 'Casa';
+    if (desc.includes('ifood') || desc.includes('delivery')) return 'Alimentação';
+    if (desc.includes('tarifa') || desc.includes('iof')) return 'Tarifas';
+    
+    return 'Outros';
+  }
+
+  /**
+   * Remove transações duplicadas baseado em data, descrição e valor
+   */
+  private removeDuplicates(transactions: CategorizedTransaction[]): CategorizedTransaction[] {
+    const seen = new Set<string>();
+    const unique: CategorizedTransaction[] = [];
+    
+    for (const transaction of transactions) {
+      // Criar uma chave única baseada em data, primeiras palavras da descrição e valor
+      const descriptionKey = transaction.description.toLowerCase()
+        .split(' ')
+        .slice(0, 3) // Primeiras 3 palavras para identificar operações similares
+        .join(' ');
+      
+      const key = `${transaction.date}_${descriptionKey}_${transaction.amount.toFixed(2)}`;
+      
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(transaction);
+      } else {
+        console.log(`[DeepSeek] Duplicata removida: ${transaction.description} (${transaction.amount})`);
+      }
+    }
+    
+    return unique;
   }
 
   /**
