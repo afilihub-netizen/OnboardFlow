@@ -33,6 +33,7 @@ export class DeepSeekCategorizationService {
 
   /**
    * NOVA FUNÇÃO: Extrai e categoriza transações diretamente do texto do extrato
+   * COM PROCESSAMENTO EM CHUNKS para evitar timeout
    */
   async extractAndCategorizeTransactions(extractText: string): Promise<CategorizedTransaction[]> {
     if (!this.apiKey) {
@@ -43,6 +44,13 @@ export class DeepSeekCategorizationService {
     try {
       console.log(`[DeepSeek] Iniciando extração de ${extractText.length} caracteres`);
       
+      // Para textos grandes, dividir em chunks
+      if (extractText.length > 10000) {
+        console.log(`[DeepSeek] Texto grande (${extractText.length}), processando em chunks`);
+        return await this.processInChunks(extractText);
+      }
+      
+      // Para textos pequenos, processar direto
       const prompt = this.buildExtractionPrompt(extractText);
       const response = await this.callDeepSeekAPI(prompt);
       
@@ -55,6 +63,63 @@ export class DeepSeekCategorizationService {
       console.error('[DeepSeek] Erro na extração:', error);
       return [];
     }
+  }
+
+  /**
+   * Processa texto grande em chunks menores
+   */
+  private async processInChunks(extractText: string): Promise<CategorizedTransaction[]> {
+    const chunkSize = 8000; // Tamanho otimizado para DeepSeek
+    const chunks: string[] = [];
+    
+    // Dividir por linhas para não cortar transações
+    const lines = extractText.split('\n');
+    let currentChunk = '';
+    
+    for (const line of lines) {
+      if (currentChunk.length + line.length > chunkSize && currentChunk.length > 0) {
+        chunks.push(currentChunk.trim());
+        currentChunk = line;
+      } else {
+        currentChunk += (currentChunk ? '\n' : '') + line;
+      }
+    }
+    
+    if (currentChunk.trim()) {
+      chunks.push(currentChunk.trim());
+    }
+    
+    console.log(`[DeepSeek] Dividido em ${chunks.length} chunks de ~${chunkSize} caracteres`);
+    
+    const allTransactions: CategorizedTransaction[] = [];
+    
+    // Processar cada chunk
+    for (let i = 0; i < chunks.length; i++) {
+      try {
+        console.log(`[DeepSeek] Processando chunk ${i + 1}/${chunks.length} (${chunks[i].length} chars)`);
+        
+        const prompt = this.buildExtractionPrompt(chunks[i]);
+        const response = await this.callDeepSeekAPI(prompt);
+        const chunkTransactions = this.parseExtractionResponse(response);
+        
+        if (chunkTransactions.length > 0) {
+          allTransactions.push(...chunkTransactions);
+          console.log(`[DeepSeek] Chunk ${i + 1}: ${chunkTransactions.length} transações encontradas`);
+        }
+        
+        // Pequena pausa entre chunks para não sobrecarregar a API
+        if (i < chunks.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+      } catch (error) {
+        console.error(`[DeepSeek] Erro no chunk ${i + 1}:`, error);
+        // Continua com próximo chunk
+      }
+    }
+    
+    console.log(`[DeepSeek] Processamento em chunks concluído: ${allTransactions.length} transações total`);
+    return allTransactions;
   }
 
   /**

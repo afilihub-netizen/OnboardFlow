@@ -1533,7 +1533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const deepSeekPromise = deepSeekCategorization.extractAndCategorizeTransactions(extractText);
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('DeepSeek timeout após 30s')), 30000)
+          setTimeout(() => reject(new Error('DeepSeek timeout após 90s')), 90000)
         );
         
         const deepSeekResult = await Promise.race([deepSeekPromise, timeoutPromise]);
