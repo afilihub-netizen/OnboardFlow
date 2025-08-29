@@ -37,6 +37,33 @@ const BRAZILIAN_PATTERNS = {
   SUBSCRIPTIONS: /(NETFLIX|SPOTIFY|AMAZON|MICROSOFT|GOOGLE|APPLE|GLOBO|TELEFONE|CLARO|VIVO|TIM|OI)/i
 };
 
+// FILTROS PARA ELIMINAR RUÍDOS (linhas que NÃO são transações)
+const NOISE_FILTERS = {
+  // Saldos e informações de conta
+  BALANCE_INFO: /saldo\s+(anterior|atual|disponível)|extrato|período|conta\s+corrente/i,
+  
+  // IOFs e taxas
+  FEES_AND_TAXES: /iof|tarifa|taxa\s|anuidade|manutenção\s+conta/i,
+  
+  // Cabeçalhos e divisores
+  HEADERS: /data\s+histórico|histórico\s+valor|valor\s+saldo|^\s*[\-=\*]{3,}/,
+  
+  // Linhas muito curtas ou vazias
+  TOO_SHORT: /^\s*[A-Z]{1,3}\s*$/,
+  
+  // Códigos isolados
+  ISOLATED_CODES: /^\s*[0-9A-Z]{3,10}\s*$/,
+  
+  // Informações de identificação
+  INFO_LINES: /agência|conta|titular|cpf|cnpj.*titular/i,
+  
+  // Totalizadores  
+  TOTALS: /total\s+débito|total\s+crédito|saldo\s+final/i,
+  
+  // Linhas com apenas datas
+  ONLY_DATE: /^\s*\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\s*$/
+};
+
 // CATEGORIZAÇÃO INTELIGENTE POR PADRÕES
 const SMART_CATEGORIZATION = {
   'Alimentação': [
@@ -74,11 +101,20 @@ export function extractTransactionsBrazilian(text: string, availableCategories: 
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
+    
+    // FILTRAR RUÍDOS ANTES DE PROCESSAR
+    if (isNoiseLine(line)) {
+      console.log(`[BR-FILTER] Ignorando ruído: "${line.substring(0, 50)}..."`);
+      continue;
+    }
+    
     if (line.length < 10) continue; // Muito curto para ser transação
     
     const transaction = parseTransactionLine(line, availableCategories);
-    if (transaction) {
+    if (transaction && isValidTransaction(transaction)) {
       transactions.push(transaction);
+    } else if (transaction) {
+      console.log(`[BR-FILTER] Transação inválida rejeitada: ${transaction.description} - R$ ${transaction.amount}`);
     }
   }
   
@@ -269,4 +305,65 @@ function extractDate(line: string): string | null {
   }
   
   return null;
+}
+
+// FUNÇÃO PARA IDENTIFICAR E FILTRAR RUÍDOS
+function isNoiseLine(line: string): boolean {
+  // Verificar cada filtro de ruído
+  for (const [key, pattern] of Object.entries(NOISE_FILTERS)) {
+    if (pattern.test(line)) {
+      return true;
+    }
+  }
+  
+  // Linha muito curta
+  if (line.length < 8) return true;
+  
+  // Linha que não tem valor monetário
+  if (!BRAZILIAN_PATTERNS.AMOUNT.test(line)) return true;
+  
+  return false;
+}
+
+// FUNÇÃO PARA VALIDAR SE A TRANSAÇÃO É REALMENTE VÁLIDA
+function isValidTransaction(transaction: Transaction): boolean {
+  // Valor mínimo para ser considerado transação real (R$ 0,50)
+  const MIN_AMOUNT = 0.50;
+  if (Math.abs(transaction.amount) < MIN_AMOUNT) {
+    return false;
+  }
+  
+  // Valor máximo realista (R$ 50.000)
+  const MAX_AMOUNT = 50000;
+  if (Math.abs(transaction.amount) > MAX_AMOUNT) {
+    return false;
+  }
+  
+  // Descrição deve ter conteúdo significativo
+  if (transaction.description.length < 5) {
+    return false;
+  }
+  
+  // Não pode ser apenas números
+  if (/^\d+$/.test(transaction.description.trim())) {
+    return false;
+  }
+  
+  // Filtrar descrições que são claramente ruído
+  const noiseDescriptions = [
+    /^saldo/i,
+    /^total/i,
+    /^extrato/i,
+    /^período/i,
+    /^agência/i,
+    /^conta/i
+  ];
+  
+  for (const pattern of noiseDescriptions) {
+    if (pattern.test(transaction.description)) {
+      return false;
+    }
+  }
+  
+  return true;
 }
